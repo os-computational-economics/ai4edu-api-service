@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+env.bak/
+env1/
+env2/
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Build
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Cache
+*.cache/
+
+# Miscellaneous
+*.bak
+*.swp
+*.tmp
+*~
+nginx_conf/
+.DS_Store
+/.venv/
