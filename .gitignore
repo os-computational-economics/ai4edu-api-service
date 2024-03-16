@@ -33,6 +33,5 @@ dist/
 *.swp
 *.tmp
 *~
-nginx_conf/
 .DS_Store
 /.venv/
