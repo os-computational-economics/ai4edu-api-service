@@ -14,3 +14,10 @@ There are two config files maintained in this repo:
 - the nginx_conf folder contains the nginx configuration file for the cloud deployment environment. In the cloud deployment environment, the nginx server (running as a docker container) is used as a reverse proxy server to the fastapi app.
 
 ## Database connection and migration
+The database connection and migration is handled by 3 packages:
+- alembic: database migration
+- sqlalchemy: ORM (Object Relational Mapping)
+- psycopg: database connection
+The alembic configuration file is maintained in the root directory of this repo. The database migration scripts are maintained in the "migrations" folder in the root directory of this repo.
+Alembic is used to generate the migration scripts. The migration scripts are then run in the cloud deployment environment to update the database schema.
+All database models are maintained in the "models.py" file in the "migration" folder.
