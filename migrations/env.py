@@ -14,6 +14,7 @@ from migrations.models import Base
 config = context.config
 
 load_dotenv()
+load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
 config.set_main_option("sqlalchemy.url", os.getenv("DB_URI"))
 
 # Interpret the config file for Python logging.
@@ -72,7 +73,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, version_table_schema=target_metadata.schema,
         )
 
         with context.begin_transaction():
