@@ -80,10 +80,12 @@ def read_root(request: Request):
     1. Redis connection
     2. environment variables
     3. database connection
+    4. docker volume access at ./volume_cache
     ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
     :param request:
     :return:
     """
+    # test environment variables
     redis_address = config.get("REDIS_ADDRESS") or os.getenv("REDIS_ADDRESS")  # local is prioritized
     if redis_address is None:
         return {"Warning": "ENV VARIABLE NOT CONFIGURED", "request-path": str(request.url.path)}
@@ -96,7 +98,16 @@ def read_root(request: Request):
         # test database connection
         engine = create_engine(os.getenv("DB_URI"))
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT 'success'"))
+            result = conn.execute(text("SELECT version FROM db_version"))
             db_result = result.fetchone()[0]
 
-        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}", "request-path": str(request.url.path)}
+        # test docker volume access
+        try:
+            with open("./volume_cache/test.txt", "w") as f:
+                f.write("success")
+            with open("./volume_cache/test.txt", "r") as f:
+                volume_result = f.read()
+        except FileNotFoundError:
+            volume_result = "FAILED"
+
+        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}", "request-path": str(request.url.path)}

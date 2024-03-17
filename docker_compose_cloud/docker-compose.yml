@@ -9,7 +9,7 @@ services:
       - ai4edu-secret
     image: ghcr.io/os-computational-economics/ai4edu-admin:dev
     volumes:
-      - ./tts_audio_cache:/app/tts_audio_cache:rw
+      - ./admin_dev_volume:/app/volume_cache:rw
     networks:
       - devnet
     depends_on:
@@ -20,7 +20,7 @@ services:
       - ai4edu-secret
     image: ghcr.io/os-computational-economics/ai4edu-admin:prod
     volumes:
-      - ./tts_audio_cache:/app/tts_audio_cache:rw
+      - ./admin_prod_volume:/app/volume_cache:rw
     networks:
       - prodnet
     depends_on:
@@ -31,7 +31,7 @@ services:
       - ai4edu-secret
     image: ghcr.io/os-computational-economics/ai4edu-user:dev
     volumes:
-      - ./tts_audio_cache:/app/tts_audio_cache:rw
+      - ./user_dev_volume:/app/volume_cache:rw
     networks:
       - devnet
     depends_on:
@@ -42,7 +42,7 @@ services:
       - ai4edu-secret
     image: ghcr.io/os-computational-economics/ai4edu-user:prod
     volumes:
-      - ./tts_audio_cache:/app/tts_audio_cache:rw
+      - ./user_prod_volume:/app/volume_cache:rw
     networks:
       - prodnet
     depends_on:
