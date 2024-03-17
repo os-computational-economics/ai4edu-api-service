@@ -1,18 +1,17 @@
-name: admin_dev_build_deploy
+name: user_prod_build_deploy
 on:
   push:
-    branches-ignore:
+    branches:
       - master
       - main
-      - config-update
     paths-ignore:
-      - 'user/**'  # ignore all user side code updates
+      - 'admin/**'  # ignore all admin side code updates
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/ai4edu-admin:dev  # change to prod if in production
+  IMAGE_NAME: ${{ github.repository_owner }}/ai4edu-user:prod  # change to prod if in production
   SEC_FILE_NAME: edcwsxqaz
-  CONTAINER_NAME: ai4edu-admin-dev-server
+  CONTAINER_NAME: ai4edu-user-prod-server
 
 jobs:
 
@@ -49,7 +48,7 @@ jobs:
             install -m 600 -D /dev/null ~/.ssh/id_rsa
             echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
             ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
-            ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && touch ${{ env.SEC_FILE_NAME }} && echo '${{ secrets.DEV_SECRETS }}' > ${{ env.SEC_FILE_NAME }} && exit"
+            ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && touch ${{ env.SEC_FILE_NAME }} && echo '${{ secrets.PROD_SECRETS }}' > ${{ env.SEC_FILE_NAME }} && exit"
         - name: connect and pull
           run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin && cd ${{ secrets.WORK_DIR }} && docker stop ${{ env.CONTAINER_NAME }} || true | xargs docker rm || true && docker compose pull ${{ env.CONTAINER_NAME }} && docker compose up -d ${{ env.CONTAINER_NAME }} && exit"
         - name: clean env

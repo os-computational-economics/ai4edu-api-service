@@ -1,4 +1,4 @@
-name: admin_dev_build_deploy
+name: user_dev_build_deploy
 on:
   push:
     branches-ignore:
@@ -6,13 +6,13 @@ on:
       - main
       - config-update
     paths-ignore:
-      - 'user/**'  # ignore all user side code updates
+      - 'admin/**'  # ignore all admin side code updates
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/ai4edu-admin:dev  # change to prod if in production
+  IMAGE_NAME: ${{ github.repository_owner }}/ai4edu-user:dev  # change to prod if in production
   SEC_FILE_NAME: edcwsxqaz
-  CONTAINER_NAME: ai4edu-admin-dev-server
+  CONTAINER_NAME: ai4edu-user-dev-server
 
 jobs:
 
