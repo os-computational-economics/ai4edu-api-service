@@ -1,4 +1,5 @@
 # AI 4 EDU Backend API containers
+
 ## This is the repo for the AI4EDU experimental project.
 - The main entry point is main.py. This is the fastapi app that serves the API.
 - To run a local instance of the app, run "run_server_local.py"

@@ -16,6 +16,8 @@ import time
 import redis
 from openai import OpenAI
 from anthropic import Anthropic
+from sqlalchemy import create_engine
+from sqlalchemy.sql import text
 
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
@@ -38,7 +40,7 @@ try:
 except FileNotFoundError:
     config = {}
 # load secrets from /run/secrets/ (only when running in docker)
-load_dotenv(dotenv_path="/run/secrets/ai4edu_secret")
+load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
 load_dotenv()
 
 # initialize FastAPI app and OpenAI client
@@ -82,11 +84,19 @@ def read_root(request: Request):
     :param request:
     :return:
     """
-    abc = config.get("ABC") or os.getenv("ABC")  # local is prioritized
-    if abc is None:
-        return {"Hello": "World", "request-path": str(request.url.path)}
+    redis_address = config.get("REDIS_ADDRESS") or os.getenv("REDIS_ADDRESS")  # local is prioritized
+    if redis_address is None:
+        return {"Warning": "ENV VARIABLE NOT CONFIGURED", "request-path": str(request.url.path)}
     else:
-        r = redis.Redis(host='redis-server', port=6379, protocol=3, decode_responses=True)
-        r.set('foo', 'bar11111')
-        abc = r.get('foo')
-        return {"Servers": "Hello-World-" + abc, "request-path": str(request.url.path)}
+        #  test redis connection
+        r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
+        r.set('foo', 'success')
+        rds = r.get('foo')
+
+        # test database connection
+        engine = create_engine(os.getenv("DB_URI"))
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 'success'"))
+            db_result = result.fetchone()[0]
+
+        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}", "request-path": str(request.url.path)}

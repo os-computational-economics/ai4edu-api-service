@@ -1,0 +1,79 @@
+# This is the docker-compose file for in cloud development and production
+
+version: "1.0.0"
+
+services:
+  ai4edu-admin-dev-server:
+    container_name: ai4edu-admin-dev-server
+    secrets:
+      - ai4edu-secret
+    image: ghcr.io/os-computational-economics/ai4edu-admin:dev
+    volumes:
+      - ./tts_audio_cache:/app/tts_audio_cache:rw
+    networks:
+      - devnet
+    depends_on:
+      - nginx-server
+  ai4edu-admin-prod-server:
+    container_name: ai4edu-admin-prod-server
+    secrets:
+      - ai4edu-secret
+    image: ghcr.io/os-computational-economics/ai4edu-admin:prod
+    volumes:
+      - ./tts_audio_cache:/app/tts_audio_cache:rw
+    networks:
+      - prodnet
+    depends_on:
+      - nginx-server
+  ai4edu-user-dev-server:
+    container_name: ai4edu-user-dev-server
+    secrets:
+      - ai4edu-secret
+    image: ghcr.io/os-computational-economics/ai4edu-user:dev
+    volumes:
+      - ./tts_audio_cache:/app/tts_audio_cache:rw
+    networks:
+      - devnet
+    depends_on:
+      - nginx-server
+  ai4edu-user-prod-server:
+    container_name: ai4edu-user-prod-server
+    secrets:
+      - ai4edu-secret
+    image: ghcr.io/os-computational-economics/ai4edu-user:prod
+    volumes:
+      - ./tts_audio_cache:/app/tts_audio_cache:rw
+    networks:
+      - prodnet
+    depends_on:
+      - nginx-server
+  redis-dev-server:
+    container_name: redis-dev-server
+    image: redis/redis-stack-server:latest
+    networks:
+      - devnet
+  redis-prod-server:
+    container_name: redis-prod-server
+    image: redis/redis-stack-server:latest
+    networks:
+      - prodnet
+  nginx-server:
+    container_name: nginx-server
+    image: nginx:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./files/nginx_conf:/etc/nginx/conf.d:ro
+      - ./files/ssl:/etc/nginx/ssl:ro
+    networks:
+      - devnet
+      - prodnet
+
+networks:
+  devnet:
+  prodnet:
+
+secrets:
+  ai4edu-secret:
+    file: edcwsxqaz

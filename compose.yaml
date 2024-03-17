@@ -18,23 +18,22 @@ services:
     ports:
       - 8000:5000
     secrets:
-      - ai4edu_secret
+      - ai4edu-secret
     networks:
-      - backnet
+      - localnet
   redis-server:
     image: redis/redis-stack:latest
     container_name: redis-stack
     ports:
-      - 6379:6379
       - 8001:8001
     networks:
-      - backnet
+      - localnet
 
 networks:
-  backnet:
+  localnet:
 
 secrets:
-  ai4edu_secret:
+  ai4edu-secret:
     file: .env
 
 # The commented out section below is an example of how to define a PostgreSQL
