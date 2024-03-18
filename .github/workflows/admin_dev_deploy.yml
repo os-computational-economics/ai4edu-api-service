@@ -17,7 +17,7 @@ env:
 jobs:
 
     publish:
-        name: publish image ${{ env.CONTAINER_NAME }}
+        name: publish image admin dev
         runs-on: ubuntu-latest
 
         steps:
@@ -38,7 +38,7 @@ jobs:
 
     deploy:
       needs: publish
-      name: deploy image ${{ env.CONTAINER_NAME }}
+      name: deploy image admin dev
       runs-on: ubuntu-latest
 
       steps:
