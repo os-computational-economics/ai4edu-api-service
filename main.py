@@ -80,7 +80,7 @@ def read_root(request: Request):
     1. Redis connection
     2. environment variables
     3. database connection
-    4. docker volume access at ./volume_cache
+    4. docker volume access at ./volume_cache/
     ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
     :param request:
     :return:
