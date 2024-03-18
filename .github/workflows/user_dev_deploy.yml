@@ -7,6 +7,8 @@ on:
       - config-update
     paths-ignore:
       - 'admin/**'  # ignore all admin side code updates
+      - 'nginx_conf/**'
+      - 'docker_compose_cloud/**'
 
 env:
   REGISTRY: ghcr.io

@@ -50,11 +50,15 @@ services:
   redis-dev-server:
     container_name: redis-dev-server
     image: redis/redis-stack-server:latest
+    volumes:
+      - ./redis_dev_volume:/data:rw
     networks:
       - devnet
   redis-prod-server:
     container_name: redis-prod-server
     image: redis/redis-stack-server:latest
+    volumes:
+      - ./redis_prod_volume:/data:rw
     networks:
       - prodnet
   nginx-server:
