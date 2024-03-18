@@ -33,7 +33,7 @@ jobs:
         scp -i ~/.ssh/id_rsa -r docker_compose_cloud/* ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.WORK_DIR }}
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && touch ${{ env.SEC_FILE_NAME }} && echo ' ' > ${{ env.SEC_FILE_NAME }} && exit"
     - name: restart redis and nginx  # changes to other services will take effect after the next deployment
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && docker compose restart nginx-server redis-dev-server redis-prod-server && exit"
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && docker compose up -d nginx-server redis-dev-server redis-prod-server && exit"
     - name: cleanup
       run: |
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && rm -f ${{ env.SEC_FILE_NAME }} && exit"
