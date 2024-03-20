@@ -19,6 +19,10 @@ from anthropic import Anthropic
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
+from common.DynamicAuth import DynamicAuth
+from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
+from user.TtsStream import TtsStream
+
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
 
@@ -44,7 +48,8 @@ load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
 load_dotenv()
 
 # initialize FastAPI app and OpenAI client
-app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc", openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
+app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
+              openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -55,6 +60,7 @@ origins = [
     "http://localhost:5172",
     "http://localhost:5174",
     "http://127.0.0.1:5173",
+    "https://ai4edu-user-web.vercel.app",
 ]
 
 regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
@@ -67,6 +73,51 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.post(f"{URL_PATHS['current_dev_user']}/stream_chat")
+@app.post(f"{URL_PATHS['current_prod_user']}/stream_chat")
+async def stream_chat(chat_stream_model: ChatStreamModel):
+    """
+    ENDPOINT: /dev/stream_chat, /prod/stream_chat
+    :param chat_stream_model:
+    """
+    auth = DynamicAuth()
+    if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
+        return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
+    chat_instance = ChatStream(chat_stream_model.provider, openai_client, anthropic_client)
+    return chat_instance.stream_chat(chat_stream_model)
+
+
+def delete_file_after_delay(file_path: str, delay: float):
+    """
+    Deletes the specified file after a delay.
+    :param file_path: The path to the file to delete.
+    :param delay: The delay before deletion, in seconds.
+    """
+    time.sleep(delay)
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+
+@app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
+@app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
+async def get_tts_file(tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks):
+    """
+    ENDPOINT: /dev/get_tts_file, /prod/get_tts_file
+    serves the TTS audio file for the specified session id and chunk id.
+    :param tts_session_id:
+    :param chunk_id:
+    :param background_tasks:
+    :return:
+    """
+    file_location = f"{TtsStream.TTS_AUDIO_CACHE_FOLDER}/{tts_session_id}_{chunk_id}.mp3"
+    if os.path.isfile(file_location):
+        # Add the delete_file_after_delay function as a background task
+        background_tasks.add_task(delete_file_after_delay, file_location, 60)  # 60 seconds delay
+        return FileResponse(path=file_location, media_type="audio/mpeg")
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")
@@ -110,4 +161,5 @@ def read_root(request: Request):
         except FileNotFoundError:
             volume_result = "FAILED"
 
-        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}", "request-path": str(request.url.path)}
+        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}",
+                "request-path": str(request.url.path)}
