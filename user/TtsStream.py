@@ -42,6 +42,9 @@ class TtsStream:
 
         # Check if the request was successful
         if response.status_code == 200:
+            # check if the folder exists
+            if not os.path.exists(self.TTS_AUDIO_CACHE_FOLDER):
+                os.makedirs(self.TTS_AUDIO_CACHE_FOLDER)
             # Save the response content to a file
             with open(f"./{self.TTS_AUDIO_CACHE_FOLDER}/{self.tts_session_id}_{chunk_id}.mp3", "wb") as f:
                 f.write(response.content)
