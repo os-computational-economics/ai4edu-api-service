@@ -52,6 +52,7 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
               openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+moonshot_client = OpenAI(api_key=os.getenv("MOONSHOT_API_KEY"), base_url="https://api.moonshot.cn/v1")
 
 origins = [
     "http://127.0.0.1:8001",
@@ -85,7 +86,7 @@ async def stream_chat(chat_stream_model: ChatStreamModel):
     auth = DynamicAuth()
     if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
         return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
-    chat_instance = ChatStream(chat_stream_model.provider, openai_client, anthropic_client)
+    chat_instance = ChatStream(chat_stream_model.provider, openai_client, anthropic_client, moonshot_client)
     return chat_instance.stream_chat(chat_stream_model)
 
 

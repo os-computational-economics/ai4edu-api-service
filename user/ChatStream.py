@@ -41,10 +41,11 @@ class ChatStream:
     Using this class need to pass in the full messages history, and the provider (openai or anthropic).
     """
 
-    def __init__(self, requested_provider, openai_client, anthropic_client):
+    def __init__(self, requested_provider, openai_client, anthropic_client, moonshot_client):
         self.requested_provider = requested_provider
         self.openai_client = openai_client
         self.anthropic_client = anthropic_client
+        self.moonshot_client = moonshot_client
         # generate a TtsStream session id (uuid4)
         self.tts_session_id = str(uuid.uuid4())
         self.tts = TtsStream(self.tts_session_id)
@@ -69,6 +70,9 @@ class ChatStream:
         elif self.requested_provider == "anthropic":
             print("Using Anthropic")
             stream = self.__anthropic_chat_generator(messages)
+        elif self.requested_provider == "moonshot":
+            print("Using Moonshot")
+            stream = self.__moonshot_chat_generator(messages)
         else:
             stream = self.__openai_chat_generator(messages)
         response_text = ""
@@ -111,6 +115,22 @@ class ChatStream:
         """
         with self.openai_client.chat.completions.create(
                 model="gpt-4-turbo-preview",
+                messages=messages,
+                stream=True,
+        ) as stream:
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    new_text = chunk.choices[0].delta.content
+                    yield new_text
+
+    def __moonshot_chat_generator(self, messages: List[dict[str, str]]):
+        """
+        Moonshot chat generator.
+        :param messages:
+        :return:
+        """
+        with self.moonshot_client.chat.completions.create(
+                model="moonshot-v1-8k",
                 messages=messages,
                 stream=True,
         ) as stream:
