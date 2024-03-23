@@ -41,6 +41,8 @@ jobs:
       needs: publish
       name: deploy image admin prod
       runs-on: ubuntu-latest
+      permissions:
+        checks: read
 
       steps:
         - name: Wait for user prod to deploy
