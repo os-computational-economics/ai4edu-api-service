@@ -43,6 +43,13 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
+        - name: Wait for user prod to deploy
+          uses: lewagon/wait-on-check-action@v1.3.3
+          with:
+            ref: ${{ github.ref }}
+            check-name: 'deploy image user prod'
+            repo-token: ${{ secrets.GITHUB_TOKEN }}
+            wait-interval: 5
         - name: install ssh keys
           # check this thread to understand why its needed:
           # <https://stackoverflow.com/a/70447517>
