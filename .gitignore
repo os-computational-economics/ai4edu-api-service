@@ -36,3 +36,4 @@ dist/
 .DS_Store
 /.venv/
 /ai4edu_api_volume_local/
+/volume_cache/

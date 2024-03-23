@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from dotenv import load_dotenv, dotenv_values
 import os
 import time
+from datetime import datetime
 
 import redis
 from openai import OpenAI
@@ -20,6 +21,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
 from common.DynamicAuth import DynamicAuth
+from common.FileStorageHandler import FileStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 
@@ -132,6 +134,7 @@ def read_root(request: Request):
     2. environment variables
     3. database connection
     4. docker volume access at ./volume_cache
+    5. AWS S3 access
     ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
     :param request:
     :return:
@@ -141,9 +144,14 @@ def read_root(request: Request):
     if redis_address is None:
         return {"Warning": "ENV VARIABLE NOT CONFIGURED", "request-path": str(request.url.path)}
     else:
+        # Get the current time
+        now = datetime.now()
+        # Format the time
+        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+
         #  test redis connection
         r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
-        r.set('foo', 'success')
+        r.set('foo', 'success-'+formatted_time)
         rds = r.get('foo')
 
         # test database connection
@@ -155,11 +163,16 @@ def read_root(request: Request):
         # test docker volume access
         try:
             with open("./volume_cache/test.txt", "w") as f:
-                f.write("success")
+                f.write("success-"+formatted_time)
             with open("./volume_cache/test.txt", "r") as f:
                 volume_result = f.read()
         except FileNotFoundError:
             volume_result = "FAILED"
 
-        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}",
+        # test AWS S3 access
+        file_storage = FileStorageHandler()
+        s3_test = file_storage.set_file("test_dir/test.txt", "success-"+formatted_time)
+        s3_test_str = file_storage.get_file("test_dir/test.txt")
+
+        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}",
                 "request-path": str(request.url.path)}
