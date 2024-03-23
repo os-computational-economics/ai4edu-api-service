@@ -22,6 +22,7 @@ from sqlalchemy.sql import text
 from common.DynamicAuth import DynamicAuth
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
+from user.SttApiKey import SttApiKey, SttApiKeyResponse
 
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
@@ -79,7 +80,7 @@ app.add_middleware(
 @app.post(f"{URL_PATHS['current_prod_user']}/stream_chat")
 async def stream_chat(chat_stream_model: ChatStreamModel):
     """
-    ENDPOINT: /dev/stream_chat, /prod/stream_chat
+    ENDPOINT: /user/stream_chat
     :param chat_stream_model:
     """
     auth = DynamicAuth()
@@ -104,7 +105,7 @@ def delete_file_after_delay(file_path: str, delay: float):
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
 async def get_tts_file(tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks):
     """
-    ENDPOINT: /dev/get_tts_file, /prod/get_tts_file
+    ENDPOINT: /user/get_tts_file
     serves the TTS audio file for the specified session id and chunk id.
     :param tts_session_id:
     :param chunk_id:
@@ -118,6 +119,22 @@ async def get_tts_file(tts_session_id: str, chunk_id: str, background_tasks: Bac
         return FileResponse(path=file_location, media_type="audio/mpeg")
     else:
         raise HTTPException(status_code=404, detail="File not found")
+
+
+@app.get(f"{URL_PATHS['current_dev_user']}/get_temp_stt_auth_code")
+@app.get(f"{URL_PATHS['current_prod_user']}/get_temp_stt_auth_code")
+def get_temp_stt_auth_code(dynamic_auth_code: str):
+    """
+    ENDPOINT: /user/get_temp_stt_auth_code
+    Generates a temporary STT auth code for the user.
+    :return:
+    """
+    auth = DynamicAuth()
+    if not auth.verify_auth_code(dynamic_auth_code):
+        return SttApiKeyResponse(status="fail", error_message="Invalid auth code", key="")
+    stt_key_instance = SttApiKey()
+    api_key, _ = stt_key_instance.generate_key()
+    return SttApiKeyResponse(status="success", error_message=None, key=api_key)
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")
