@@ -64,6 +64,10 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+# Register the AgentRouter for admin endpoints
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
+
 origins = [
     "http://127.0.0.1:8001",
     "http://localhost:8000",
@@ -201,8 +205,3 @@ def read_root(request: Request):
 
         return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}",
                 "request-path": str(request.url.path)}
-
-
-# Register the AgentRouter for admin endpoints
-app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
-app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")

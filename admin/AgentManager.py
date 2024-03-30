@@ -43,6 +43,7 @@ class AgentUpdate(BaseModel):
     allow_model_choice: Optional[bool] = None
     model: Optional[str] = None
 
+
 class AgentResponse(BaseModel):
     agent_id: UUID
     agent_name: str
@@ -58,8 +59,8 @@ class AgentResponse(BaseModel):
 
 @router.post("/add_agent")
 def create_agent(
-    agent_data: AgentCreate,
-    db: Session = Depends(get_db)
+        agent_data: AgentCreate,
+        db: Session = Depends(get_db)
 ):
     """
     Create a new agent record in the database.
@@ -91,8 +92,8 @@ def create_agent(
 
 @router.post("/delete_agent")
 def delete_agent(
-    delete_data: AgentDelete,
-    db: Session = Depends(get_db)
+        delete_data: AgentDelete,
+        db: Session = Depends(get_db)
 ):
     """
     Delete an existing agent record in the database.
@@ -114,8 +115,8 @@ def delete_agent(
 
 @router.post("/update_agent")
 def edit_agent(
-    update_data: AgentUpdate,
-    db: Session = Depends(get_db)
+        update_data: AgentUpdate,
+        db: Session = Depends(get_db)
 ):
     """
     Update an existing agent record in the database.
@@ -154,10 +155,10 @@ def edit_agent(
 
 @router.get("/agents", response_model=List[AgentResponse])
 def list_agents(
-    creator: str,
-    db: Session = Depends(get_db),
-    page: int = 1,
-    page_size: int = 10
+        creator: str,
+        db: Session = Depends(get_db),
+        page: int = 1,
+        page_size: int = 10
 ):
     """
     List agents with pagination.
@@ -170,8 +171,8 @@ def list_agents(
 
 @router.get("/agent/{agent_id}")
 def get_agent_by_id(
-    agent_id: UUID,
-    db: Session = Depends(get_db)
+        agent_id: UUID,
+        db: Session = Depends(get_db)
 ):
     """
     Fetch an agent by its UUID.

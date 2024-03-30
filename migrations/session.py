@@ -5,7 +5,6 @@ from dotenv import load_dotenv, dotenv_values
 
 import os
 
-
 # try loading from .env file (only when running locally)
 try:
     config = dotenv_values(".env")
@@ -24,6 +23,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
