@@ -25,6 +25,14 @@ from common.FileStorageHandler import FileStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
+from admin.AgentManager import router as AgentRouter
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:     %(name)s - %(message)s'
+)
 
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
@@ -193,3 +201,7 @@ def read_root(request: Request):
 
         return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}",
                 "request-path": str(request.url.path)}
+
+# Register the AgentRouter for admin endpoints
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
