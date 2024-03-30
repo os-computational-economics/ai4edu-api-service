@@ -153,7 +153,7 @@ def edit_agent(
         response(False, message=str(e))
 
 
-@router.get("/agents", response_model=List[AgentResponse])
+@router.get("/agents")
 def list_agents(
         creator: str,
         db: Session = Depends(get_db),
@@ -166,7 +166,7 @@ def list_agents(
     query = db.query(Agent).filter(Agent.creator == creator)
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
-    return agents
+    return response(True, data={"agents":agents}, message="Success")
 
 
 @router.get("/agent/{agent_id}")
