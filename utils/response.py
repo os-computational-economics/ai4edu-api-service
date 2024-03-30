@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
 
-def response(success: bool, data: None | dict = None, message: str = None, status_code: int = 400):
+def response(success: bool, data: None | dict = None, message: str = "Success", status_code: int = 400):
     """
     :param success: Indicates if the request was successful.
     :param data: The payload to return in case of success.
@@ -13,7 +13,7 @@ def response(success: bool, data: None | dict = None, message: str = None, statu
         return {
             "status": "success",
             "data": data,
-            "message": message
+            "message": message or "Success"
         }
     else:
         raise HTTPException(status_code=status_code, detail=message)

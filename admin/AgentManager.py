@@ -83,7 +83,7 @@ def create_agent(
         db.commit()
         db.refresh(new_agent)
         logger.info(f"Inserted new agent: {new_agent.agent_id} - {new_agent.agent_name}")
-        return response(True, {"agent_id": str(new_agent.agent_id)}, "Agent successfully created.")
+        return response(True, {"agent_id": str(new_agent.agent_id)})
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to insert new agent: {e}")
@@ -107,7 +107,7 @@ def delete_agent(
         agent_to_delete.status = 2
         db.commit()
         logger.info(f"Deleted agent: {delete_data.agent_id}")
-        return response(True, {"agent_id": str(delete_data.agent_id)}, "Success")
+        return response(True, {"agent_id": str(delete_data.agent_id)})
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete agent: {e}")
@@ -142,12 +142,13 @@ def edit_agent(
         agent_to_update.allow_model_choice = update_data.allow_model_choice
     if update_data.model is not None:
         agent_to_update.model = update_data.model
+    agent_to_update.updated_at = datetime.now()
 
     try:
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
-        return response(True, {"agent_id": str(agent_to_update.agent_id)}, "Success")
+        return response(True, {"agent_id": str(agent_to_update.agent_id)})
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update agent: {e}")
@@ -167,7 +168,7 @@ def list_agents(
     query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
-    return response(True, data={"agents": agents}, message="Success")
+    return response(True, data={"agents": agents})
 
 
 @router.get("/agent/{agent_id}")
@@ -181,4 +182,4 @@ def get_agent_by_id(
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()  # exclude deleted agents
     if agent is None:
         response(False, status_code=404, message="Agent not found")
-    return response(True, data=agent, message="Success")
+    return response(True, data=agent)
