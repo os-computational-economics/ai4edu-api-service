@@ -202,6 +202,7 @@ def read_root(request: Request):
         return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}",
                 "request-path": str(request.url.path)}
 
+
 # Register the AgentRouter for admin endpoints
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")

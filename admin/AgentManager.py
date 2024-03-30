@@ -1,6 +1,8 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -10,9 +12,12 @@ from datetime import datetime
 from migrations.session import get_db
 from migrations.models import Agent
 
+from utils.response import response
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
 
 class AgentCreate(BaseModel):
     agent_name: str
@@ -23,8 +28,10 @@ class AgentCreate(BaseModel):
     allow_model_choice: bool = Field(default=True)
     model: Optional[str] = None
 
+
 class AgentDelete(BaseModel):
     agent_id: UUID
+
 
 class AgentUpdate(BaseModel):
     agent_id: UUID
@@ -36,8 +43,20 @@ class AgentUpdate(BaseModel):
     allow_model_choice: Optional[bool] = None
     model: Optional[str] = None
 
+class AgentResponse(BaseModel):
+    agent_id: UUID
+    agent_name: str
+    course_id: Optional[str] = None
+    creator: Optional[str] = None
+    voice: bool
+    status: int
+    allow_model_choice: bool
+    model: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
 
-@router.post("/add_agent", response_model=AgentCreate)
+
+@router.post("/add_agent")
 def create_agent(
     agent_data: AgentCreate,
     db: Session = Depends(get_db)
@@ -63,14 +82,14 @@ def create_agent(
         db.commit()
         db.refresh(new_agent)
         logger.info(f"Inserted new agent: {new_agent.agent_id} - {new_agent.agent_name}")
-
+        return response(True, {"agent_id": str(new_agent.agent_id)}, "Agent successfully created.")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to insert new agent: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    return new_agent
+        response(False, message=str(e))
 
-@router.post("/delete_agent", response_model=AgentDelete)
+
+@router.post("/delete_agent")
 def delete_agent(
     delete_data: AgentDelete,
     db: Session = Depends(get_db)
@@ -81,20 +100,19 @@ def delete_agent(
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
         logger.error(f"Agent not found: {delete_data.agent_id}")
-        raise HTTPException(status_code=404, detail="Agent not found")
-
+        response(False, status_code=404, message="Agent not found")
     try:
         db.delete(agent_to_delete)
         db.commit()
         logger.info(f"Deleted agent: {delete_data.agent_id}")
+        return response(True, {"agent_id": str(delete_data.agent_id)}, "Agent successfully deleted.")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete agent: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        response(False, message=str(e))
 
-    return {"agent_id": delete_data.agent_id}
 
-@router.post("/edit_agent", response_model=AgentUpdate)
+@router.post("/update_agent")
 def edit_agent(
     update_data: AgentUpdate,
     db: Session = Depends(get_db)
@@ -105,7 +123,7 @@ def edit_agent(
     agent_to_update = db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
     if not agent_to_update:
         logger.error(f"Agent not found: {update_data.agent_id}")
-        raise HTTPException(status_code=404, detail="Agent not found")
+        response(False, status_code=404, message="Agent not found")
 
     # Update the agent fields if provided
     if update_data.agent_name is not None:
@@ -127,9 +145,24 @@ def edit_agent(
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
+        return response(True, {"agent_id": str(agent_to_update.agent_id)}, "Agent successfully updated.")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update agent: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        response(False, message=str(e))
 
-    return agent_to_update
+
+@router.get("/agents", response_model=List[AgentResponse])
+def list_agents(
+    creator: str,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 10
+):
+    """
+    List agents with pagination.
+    """
+    query = db.query(Agent).filter(Agent.creator == creator)
+    skip = (page - 1) * page_size
+    agents = query.offset(skip).limit(page_size).all()
+    return agents
