@@ -105,7 +105,7 @@ def delete_agent(
         db.delete(agent_to_delete)
         db.commit()
         logger.info(f"Deleted agent: {delete_data.agent_id}")
-        return response(True, {"agent_id": str(delete_data.agent_id)}, "Agent successfully deleted.")
+        return response(True, {"agent_id": str(delete_data.agent_id)}, "Success")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete agent: {e}")
@@ -145,7 +145,7 @@ def edit_agent(
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
-        return response(True, {"agent_id": str(agent_to_update.agent_id)}, "Agent successfully updated.")
+        return response(True, {"agent_id": str(agent_to_update.agent_id)}, "Success")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update agent: {e}")
@@ -166,3 +166,17 @@ def list_agents(
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
     return agents
+
+
+@router.get("/agent/{agent_id}")
+def get_agent_by_id(
+    agent_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch an agent by its UUID.
+    """
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    if agent is None:
+        response(False, status_code=404, message="Agent not found")
+    return response(True, data=agent, message="Success")
