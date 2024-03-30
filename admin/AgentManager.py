@@ -103,7 +103,8 @@ def delete_agent(
         logger.error(f"Agent not found: {delete_data.agent_id}")
         response(False, status_code=404, message="Agent not found")
     try:
-        db.delete(agent_to_delete)
+        # mark the agent as deleted by setting the status to 2
+        agent_to_delete.status = 2
         db.commit()
         logger.info(f"Deleted agent: {delete_data.agent_id}")
         return response(True, {"agent_id": str(delete_data.agent_id)}, "Success")
@@ -163,10 +164,10 @@ def list_agents(
     """
     List agents with pagination.
     """
-    query = db.query(Agent).filter(Agent.creator == creator)
+    query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
-    return response(True, data={"agents":agents}, message="Success")
+    return response(True, data={"agents": agents}, message="Success")
 
 
 @router.get("/agent/{agent_id}")
@@ -177,7 +178,7 @@ def get_agent_by_id(
     """
     Fetch an agent by its UUID.
     """
-    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()  # exclude deleted agents
     if agent is None:
         response(False, status_code=404, message="Agent not found")
     return response(True, data=agent, message="Success")
