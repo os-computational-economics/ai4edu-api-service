@@ -24,10 +24,16 @@ def get_agent_by_id(
     conn = engine.connect()
     result = conn.execute(text("select * from ai_agents where agent_id = '" + str(agent_id) + "'"))
     row = result.first()
-
+    print(row)
     if row is None:
         return response(False, status_code=404, message="Agent not found")
     else:
-        return response(True, data= row[0])
+        return response(True, data= {
+            "agent_name" : row[2],
+            "coures_id" : row[3],
+            "voice" : row[6],
+            "model_choice": row[8],
+            "model" : row[9],
+        })
 
 
