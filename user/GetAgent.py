@@ -22,7 +22,12 @@ def get_agent_by_id(
 ):
     engine = create_engine(os.getenv("DB_URI"))
     conn = engine.connect()
-    result = conn.execute(text("select * from ai_agents where agent_id = '52dd624a-af5e-4c36-8254-b76cdd5e9f57'"))
-    return response(True, data= "here"+str(result.fetchone()[1]))
+    result = conn.execute(text("select * from ai_agents where agent_id = '" + str(agent_id) + "'"))
+    row = result.first()
+
+    if row is None:
+        return response(False, status_code=404, message="Agent not found")
+    else:
+        return response(True, data= row[0])
 
 
