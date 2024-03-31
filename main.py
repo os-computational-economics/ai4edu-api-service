@@ -25,6 +25,14 @@ from common.FileStorageHandler import FileStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
+from admin.AgentManager import router as AgentRouter
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:     %(name)s - %(message)s'
+)
 
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
@@ -55,6 +63,10 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
               openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# Register the AgentRouter for admin endpoints
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
+app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
 
 origins = [
     "http://127.0.0.1:8001",

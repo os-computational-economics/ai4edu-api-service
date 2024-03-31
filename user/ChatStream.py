@@ -78,8 +78,7 @@ class ChatStream:
         for text_chunk in stream:
             new_text = text_chunk
             response_text += new_text
-            if len(chunk_buffer.split()) > 21 or (chunk_id == -1 and len(
-                    chunk_buffer.split()) > 5):  # if the chunk is more than 21 words, or the first chunk is more than 5 words
+            if len(chunk_buffer.split()) > 17 + (chunk_id * 12):  # dynamically adjust the chunk size
                 if sentence_ender[0] in new_text:  # if the chunk contains a sentence ender .
                     chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[0], new_text, chunk_buffer,
                                                                      chunk_id)
