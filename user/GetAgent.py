@@ -25,8 +25,11 @@ def get_agent_by_id(
     result = conn.execute(text("select * from ai_agents where agent_id = '" + str(agent_id) + "'"))
     row = result.first()
     print(row)
+    
     if row is None:
         return response(False, status_code=404, message="Agent not found")
+    elif row[7] != 1:# the row[7] -= 1 checks if the model is not active 
+        return response(False, status_code=404, message="Agent is inactive")
     else:
         return response(True, data= {
             "agent_name" : row[2],
