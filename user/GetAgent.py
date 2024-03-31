@@ -1,28 +1,26 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
+from fastapi import APIRouter
+from uuid import UUID
+from utils.response import response
+from pydantic import BaseModel
 
-class GetAgent:
-    #self.agent_id = ''
-    """
-    This class is used to get information about an agent
-    for the front end like whether to enable text-to-speech
-    or what model to use
-    """
-    def __init__(self):
-        self.agent_id = 'asdf'
+router = APIRouter()
 
+class AgentRequest(BaseModel): 
+    agent_id: UUID
+    user_id: UUID | None = None #I was thinking in the future we may want to track this??
 
-    def getAgentProperties(self):
-
-        #engine = create_engine(os.getenv("DB_URI"))
-        engine = create_engine("postgresql+psycopg://postgres:admin@host.docker.internal:5432/ai4edu_local")
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT version FROM db_version"))
-            print(result)
+@router.get("/test")
+def get_things():
+    return response(True, data="hello world")
 
 
-t = GetAgent()
+@router.get("/stuff")
+def get_agent_by_id(
+    req : AgentRequest
+):
+    return response(True, data=req.agent_id)
 
-t.getAgentProperties()
 
