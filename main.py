@@ -26,6 +26,7 @@ from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
 from admin.AgentManager import router as AgentRouter
+from user.GetAgent import router as GetAgentRouter
 
 import logging
 
@@ -67,6 +68,12 @@ anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 # Register the AgentRouter for admin endpoints
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
+
+# Register GetAgentRouter for user endpoints 
+# note there is similar functionality in the AgentRouter but I made a different version for users
+# so we can seperate the two and maybe add security where users can get the full info given to admin users
+app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
+app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
 
 origins = [
     "http://127.0.0.1:8001",
