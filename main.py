@@ -77,6 +77,7 @@ app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/age
 
 origins = [
     "http://127.0.0.1:8001",
+    "http://localhost:3000",
     "http://localhost:8000",
     "http://localhost:5173",
     "http://localhost:5172",
