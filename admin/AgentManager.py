@@ -166,9 +166,11 @@ def list_agents(
     List agents with pagination.
     """
     query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
+    total = query.count()
+    query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
-    return response(True, data={"agents": agents})
+    return response(True, data={"agents": agents, "total": total})
 
 
 @router.get("/agent/{agent_id}")
