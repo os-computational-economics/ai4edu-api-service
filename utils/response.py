@@ -11,7 +11,7 @@ def response(success: bool, data: None | dict = None, message: str = "Success", 
     """
     if success:
         return {
-            "status": "success",
+            "status": 200,
             "data": data,
             "message": message or "Success"
         }
