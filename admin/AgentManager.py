@@ -1,7 +1,5 @@
 import logging
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -96,7 +94,7 @@ def delete_agent(
         db: Session = Depends(get_db)
 ):
     """
-    Delete an existing agent record in the database.
+    Delete an existing agent record in the database by marking it as status=2.
     """
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
@@ -166,9 +164,11 @@ def list_agents(
     List agents with pagination.
     """
     query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
+    total = query.count()
+    query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
-    return response(True, data={"agents": agents})
+    return response(True, data={"agents": agents, "total": total})
 
 
 @router.get("/agent/{agent_id}")
