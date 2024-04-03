@@ -94,7 +94,7 @@ def delete_agent(
         db: Session = Depends(get_db)
 ):
     """
-    Delete an existing agent record in the database.
+    Delete an existing agent record in the database by marking it as status=2.
     """
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
