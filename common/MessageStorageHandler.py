@@ -16,19 +16,20 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Message(BaseModel):
-    thread_id: str
-    msg_id: str
-    created_at: str
-    user_id: str
-    role: str
-    content: str
+    thread_id: str  # The ID of the thread, UUID
+    msg_id: str  # The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
+    created_at: str  # The time when the message is created, unix timestamp in milliseconds
+    user_id: str  # The ID of the user who the message belongs to, case ID
+    role: str  # The role of message sender, openai or anthropic or human
+    content: str  # The content of the message
 
 
 class MessageStorageHandler:
     DYNAMODB_TABLE_NAME = "ai4edu_chat_msg"
 
     def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb', region_name='us-east-2', aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
+        self.dynamodb = boto3.resource('dynamodb', region_name='us-east-2',
+                                       aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
                                        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"))
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
