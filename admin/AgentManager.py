@@ -11,10 +11,12 @@ from migrations.session import get_db
 from migrations.models import Agent
 
 from utils.response import response
+from common.AgentPromptHandler import AgentPromptHandler
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+agent_prompt_handler = AgentPromptHandler()
 
 
 class AgentCreate(BaseModel):
@@ -25,6 +27,7 @@ class AgentCreate(BaseModel):
     status: int = Field(default=1, description='1-active, 0-inactive, 2-deleted')
     allow_model_choice: bool = Field(default=True)
     model: Optional[str] = None
+    system_prompt: str
 
 
 class AgentDelete(BaseModel):
@@ -40,6 +43,7 @@ class AgentUpdate(BaseModel):
     status: Optional[int] = None
     allow_model_choice: Optional[bool] = None
     model: Optional[str] = None
+    system_prompt: str
 
 
 class AgentResponse(BaseModel):
@@ -53,6 +57,7 @@ class AgentResponse(BaseModel):
     model: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    system_prompt: str
 
 
 @router.post("/add_agent")
@@ -76,6 +81,7 @@ def create_agent(
         model=agent_data.model
     )
     db.add(new_agent)
+    agent_prompt_handler.put_agent_prompt(str(new_agent.agent_id), agent_data.system_prompt)
 
     try:
         db.commit()
@@ -95,6 +101,7 @@ def delete_agent(
 ):
     """
     Delete an existing agent record in the database by marking it as status=2.
+    Will not actually delete the record or prompt from the database.
     """
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
@@ -142,6 +149,9 @@ def edit_agent(
         agent_to_update.model = update_data.model
     agent_to_update.updated_at = datetime.now()
 
+    if update_data.system_prompt is not None:
+        agent_prompt_handler.put_agent_prompt(str(agent_to_update.agent_id), update_data.system_prompt)
+
     try:
         db.commit()
         db.refresh(agent_to_update)
@@ -168,6 +178,9 @@ def list_agents(
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
+    # get the prompt for each agent
+    for agent in agents:
+        agent.system_prompt = agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
     return response(True, data={"agents": agents, "total": total})
 
 
