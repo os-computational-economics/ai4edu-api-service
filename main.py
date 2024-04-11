@@ -22,6 +22,7 @@ from sqlalchemy.sql import text
 
 from common.DynamicAuth import DynamicAuth
 from common.FileStorageHandler import FileStorageHandler
+from common.MessageStorageHandler import MessageStorageHandler, Message
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
@@ -173,6 +174,7 @@ def read_root(request: Request):
     3. database connection
     4. docker volume access at ./volume_cache
     5. AWS S3 access
+    6. AWS DynamoDB access
     ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
     :param request:
     :return:
@@ -189,7 +191,7 @@ def read_root(request: Request):
 
         #  test redis connection
         r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
-        r.set('foo', 'success-'+formatted_time)
+        r.set('foo', 'success-' + formatted_time)
         rds = r.get('foo')
 
         # test database connection
@@ -201,7 +203,7 @@ def read_root(request: Request):
         # test docker volume access
         try:
             with open("./volume_cache/test.txt", "w") as f:
-                f.write("success-"+formatted_time)
+                f.write("success-" + formatted_time)
             with open("./volume_cache/test.txt", "r") as f:
                 volume_result = f.read()
         except FileNotFoundError:
@@ -209,8 +211,24 @@ def read_root(request: Request):
 
         # test AWS S3 access
         file_storage = FileStorageHandler()
-        s3_test = file_storage.set_file("test_dir/test.txt", "success-"+formatted_time)
+        s3_test = file_storage.set_file("test_dir/test.txt", "success-" + formatted_time)
         s3_test_str = file_storage.get_file("test_dir/test.txt")
 
-        return {"Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}",
-                "request-path": str(request.url.path)}
+        # test AWS DynamoDB access
+        # current timestamp
+        test_thread_id = time.time()
+        test_msg_id = time.time()
+        test_created_at = time.time()
+        test_user_id = 'rxy216'
+        test_role = 'test'
+        test_content = 'test content'
+        message = MessageStorageHandler()
+        message.put_message(Message(thread_id=str(test_thread_id), msg_id=str(test_msg_id),
+                                    created_at=str(test_created_at), user_id=test_user_id,
+                                    role=test_role, content=test_content))
+        test_msg_get_content = message.get_message(str(test_thread_id), str(test_msg_id)).content
+        test_thread_get_content = message.get_thread(str(test_thread_id))
+
+        return {
+            "Info": f"ENV-{redis_address}|REDIS-RW-{rds}|POSTGRES-{db_result}|VOLUME-{volume_result}|S3-{s3_test}, {s3_test_str}|DYNAMODB-{test_msg_get_content}, {test_thread_get_content}",
+            "request-path": str(request.url.path)}
