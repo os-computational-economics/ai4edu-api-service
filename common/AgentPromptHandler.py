@@ -71,14 +71,14 @@ class AgentPromptHandler:
     @staticmethod
     def __cache_agent_prompt(agent_id: str, prompt: str) -> bool:
         """
-        Cache the agent prompt into redis. The cache will expire in 2 hours.
+        Cache the agent prompt into redis.
         :param agent_id: The ID of the agent.
         :param prompt: The prompt of the agent.
         :return: True if successful, False otherwise.
         """
         try:
             r = redis.Redis(host=os.getenv("REDIS_ADDRESS"), port=6379, protocol=3, decode_responses=True)
-            r.set(agent_id, prompt, ex=7200)  # 2 hours
+            r.set(agent_id, prompt)
             return True
         except Exception as e:
             logging.error(f"Error caching the agent prompt into redis: {e}")
