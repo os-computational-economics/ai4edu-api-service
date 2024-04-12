@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 
 from common.DynamicAuth import DynamicAuth
 from common.FileStorageHandler import FileStorageHandler
-from common.MessageStorageHandler import MessageStorageHandler, Message
+from common.MessageStorageHandler import MessageStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
@@ -223,8 +223,7 @@ def read_root(request: Request):
         test_role = 'test'
         test_content = 'test content'
         message = MessageStorageHandler()
-        created_at = message.put_message(Message(thread_id=test_thread_id, msg_id=test_msg_id, created_at='x',
-                                                 user_id=test_user_id, role=test_role, content=test_content))
+        created_at = message.put_message(test_thread_id, test_user_id, test_role, test_content)
         test_msg_get_content = message.get_message(test_thread_id, created_at).content
         test_thread_get_content = message.get_thread(test_thread_id)
 

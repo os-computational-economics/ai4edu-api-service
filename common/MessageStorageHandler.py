@@ -28,7 +28,7 @@ class Message(BaseModel):
     """
     thread_id: str  # The ID of the thread, UUID. Partition key of the table
     created_at: str  # The time when the message is created, unix timestamp in milliseconds. Sort key of the table
-    msg_id: str  # The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
+    msg_id: str  # The ID of the message, first 8 characters of the thread_id + # +created_at
     user_id: str  # The ID of the user who the message belongs to, case ID
     role: str  # The role of message sender, openai or anthropic or human
     content: str  # The content of the message
@@ -43,22 +43,26 @@ class MessageStorageHandler:
                                        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"))
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
-    def put_message(self, message: Message) -> str | None:
+    def put_message(self, thread_id: str, user_id: str, role: str, content: str) -> str | None:
         """
         Put the message into the database. This function will generate the created_at field.
-        :param message: The message to be put.
+        :param thread_id: The ID of the thread.
+        :param user_id: The ID of the user who the message belongs to.
+        :param role: The role of message sender.
+        :param content: The content of the message.
         :return: The time when the message is created. If failed, return None.
         """
         try:
             created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
+            msg_id = thread_id[:8] + '#' + created_at
             self.table.put_item(
                 Item={
-                    'thread_id': message.thread_id,
+                    'thread_id': thread_id,
                     'created_at': created_at,
-                    'msg_id': message.msg_id,
-                    'user_id': message.user_id,
-                    'role': message.role,
-                    'content': message.content
+                    'msg_id': msg_id,
+                    'user_id': user_id,
+                    'role': role,
+                    'content': content
                 }
             )
             return created_at
