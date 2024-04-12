@@ -11,14 +11,24 @@ from boto3.dynamodb.conditions import Key
 from pydantic import BaseModel
 import logging
 import os
+import time
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Message(BaseModel):
-    thread_id: str  # The ID of the thread, UUID
+    """
+    The message object. created_at will not be passed in when creating the object.
+    thread_id: The ID of the thread, UUID. Partition key of the table
+    created_at: The time when the message is created, unix timestamp in milliseconds. Sort key of the table
+    msg_id: The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
+    user_id: The ID of the user who the message belongs to, case ID
+    role: The role of message sender, openai or anthropic or human
+    content: The content of the message
+    """
+    thread_id: str  # The ID of the thread, UUID. Partition key of the table
+    created_at: str  # The time when the message is created, unix timestamp in milliseconds. Sort key of the table
     msg_id: str  # The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
-    created_at: str  # The time when the message is created, unix timestamp in milliseconds
     user_id: str  # The ID of the user who the message belongs to, case ID
     role: str  # The role of message sender, openai or anthropic or human
     content: str  # The content of the message
@@ -33,39 +43,41 @@ class MessageStorageHandler:
                                        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"))
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
-    def put_message(self, message: Message) -> bool:
+    def put_message(self, message: Message) -> str | None:
         """
-        Put the message into the database.
+        Put the message into the database. This function will generate the created_at field.
         :param message: The message to be put.
+        :return: The time when the message is created. If failed, return None.
         """
         try:
+            created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
             self.table.put_item(
                 Item={
                     'thread_id': message.thread_id,
+                    'created_at': created_at,
                     'msg_id': message.msg_id,
-                    'created_at': message.created_at,
                     'user_id': message.user_id,
                     'role': message.role,
                     'content': message.content
                 }
             )
-            return True
+            return created_at
         except Exception as e:
             print(f"Error putting the message into the database: {e}")
-            return False
+            return None
 
-    def get_message(self, thread_id: str, msg_id: str) -> Message or None:
+    def get_message(self, thread_id: str, created_at: str) -> Message | None:
         """
         Get the message from the database.
+        :param created_at: The time when the message is created.
         :param thread_id: The ID of the thread.
-        :param msg_id: The ID of the message.
         :return:
         """
         try:
             response = self.table.get_item(
                 Key={
                     'thread_id': thread_id,
-                    'msg_id': msg_id
+                    'created_at': created_at
                 }
             )
             item = response['Item']
