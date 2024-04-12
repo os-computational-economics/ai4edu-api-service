@@ -212,7 +212,7 @@ def read_root(request: Request):
 
         # test AWS S3 access
         file_storage = FileStorageHandler()
-        s3_test = file_storage.set_file("test_dir/test.txt", "success-" + formatted_time)
+        s3_test = file_storage.put_file("test_dir/test.txt", "success-" + formatted_time)
         s3_test_str = file_storage.get_file("test_dir/test.txt")
 
         # test AWS DynamoDB access
