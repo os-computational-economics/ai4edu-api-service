@@ -218,7 +218,6 @@ def read_root(request: Request):
         # test AWS DynamoDB access
         # current timestamp
         test_thread_id = str(uuid.uuid4())
-        test_msg_id = test_thread_id[:8]+"_0"
         test_user_id = 'rxy216'
         test_role = 'test'
         test_content = 'test content'

@@ -44,7 +44,7 @@ class AgentPromptHandler:
             logging.error(f"Error putting the agent prompt into the database: {e}")
             return False
 
-    def get_agent_prompt(self, agent_id: str) -> str or None:
+    def get_agent_prompt(self, agent_id: str) -> str | None:
         """
         Get the agent prompt from the database.
         :param agent_id: The ID of the agent.
@@ -83,15 +83,13 @@ class AgentPromptHandler:
             logging.error(f"Error caching the agent prompt into redis: {e}")
             return False
 
-    @staticmethod
-    def __get_cached_agent_prompt(agent_id: str) -> str or None:
+    def __get_cached_agent_prompt(self, agent_id: str) -> str | None:
         """
         Get the agent prompt from redis.
         :param agent_id: The ID of the agent.
         """
         try:
-            r = redis.Redis(host=os.getenv("REDIS_ADDRESS"), port=6379, protocol=3, decode_responses=True)
-            return r.get(agent_id)
+            return self.redis_client.get(agent_id)
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None
