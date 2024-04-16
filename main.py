@@ -27,6 +27,7 @@ from common.MessageStorageHandler import MessageStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
+from user.Threads import new_thread
 from admin.AgentManager import router as AgentRouter
 from user.GetAgent import router as GetAgentRouter
 
@@ -160,6 +161,17 @@ def get_temp_stt_auth_code(dynamic_auth_code: str):
     stt_key_instance = SttApiKey()
     api_key, _ = stt_key_instance.generate_key()
     return SttApiKeyResponse(status="success", error_message=None, key=api_key)
+
+
+@app.get(f"{URL_PATHS['current_dev_user']}/get_new_thread")
+@app.get(f"{URL_PATHS['current_prod_user']}/get_new_thread")
+def get_new_thread(user_id: str, agent_id: str):
+    """
+    ENDPOINT: /user/get_new_thread
+    Generates a new thread id for the user.
+    :return:
+    """
+    return new_thread(user_id, agent_id)
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")

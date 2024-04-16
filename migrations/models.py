@@ -7,7 +7,7 @@
 @time: 3/16/24 23:48
 """
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID
+from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID, ForeignKey
 
 Base = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
@@ -46,3 +46,15 @@ class Agent(Base):
 
     def __repr__(self):
         return f"Agent id: {self.agent_id}, name: {self.agent_name}, course_id: {self.course_id}, creator: {self.creator}, status: {self.status}, model: {self.model}"
+
+
+class Thread(Base):
+    __tablename__ = "ai_threads"
+
+    thread_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    user_id = Column(String(15))
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey('ai_agents.agent_id'), nullable=False)
+
+    def __repr__(self):
+        return f"Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {self.created_at}, agent_id: {self.agent_id}"
