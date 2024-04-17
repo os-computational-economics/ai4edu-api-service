@@ -27,8 +27,10 @@ from common.MessageStorageHandler import MessageStorageHandler
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
-from admin.AgentManager import router as AgentRouter
 from user.GetAgent import router as GetAgentRouter
+
+from admin.AgentManager import router as AgentRouter
+from admin.Thread import router as ThreadRouter
 
 import logging
 
@@ -67,9 +69,14 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Register the AgentRouter for admin endpoints
+# Admin AgentRouter
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
+
+# Admin ThreadRouter
+app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_dev_admin']}/admin")
+app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/admin")
+
 
 # Register GetAgentRouter for user endpoints 
 # note there is similar functionality in the AgentRouter but I made a different version for users
