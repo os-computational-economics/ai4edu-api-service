@@ -165,10 +165,10 @@ def edit_agent(
 
 @router.get("/agents")
 def list_agents(
-        creator: str,
-        db: Session = Depends(get_db),
-        page: int = 1,
-        page_size: int = 10
+    creator: str,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 10
 ):
     """
     List agents with pagination.
