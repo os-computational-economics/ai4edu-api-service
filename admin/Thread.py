@@ -67,7 +67,7 @@ def get_thread_list(
     """
     List threads with pagination, filtered by agent creator.
     """
-    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id).
+    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Agent.agent_name, Agent.course_id).
              join(Agent, Agent.agent_id == Thread.agent_id).
              filter(Agent.creator == creator, Agent.status != 2))
 
@@ -75,9 +75,11 @@ def get_thread_list(
     threads = (query.order_by(Thread.created_at.desc()).
                offset((page - 1) * page_size).
                limit(page_size).all())
-
     results = [{"thread_id": str(t.thread_id),
                 "user_id": t.user_id,
                 "created_at": str(t.created_at),
-                "agent_id": str(t.agent_id)} for t in threads]
+                "agent_id": str(t.agent_id),
+                "agent_name": str(t.agent_name),
+                "course_id": str(t.course_id)
+                } for t in threads]
     return response(True, data={"threads": results, "total": total})
