@@ -109,7 +109,7 @@ class ChatStream:
         :return:
         """
         with self.openai_client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model="gpt-4-turbo",
                 messages=messages,
                 stream=True,
         ) as stream:
