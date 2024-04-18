@@ -76,8 +76,8 @@ app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agents")
 
 # Admin ThreadRouter
-app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_dev_admin']}/admin")
-app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/admin")
+app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_dev_admin']}/threads")
+app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/threads")
 
 
 # Register GetAgentRouter for user endpoints 
