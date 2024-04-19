@@ -50,8 +50,7 @@ def get_thread_by_id(thread_id: UUID):
             return response(False, status_code=404, message="Thread messages not found")
 
         # Sort the messages by 'created_at' time in descending order
-        sorted_messages = sorted(thread_messages, key=lambda x: x.created_at,
-                                 reverse=True)
+        sorted_messages = sorted(thread_messages, key=lambda x: x.created_at)
         return response(True, data={"thread_id": thread_id,
                                     "messages": sorted_messages})
     except Exception as e:
