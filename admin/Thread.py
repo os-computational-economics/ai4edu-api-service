@@ -103,6 +103,7 @@ def get_thread_list(
                 "created_at": str(t.created_at),
                 "agent_id": str(t.agent_id),
                 "agent_name": str(t.agent_name),
-                "course_id": str(t.course_id)
+                "course_id": str(t.course_id),
+                "creator": creator,
                 } for t in threads]
     return response(True, data={"threads": results, "total": total})
