@@ -11,6 +11,7 @@ import json
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from user.TtsStream import TtsStream
+from common.MessageStorageHandler import MessageStorageHandler
 import uuid
 
 
@@ -19,6 +20,7 @@ class ChatStreamModel(BaseModel):
     messages: dict[int, dict[str, str]]
     thread_id: str | None = None
     provider: str = "openai"
+    user_id: str
 
 
 class ChatSingleCallResponse(BaseModel):
@@ -42,12 +44,15 @@ class ChatStream:
     """
 
     def __init__(self, requested_provider, openai_client, anthropic_client):
+        self.user_id = None
+        self.thread_id = None
         self.requested_provider = requested_provider
         self.openai_client = openai_client
         self.anthropic_client = anthropic_client
         # generate a TtsStream session id (uuid4)
         self.tts_session_id = str(uuid.uuid4())
         self.tts = TtsStream(self.tts_session_id)
+        self.message_storage_handler = MessageStorageHandler()
 
     def stream_chat(self, chat_stream_model: ChatStreamModel):
         """
@@ -55,6 +60,11 @@ class ChatStream:
         :return:
         """
         messages = self.__messages_processor(chat_stream_model.messages)
+        self.thread_id = chat_stream_model.thread_id
+        self.user_id = chat_stream_model.user_id
+        # put last message in messages into the database (human message)
+        self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
+                                                 messages[-1]["content"])
         return EventSourceResponse(self.__chat_generator(messages))
 
     def __chat_generator(self, messages: List[dict[str, str]]):
@@ -95,6 +105,8 @@ class ChatStream:
             yield json.dumps(
                 {"response": response_text, "tts_session_id": self.tts_session_id,
                  "tts_max_chunk_id": chunk_id})
+        # put the finished response into the database (AI message)
+        self.message_storage_handler.put_message(self.thread_id, self.user_id, self.requested_provider, response_text)
         # Process any remaining text in the chunk_buffer after the stream has finished
         if chunk_buffer:
             chunk_id += 1
