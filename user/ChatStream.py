@@ -62,10 +62,10 @@ class ChatStream:
         Stream chat messages from OpenAI API.
         :return:
         """
-        messages = self.__messages_processor(chat_stream_model.messages)
         self.thread_id = chat_stream_model.thread_id
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
+        messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
                                                  messages[-1]["content"])
