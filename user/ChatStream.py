@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
+from common.AgentPromptHandler import AgentPromptHandler
 import uuid
 
 
@@ -46,6 +47,7 @@ class ChatStream:
     def __init__(self, requested_provider, openai_client, anthropic_client):
         self.user_id = None
         self.thread_id = None
+        self.agent_id = None
         self.requested_provider = requested_provider
         self.openai_client = openai_client
         self.anthropic_client = anthropic_client
@@ -62,6 +64,7 @@ class ChatStream:
         messages = self.__messages_processor(chat_stream_model.messages)
         self.thread_id = chat_stream_model.thread_id
         self.user_id = chat_stream_model.user_id
+        self.agent_id = chat_stream_model.agent_id
         # put last message in messages into the database (human message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
                                                  messages[-1]["content"])
@@ -172,8 +175,15 @@ class ChatStream:
         :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}
         :return:
         """
-        messages_list = [{"role": "system",
-                          "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please."}]
+        #  get agent prompt
+        agent_prompt_handler = AgentPromptHandler()
+        agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        if agent_prompt:
+            messages_list = [{"role": "system",
+                              "content": agent_prompt}]
+        else:
+            messages_list = [{"role": "system",
+                              "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please."}]
         for key in sorted(messages.keys()):
             messages_list.append(messages[key])
         return messages_list
