@@ -22,6 +22,7 @@ class ChatStreamModel(BaseModel):
     thread_id: str | None = None
     provider: str = "openai"
     user_id: str
+    agent_id: str
 
 
 class ChatSingleCallResponse(BaseModel):
