@@ -96,6 +96,7 @@ origins = [
     "http://127.0.0.1:5173",
     "https://ai4edu-user-web.vercel.app",
     "https://ai4edu-dashboard.vercel.app",
+    "https://chat.ai4edu.io",
 ]
 
 regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
