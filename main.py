@@ -111,8 +111,8 @@ app.add_middleware(
 )
 
 
-@app.post(f"{URL_PATHS['current_dev_user']}/sso")
-@app.post(f"{URL_PATHS['current_prod_user']}/sso")
+@app.get(f"{URL_PATHS['current_dev_user']}/sso")
+@app.get(f"{URL_PATHS['current_prod_user']}/sso")
 async def sso(ticket: str, came_from: str):
     """
     ENDPOINT: /user/sso
