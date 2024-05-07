@@ -117,7 +117,8 @@ class ChatStream:
         # Process any remaining text in the chunk_buffer after the stream has finished
         if chunk_buffer:
             chunk_id += 1
-            self.tts.stream_tts(chunk_buffer, str(chunk_id))
+            if self.tts_voice_enabled:
+                self.tts.stream_tts(chunk_buffer, str(chunk_id))
             yield json.dumps(
                 {"response": response_text, "tts_session_id": self.tts_session_id, "tts_max_chunk_id": chunk_id})
 
