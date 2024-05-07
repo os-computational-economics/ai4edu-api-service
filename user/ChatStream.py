@@ -23,6 +23,7 @@ class ChatStreamModel(BaseModel):
     provider: str = "openai"
     user_id: str
     agent_id: str
+    voice: bool
 
 
 class ChatSingleCallResponse(BaseModel):
@@ -46,6 +47,7 @@ class ChatStream:
     """
 
     def __init__(self, requested_provider, openai_client, anthropic_client):
+        self.tts_voice_enabled = None
         self.user_id = None
         self.thread_id = None
         self.agent_id = None
@@ -65,6 +67,7 @@ class ChatStream:
         self.thread_id = chat_stream_model.thread_id
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
+        self.tts_voice_enabled = chat_stream_model.voice
         messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
@@ -166,7 +169,8 @@ class ChatStream:
         chunk_id += 1
         new_text_split = new_text.split(sentence_ender)
         chunk_buffer += new_text_split[0] + sentence_ender
-        self.tts.stream_tts(chunk_buffer, str(chunk_id))
+        if self.tts_voice_enabled:
+            self.tts.stream_tts(chunk_buffer, str(chunk_id))
         chunk_buffer = sentence_ender.join(new_text_split[1:])
         return chunk_buffer, chunk_id
 
