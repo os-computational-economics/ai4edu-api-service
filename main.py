@@ -24,6 +24,7 @@ from sqlalchemy.sql import text
 from common.DynamicAuth import DynamicAuth
 from common.FileStorageHandler import FileStorageHandler
 from common.MessageStorageHandler import MessageStorageHandler
+from common.AuthSSO import AuthSSO
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
@@ -79,8 +80,7 @@ app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_prod_admin']}/agent
 app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_dev_admin']}/threads")
 app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/threads")
 
-
-# Register GetAgentRouter for user endpoints 
+# Register GetAgentRouter for user endpoints
 # note there is similar functionality in the AgentRouter but I made a different version for users
 # so we can seperate the two and maybe add security where users can get the full info given to admin users
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
@@ -97,6 +97,7 @@ origins = [
     "https://ai4edu-user-web.vercel.app",
     "https://ai4edu-dashboard.vercel.app",
     "https://chat.ai4edu.io",
+    "https://dashboard.ai4edu.io",
 ]
 
 regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
@@ -109,6 +110,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get(f"{URL_PATHS['current_dev_user']}/sso")
+@app.get(f"{URL_PATHS['current_prod_user']}/sso")
+async def sso(ticket: str, came_from: str):
+    """
+    ENDPOINT: /user/sso
+    :param ticket:
+    :param came_from:
+    """
+    auth = AuthSSO(ticket, came_from)
+    return auth.get_user_info()
 
 
 @app.post(f"{URL_PATHS['current_dev_user']}/stream_chat")
