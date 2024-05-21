@@ -7,27 +7,11 @@
 @time: 3/16/24 23:48
 """
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID, ForeignKey
+from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID, ForeignKey, JSON, \
+    UniqueConstraint
 
 Base = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
-
-
-class Student(Base):
-    __tablename__ = "ai_users"
-
-    user_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    first_name = Column(String(60), nullable=False)
-    last_name = Column(String(60), nullable=False)
-    email = Column(String(150), unique=True, primary_key=True, nullable=False)
-    student_id = Column(String(20), unique=True, nullable=False)
-    role = Column(String(20), nullable=False)
-    school_id = Column(Integer, nullable=False)
-    last_login = Column(DateTime)
-    create_at = Column(DateTime, default=func.now())
-
-    def __repr__(self):
-        return f"id: {self.user_id}, name: {self.first_name} {self.last_name}, email: {self.email}, student_id: {self.student_id}, role: {self.role}, school_id: {self.school_id}, last_login: {self.last_login}, create_at: {self.create_at}"
 
 
 class Agent(Base):
@@ -58,3 +42,36 @@ class Thread(Base):
 
     def __repr__(self):
         return f"Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {self.created_at}, agent_id: {self.agent_id}"
+
+
+class User(Base):
+    __tablename__ = "ai_users"
+
+    user_id = Column(Integer, primary_key=True, unique=True)
+    first_name = Column(String(60), nullable=False)
+    last_name = Column(String(60), nullable=False)
+    email = Column(String(150), nullable=False, unique=True)
+    student_id = Column(String(20), nullable=False, unique=True)
+    role = Column(JSON, nullable=False)
+    school_id = Column(Integer, nullable=False)
+    last_login = Column(DateTime)
+    create_at = Column(DateTime)
+
+    def __repr__(self):
+        return f"User id: {self.user_id}, email: {self.email}"
+
+
+class RefreshToken(Base):
+    __tablename__ = "ai_refresh_tokens"
+
+    token_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    user_id = Column(Integer, ForeignKey('ai_users.user_id'), nullable=False)
+    token = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    expire_at = Column(DateTime, nullable=False)
+    issued_token_count = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (UniqueConstraint('token'),)
+
+    def __repr__(self):
+        return f"RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {self.token}"
