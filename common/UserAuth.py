@@ -103,6 +103,8 @@ class UserAuth:
         :param user_id: user id
         :return: True if logout successful, False otherwise
         """
+        if self.db is None:
+            self.db = next(get_db())
         try:
             tokens = self.db.query(RefreshToken).filter(RefreshToken.user_id == user_id,
                                                         RefreshToken.expire_at > datetime.now()).all()
