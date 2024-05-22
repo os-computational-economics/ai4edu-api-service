@@ -36,6 +36,8 @@ from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 
 import logging
+from middleware.authorization import AuthorizationMiddleware
+from utils.token_utils import jwt_generator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -85,6 +87,9 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 # so we can seperate the two and maybe add security where users can get the full info given to admin users
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
+
+# system authorization middleware
+app.add_middleware(AuthorizationMiddleware)
 
 origins = [
     "http://127.0.0.1:8001",
@@ -195,6 +200,9 @@ def get_new_thread(user_id: str, agent_id: str):
     """
     return new_thread(user_id, agent_id)
 
+@app.get("/generate_token")
+def generate_token():
+    return jwt_generator()
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")
 @app.get(f"{URL_PATHS['current_prod_admin']}/")

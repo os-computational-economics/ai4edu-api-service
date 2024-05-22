@@ -1,0 +1,3 @@
+whitelist = [
+    '/generate_token'
+]
