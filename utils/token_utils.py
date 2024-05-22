@@ -1,27 +1,26 @@
 import jwt
+import os
 from datetime import datetime, timedelta, timezone
 
-secret_key = "ai4edu"
-algorithm = "HS256"
-
+private_key = os.getenv("PRIVATE_KEY")
+public_key = os.getenv("PUBLIC_KEY")
+algorithm = "RS256"
 
 def jwt_generator() -> str:
     payload = {
         "user_id": "caseid",
         "name": "username",
         "iat": datetime.now(tz=timezone.utc),
-        "exp": datetime.now(tz=timezone.utc) + timedelta(seconds=1),
-        "data": {"user_name": "张三", "uid": 1234567, "phone": "17600000000"}
+        "exp": datetime.now(tz=timezone.utc) + timedelta(seconds=10),
     }
-    return jwt.encode(payload, secret_key, algorithm=algorithm)
-
+    return jwt.encode(payload, private_key, algorithm=algorithm)
 
 def parse_token(jwt_token: str) -> dict:
     if not jwt_token:
         return {"success": False, "status_code": 401,
                 "message": "Token missing"}
     try:
-        decoded = jwt.decode(jwt_token, secret_key, algorithms=[algorithm])
+        decoded = jwt.decode(jwt_token, public_key, algorithms=[algorithm])
         return {"success": True, "status_code": 200, "message": "",
                 "data": decoded}
     except jwt.ExpiredSignatureError:
