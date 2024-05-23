@@ -6,14 +6,16 @@ private_key = os.getenv("PRIVATE_KEY")
 public_key = os.getenv("PUBLIC_KEY")
 algorithm = "RS256"
 
-def jwt_generator() -> str:
+
+def jwt_generator(user_id: str) -> str:
     payload = {
-        "user_id": "caseid",
-        "name": "username",
+        "user_id": user_id,
+        # "name": "username",
         "iat": datetime.now(tz=timezone.utc),
-        "exp": datetime.now(tz=timezone.utc) + timedelta(seconds=10),
+        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
     }
     return jwt.encode(payload, private_key, algorithm=algorithm)
+
 
 def parse_token(jwt_token: str) -> dict:
     if not jwt_token:
@@ -24,8 +26,8 @@ def parse_token(jwt_token: str) -> dict:
         return {"success": True, "status_code": 200, "message": "",
                 "data": decoded}
     except jwt.ExpiredSignatureError:
-        return {"success": False, "status_code": 401,
+        return {"success": False, "status_code": 401001,
                 "message": "Token has expired"}
     except jwt.InvalidTokenError:
-        return {"success": False, "status_code": 401,
+        return {"success": False, "status_code": 401002,
                 "message": "Invalid token"}

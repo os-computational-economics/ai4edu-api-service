@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timedelta
 from migrations.models import User, RefreshToken
 from migrations.session import get_db
+from utils.token_utils import jwt_generator
 import logging
 
 
@@ -27,7 +28,8 @@ class UserAuth:
         if self.db is None:
             self.db = next(get_db())
         try:
-            user = self.db.query(User).filter(User.email == user_info['mail']).first()
+            user = self.db.query(User).filter(
+                User.email == user_info['mail']).first()
             if user:
                 # if user already exists, update last login time
                 user.last_login = datetime.now()
@@ -38,7 +40,8 @@ class UserAuth:
                     last_name=user_info['sn'],
                     email=user_info['mail'],
                     student_id=student_id,
-                    role={'student': True, 'teacher': False, 'admin': False},  # default role is student
+                    role={'student': True, 'teacher': False, 'admin': False},
+                    # default role is student
                     school_id=0,
                     last_login=datetime.now(),
                     create_at=datetime.now()
@@ -57,7 +60,8 @@ class UserAuth:
         try:
             token = uuid.uuid4()
             token_id = uuid.uuid4()
-            expire_at = datetime.now() + timedelta(days=15)  # refresh token expires in 15 days
+            expire_at = datetime.now() + timedelta(
+                days=15)  # refresh token expires in 15 days
             refresh_token = RefreshToken(
                 token_id=token_id,
                 user_id=user_id,
@@ -74,7 +78,7 @@ class UserAuth:
             self.db.rollback()
             return False
 
-    def gen_access_token(self, refresh_token) -> str or bool:
+    def gen_access_token(self, refresh_token, user_id) -> str or bool:
         """
         Generate access token from refresh token.
         :param refresh_token: refresh token
@@ -83,13 +87,14 @@ class UserAuth:
         if self.db is None:
             self.db = next(get_db())
         # Check if the refresh token is valid
-        refresh_token_obj = self.db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
+        refresh_token_obj = self.db.query(RefreshToken).filter(
+            RefreshToken.token == refresh_token).first()
         if refresh_token_obj and refresh_token_obj.expire_at > datetime.now():
             try:
-                # TODO: Generate JWT that lasts 30 minutes
+                token = jwt_generator(user_id)
                 refresh_token_obj.issued_token_count += 1
                 self.db.commit()
-                return "JWT-token"  # Replace this with actual JWT token
+                return token
             except Exception as e:
                 logging.error(f"Error during access token generation: {e}")
                 self.db.rollback()
@@ -106,8 +111,9 @@ class UserAuth:
         if self.db is None:
             self.db = next(get_db())
         try:
-            tokens = self.db.query(RefreshToken).filter(RefreshToken.user_id == user_id,
-                                                        RefreshToken.expire_at > datetime.now()).all()
+            tokens = self.db.query(RefreshToken).filter(
+                RefreshToken.user_id == user_id,
+                RefreshToken.expire_at > datetime.now()).all()
             for token in tokens:
                 token.expire_at = datetime.now()
             self.db.commit()

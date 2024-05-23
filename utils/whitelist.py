@@ -1,3 +1,4 @@
 whitelist = [
-    '/generate_token'
+    '/generate_token',
+    '/v1/prod/user/sso'
 ]

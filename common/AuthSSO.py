@@ -40,7 +40,7 @@ class AuthSSO:
                 user_auth = UserAuth()
                 user_id = user_auth.user_login(self.student_id, user_info)
                 refresh_token = user_auth.gen_refresh_token(user_id)
-                access_token = user_auth.gen_access_token(refresh_token)
+                access_token = user_auth.gen_access_token(refresh_token, user_id)
                 if user_id:
                     return RedirectResponse(
                         url=f"{self.came_from}?user_id={user_id}&user_name={user_info['cn']}&refresh_token={refresh_token}&access_token={access_token}")
