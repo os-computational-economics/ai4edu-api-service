@@ -7,9 +7,8 @@ from utils.token_utils import parse_token
 class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        print(path)
-        if path in whitelist:
-            return await call_next(request)
+        # if path in whitelist:
+        #     return await call_next(request)
 
         token = request.headers.get('Authorization', '').split('Bearer ')[-1]
         payload = parse_token(token)

@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from starlette.responses import JSONResponse
 
 
 def response(success: bool, data: None | dict = None, message: str = "Success", status_code: int = 400):
@@ -16,4 +17,6 @@ def response(success: bool, data: None | dict = None, message: str = "Success", 
             "message": message or "Success"
         }
     else:
-        raise HTTPException(status_code=status_code, detail=message)
+        raise JSONResponse(content={"success": False, "message": message, "status_code": status_code}, status_code=status_code)
+        # raise HTTPException(status_code=status_code, detail=message)
+

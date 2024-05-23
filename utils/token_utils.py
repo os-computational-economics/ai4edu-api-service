@@ -7,7 +7,7 @@ public_key = os.getenv("PUBLIC_KEY")
 algorithm = "RS256"
 
 
-def jwt_generator(user_id: str) -> str:
+def jwt_generator(user_id: str = "user_id") -> str:
     payload = {
         "user_id": user_id,
         # "name": "username",
@@ -18,7 +18,9 @@ def jwt_generator(user_id: str) -> str:
 
 
 def parse_token(jwt_token: str) -> dict:
+    print("Token: ", jwt_token)
     if not jwt_token:
+        print("Token missing")
         return {"success": False, "status_code": 401,
                 "message": "Token missing"}
     try:
@@ -26,8 +28,10 @@ def parse_token(jwt_token: str) -> dict:
         return {"success": True, "status_code": 200, "message": "",
                 "data": decoded}
     except jwt.ExpiredSignatureError:
+        print("Token has expired")
         return {"success": False, "status_code": 401001,
                 "message": "Token has expired"}
     except jwt.InvalidTokenError:
+        print("Invalid token")
         return {"success": False, "status_code": 401002,
                 "message": "Invalid token"}
