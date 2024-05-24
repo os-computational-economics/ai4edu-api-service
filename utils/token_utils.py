@@ -10,6 +10,7 @@ algorithm = "RS256"
 def jwt_generator(user_id: str = "user_id") -> str:
     payload = {
         "user_id": user_id,
+        "role": {"student": True, "teacher": False, "admin": True},
         # "name": "username",
         "iat": datetime.now(tz=timezone.utc),
         "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
