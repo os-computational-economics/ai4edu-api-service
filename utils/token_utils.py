@@ -22,7 +22,7 @@ def parse_token(jwt_token: str) -> dict:
     print("Token: ", jwt_token)
     if not jwt_token:
         print("Token missing")
-        return {"success": False, "status_code": 401,
+        return {"success": False, "status_code": 401000,
                 "message": "Token missing"}
     try:
         decoded = jwt.decode(jwt_token, public_key, algorithms=[algorithm])
