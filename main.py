@@ -25,6 +25,8 @@ from common.DynamicAuth import DynamicAuth
 from common.FileStorageHandler import FileStorageHandler
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AuthSSO import AuthSSO
+from common.UserAuth import UserAuth
+from utils.response import response
 from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
@@ -36,8 +38,7 @@ from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 
 import logging
-from middleware.authorization import AuthorizationMiddleware
-from utils.token_utils import jwt_generator
+from middleware.authorization import AuthorizationMiddleware, extract_token
 
 logging.basicConfig(
     level=logging.INFO,
@@ -88,9 +89,6 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
 
-# system authorization middleware
-app.add_middleware(AuthorizationMiddleware)
-
 origins = [
     "http://127.0.0.1:8001",
     "http://localhost:3000",
@@ -115,6 +113,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# system authorization middleware
+app.add_middleware(AuthorizationMiddleware)
 
 
 @app.get(f"{URL_PATHS['current_dev_user']}/sso")
@@ -200,9 +201,27 @@ def get_new_thread(user_id: str, agent_id: str):
     """
     return new_thread(user_id, agent_id)
 
-@app.get("/generate_token")
-def generate_token():
-    return jwt_generator()
+
+@app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
+@app.get(f"{URL_PATHS['current_prod_admin']}/generate_access_token")
+@app.get(f"{URL_PATHS['current_dev_user']}/generate_access_token")
+@app.get(f"{URL_PATHS['current_prod_user']}/generate_access_token")
+def generate_token(request: Request):
+    """
+    ENDPOINT: /generate_token
+    Generates a temporary STT auth code for the user.
+    :return:
+    """
+    tokens = extract_token(request.headers.get('Authorization', ''))
+    if tokens['refresh_token'] is None:
+        return response(success=False, message="No refresh token provided", status_code=401)
+    auth = UserAuth()
+    access_token = auth.gen_access_token(tokens['refresh_token'])
+    if access_token:
+        return response(success=True, data={"access_token": access_token})
+    else:
+        return response(success=False, message="Failed to generate access token", status_code=401)
+
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")
 @app.get(f"{URL_PATHS['current_prod_admin']}/")
