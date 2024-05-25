@@ -17,6 +17,6 @@ def response(success: bool, data: None | dict = None, message: str = "Success", 
             "message": message or "Success"
         }
     else:
-        raise JSONResponse(content={"success": False, "message": message, "status_code": status_code}, status_code=status_code)
+        return JSONResponse(content={"success": False, "message": message, "status_code": status_code}, status_code=status_code)
         # raise HTTPException(status_code=status_code, detail=message)
 
