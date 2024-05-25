@@ -78,7 +78,7 @@ class UserAuth:
             self.db.rollback()
             return False
 
-    def gen_access_token(self, refresh_token, user_id) -> str or bool:
+    def gen_access_token(self, refresh_token) -> str or bool:
         """
         Generate access token from refresh token.
         :param refresh_token: refresh token
@@ -86,20 +86,33 @@ class UserAuth:
         """
         if self.db is None:
             self.db = next(get_db())
-        # Check if the refresh token is valid
-        refresh_token_obj = self.db.query(RefreshToken).filter(
-            RefreshToken.token == refresh_token).first()
-        if refresh_token_obj and refresh_token_obj.expire_at > datetime.now():
-            try:
-                token = jwt_generator(user_id)
-                refresh_token_obj.issued_token_count += 1
-                self.db.commit()
-                return token
-            except Exception as e:
-                logging.error(f"Error during access token generation: {e}")
-                self.db.rollback()
+        try:
+            # Check if the refresh token is valid
+            refresh_token_obj = self.db.query(RefreshToken).filter(
+                RefreshToken.token == refresh_token).first()
+            if refresh_token_obj and refresh_token_obj.expire_at > datetime.now():
+                # refresh token is valid, get user info
+                user_id = refresh_token_obj.user_id
+                user = self.db.query(User).filter(User.user_id == user_id).first()
+                first_name = user.first_name
+                last_name = user.last_name
+                student_id = user.student_id
+                role = user.role
+                email = user.email
+                try:
+                    token = jwt_generator(user_id, first_name, last_name, student_id, role, email)
+                    refresh_token_obj.issued_token_count += 1
+                    self.db.commit()
+                    return token
+                except Exception as e:
+                    logging.error(f"Error during access token generation: {e}")
+                    self.db.rollback()
+                    return False
+            else:
                 return False
-        else:
+        except Exception as e:
+            logging.error(f"Error during access token generation: {e}")
+            self.db.rollback()
             return False
 
     def user_logout_all_devices(self, user_id) -> bool:
