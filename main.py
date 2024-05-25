@@ -208,7 +208,7 @@ def get_new_thread(user_id: str, agent_id: str):
 @app.get(f"{URL_PATHS['current_prod_user']}/generate_access_token")
 def generate_token(request: Request):
     """
-    ENDPOINT: /generate_token
+    ENDPOINT: /generate_access_token
     Generates a temporary STT auth code for the user.
     :return:
     """

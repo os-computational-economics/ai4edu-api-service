@@ -80,7 +80,6 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
             if parse_result['success']:
                 user_access = parse_result['data']['role']
                 if has_access(endpoint_access_map, user_access, path):
-                    print("Access granted")
                     return await call_next(request)
             else:
                 return JSONResponse(content={"success": False, "message": parse_result['message'], "status_code": parse_result['status_code']}, status_code=401)
