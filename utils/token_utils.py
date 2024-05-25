@@ -2,16 +2,19 @@ import jwt
 import os
 from datetime import datetime, timedelta, timezone
 
-private_key = os.getenv("PRIVATE_KEY")
-public_key = os.getenv("PUBLIC_KEY")
+private_key = os.getenv("JWT_PRIVATE_KEY")
+public_key = os.getenv("JWT_PUBLIC_KEY")
 algorithm = "RS256"
 
 
-def jwt_generator(user_id: str = "user_id") -> str:
+def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str, role: dict, email: str) -> str:
     payload = {
         "user_id": user_id,
-        "role": {"student": True, "teacher": False, "admin": True},
-        # "name": "username",
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "student_id": student_id,
+        "role": role,
         "iat": datetime.now(tz=timezone.utc),
         "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
     }
@@ -19,7 +22,6 @@ def jwt_generator(user_id: str = "user_id") -> str:
 
 
 def parse_token(jwt_token: str) -> dict:
-    print("Token: ", jwt_token)
     if not jwt_token:
         print("Token missing")
         return {"success": False, "status_code": 401000,
