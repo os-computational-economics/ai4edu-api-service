@@ -1,6 +1,9 @@
 import jwt
 import os
+import logging
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger(__name__)
 
 private_key = os.getenv("JWT_PRIVATE_KEY")
 public_key = os.getenv("JWT_PUBLIC_KEY")
@@ -22,8 +25,9 @@ def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str
 
 
 def parse_token(jwt_token: str) -> dict:
+    logger.info(f"Parsing token: {jwt_token}")
     if not jwt_token:
-        print("Token missing")
+        logger.error("Token missing")
         return {"success": False, "status_code": 401000,
                 "message": "Token missing"}
     try:
@@ -31,10 +35,10 @@ def parse_token(jwt_token: str) -> dict:
         return {"success": True, "status_code": 200, "message": "",
                 "data": decoded}
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
+        logger.error(f"Token has expired")
         return {"success": False, "status_code": 401001,
                 "message": "Token has expired"}
     except jwt.InvalidTokenError:
-        print("Invalid token")
+        logger.error(f"Invalid Token")
         return {"success": False, "status_code": 401002,
                 "message": "Invalid token"}

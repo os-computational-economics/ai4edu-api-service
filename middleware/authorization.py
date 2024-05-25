@@ -4,12 +4,15 @@ from starlette.responses import JSONResponse
 from utils.whitelist import whitelist
 from utils.endpoint_access_map import endpoint_access_map
 from utils.token_utils import parse_token
+import logging
 
+logger = logging.getLogger(__name__)
 
 def extract_token(auth_header) -> dict:
     access_token = None
     refresh_token = None
     if auth_header and auth_header.startswith('Bearer '):
+        logger.info(f"Extracting token from header: {auth_header}")
         # Remove the 'Bearer ' prefix
         token_string = auth_header[7:]
         # Split the token string into key-value pairs
@@ -71,8 +74,13 @@ def extract_actual_path(path):
 class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = extract_actual_path(request.url.path)
-        if path in whitelist:
+        print('path', path)
+        # if path in whitelist:
+        #     return await call_next(request)
+        if path not in endpoint_access_map:
             return await call_next(request)
+
+        # print('auth', request.headers.get('Authorization', ''))
 
         tokens = extract_token(request.headers.get('Authorization', ''))
         if tokens['access_token'] is not None:
