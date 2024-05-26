@@ -89,6 +89,9 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
 
+# system authorization middleware before CORS middleware, so it executes after CORS
+app.add_middleware(AuthorizationMiddleware)
+
 origins = [
     "http://127.0.0.1:8001",
     "http://localhost:3000",
@@ -113,9 +116,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# system authorization middleware
-app.add_middleware(AuthorizationMiddleware)
 
 
 @app.get(f"{URL_PATHS['current_dev_user']}/sso")

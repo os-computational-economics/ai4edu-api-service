@@ -50,9 +50,6 @@ header_start = public_key.find("-----BEGIN")
 header_end = public_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
 if public_key[header_end] == 'n':
     public_key = fix_key(public_key)
-print(private_key)
-print("XXXXXXXXXXXXX")
-print(public_key)
 algorithm = "RS256"
 
 
