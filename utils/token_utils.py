@@ -29,8 +29,6 @@ def fix_key(broken_key):
     # Step 3: Remove 'n' every 64 characters in the body
     body = body[1:]  # remove the first 'n'
     body_chunks = [body[i:i + 65] for i in range(0, len(body), 65)]  # split the body into 65-character chunks
-    last_chunk_start = len(body) - (len(body) % 65)  # find the start index of the last chunk
-    body_chunks.append(body[last_chunk_start:])  # add the last chunk
     body_chunks = [chunk[:-1] for chunk in body_chunks]  # remove the last 'n' in each chunk
     formatted_body = '\\n'.join(body_chunks)
 
