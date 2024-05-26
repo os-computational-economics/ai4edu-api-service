@@ -43,11 +43,11 @@ class AuthSSO:
                 access_token = user_auth.gen_access_token(refresh_token)
                 if user_id:
                     return RedirectResponse(
-                        url=f"{self.came_from}?refresh_token={refresh_token}&access_token={access_token}")
+                        url=f"{self.came_from}?refresh={refresh_token}&access={access_token}")
                 else:
-                    return RedirectResponse(url=f"{self.came_from}?user_id=error")
+                    return RedirectResponse(url=f"{self.came_from}?refresh=error&access=error")
             else:
-                return RedirectResponse(url=f"{self.came_from}?user_id=error")
+                return RedirectResponse(url=f"{self.came_from}?refresh=error&access=error")
 
     def get_user_info_from_xml(self, child):
         """
