@@ -68,7 +68,6 @@ def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str
 
 
 def parse_token(jwt_token: str) -> dict:
-    logger.info(f"Parsing token: {jwt_token}")
     if not jwt_token:
         logger.error("Token missing")
         return {"success": False, "status_code": 401000,

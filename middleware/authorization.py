@@ -12,7 +12,6 @@ def extract_token(auth_header) -> dict:
     access_token = None
     refresh_token = None
     if auth_header and auth_header.startswith('Bearer '):
-        logger.info(f"Extracting token from header: {auth_header}")
         # Remove the 'Bearer ' prefix
         token_string = auth_header[7:]
         # Split the token string into key-value pairs
