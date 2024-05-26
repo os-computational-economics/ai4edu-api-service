@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 private_key = os.getenv("JWT_PRIVATE_KEY")
 public_key = os.getenv("JWT_PUBLIC_KEY")
+print(public_key)
 algorithm = "RS256"
 
 
