@@ -75,12 +75,8 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = extract_actual_path(request.url.path)
         print('path', path)
-        # if path in whitelist:
-        #     return await call_next(request)
-        if path not in endpoint_access_map:
+        if path in whitelist:
             return await call_next(request)
-
-        # print('auth', request.headers.get('Authorization', ''))
 
         tokens = extract_token(request.headers.get('Authorization', ''))
         if tokens['access_token'] is not None:
