@@ -36,6 +36,9 @@ from user.GetAgent import router as GetAgentRouter
 
 from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
+from admin.Access import router as AccessRouter
+
+from utils.token_utils import jwt_generator
 
 import logging
 from middleware.authorization import AuthorizationMiddleware, extract_token
@@ -88,6 +91,10 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 # so we can seperate the two and maybe add security where users can get the full info given to admin users
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
+
+# Admin AccessRouter
+app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
+app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
 
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
@@ -221,6 +228,16 @@ def generate_token(request: Request):
         return response(success=True, data={"access_token": access_token})
     else:
         return response(success=False, message="Failed to generate access token", status_code=401)
+
+
+@app.get("/generate_test_token")
+def generate_test_token():
+    """
+    Generates a test token.
+    :return:
+    """
+    token = jwt_generator("2", "test_first_name", "test_last_name", "2", {"student": True, "teacher": True, "admin": True }, "test_email")
+    return token
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")

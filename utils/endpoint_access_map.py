@@ -20,4 +20,7 @@ endpoint_access_map = {
     "/get_tts_file": {"student": True, "teacher": True, "admin": True},
     "/get_temp_stt_auth_code": {"student": True, "teacher": True, "admin": True},
     "/get_new_thread": {"student": True, "teacher": True, "admin": True},
+    "/access/get_user_list": {"student": False, "teacher": True, "admin": True},
+    "/access/grant_access": {"student": False, "teacher": True, "admin": True},
+
 }
