@@ -30,10 +30,10 @@ def fix_key(broken_key):
     body = body[1:]  # remove the first 'n'
     body_chunks = [body[i:i + 65] for i in range(0, len(body), 65)]  # split the body into 65-character chunks
     body_chunks = [chunk[:-1] for chunk in body_chunks]  # remove the last 'n' in each chunk
-    formatted_body = '\\n'.join(body_chunks)
+    formatted_body = '\n'.join(body_chunks)
 
     # Step 4: Assemble everything
-    fixed_key = f"{header}\\n{formatted_body}\\n{footer}"
+    fixed_key = f"{header}\n{formatted_body}\n{footer}"
 
     return fixed_key
 
