@@ -32,7 +32,7 @@ def get_user_list(
     try:
         query = db.query(User)
         total = query.count()
-        query = query.order_by(User.last_name.asc())
+        query = query.order_by(User.user_id)
         skip = (page - 1) * page_size
         users = query.offset(skip).limit(page_size).all()
 
@@ -43,7 +43,7 @@ def get_user_list(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "student_id": user.student_id,
-                "role": user.role
+                "role": user.role,
             }
             for user in users
         ]
