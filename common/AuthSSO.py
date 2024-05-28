@@ -26,8 +26,7 @@ class AuthSSO:
         url = "https://login.case.edu/cas/serviceValidate"
         params = {
             "ticket": self.ticket,
-            "service": f"https://ai4edu-api.jerryang.org/v1/dev/user/sso?came_from={self.came_from}",
-            #  TODO: change to production url
+            "service": f"https://ai4edu-api.jerryang.org/v1/prod/user/sso?came_from={self.came_from}",
         }
         response = requests.get(url, params=params)
         root = ET.fromstring(response.text)

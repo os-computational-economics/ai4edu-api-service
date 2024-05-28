@@ -10,8 +10,9 @@ from migrations.session import get_db
 from pydantic import BaseModel
 from typing import Dict
 
+
 class RoleUpdate(BaseModel):
-    student_id: str
+    student_id: str 
     role: Dict[str, bool]
 
 
@@ -22,9 +23,9 @@ router = APIRouter()
 
 @router.get("/get_user_list")
 def get_user_list(
-    db: Session = Depends(get_db),
-    page: int = 1,
-    page_size: int = 10
+        db: Session = Depends(get_db),
+        page: int = 1,
+        page_size: int = 10
 ):
     """
     Get a list of all users with pagination.
@@ -56,8 +57,8 @@ def get_user_list(
 
 @router.post("/grant_access")
 def grant_access(
-    role_update: RoleUpdate,
-    db: Session = Depends(get_db)
+        role_update: RoleUpdate,
+        db: Session = Depends(get_db)
 ):
     """
     Grant access to a user by updating their role.
@@ -75,5 +76,3 @@ def grant_access(
         logger.error(f"Error updating user role: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
-
-
