@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def extract_token(auth_header) -> dict:
     access_token = None
     refresh_token = None
@@ -85,5 +86,6 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                 if has_access(endpoint_access_map, user_access, path):
                     return await call_next(request)
             else:
-                return JSONResponse(content={"success": False, "message": parse_result['message'], "status_code": parse_result['status_code']}, status_code=401)
+                return JSONResponse(content={"success": False, "message": parse_result['message'],
+                                             "status_code": parse_result['status_code']}, status_code=401)
         return JSONResponse(content={"success": False, "message": "unauthorized", "status_code": 401}, status_code=401)

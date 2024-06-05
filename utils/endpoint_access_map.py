@@ -8,6 +8,7 @@
 """
 endpoint_access_map = {
     "/agent/{agent_id}": {"student": True, "teacher": True, "admin": True},
+    "/agent/get/{agent_id}": {"student": True, "teacher": True, "admin": True},  # student get agent by id
     "/agents/add_agent": {"student": False, "teacher": True, "admin": True},
     "/agents/delete_agent": {"student": False, "teacher": True, "admin": True},
     "/agents/update_agent": {"student": False, "teacher": True, "admin": True},
