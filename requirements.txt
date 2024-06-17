@@ -45,5 +45,5 @@ starlette==0.37.2
 tokenizers==0.15.2
 tqdm==4.66.3
 typing_extensions==4.11.0
-urllib3==2.2.1
+urllib3==2.2.2
 uvicorn==0.29.0
