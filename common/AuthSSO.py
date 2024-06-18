@@ -10,9 +10,12 @@ import requests
 import xml.etree.ElementTree as ET
 from fastapi.responses import RedirectResponse
 from common.UserAuth import UserAuth
+import os
 
 
 class AuthSSO:
+    CURRENT_ENV = os.getenv("REDIS_ADDRESS")
+
     def __init__(self, ticket, came_from):
         self.student_id = None
         self.ticket = ticket
@@ -28,6 +31,11 @@ class AuthSSO:
             "ticket": self.ticket,
             "service": f"https://ai4edu-api.jerryang.org/v1/prod/user/sso?came_from={self.came_from}",
         }
+        if self.CURRENT_ENV == "redis-dev-server":
+            params = {
+                "ticket": self.ticket,
+                "service": f"https://ai4edu-api.jerryang.org/v1/dev/user/sso?came_from={self.came_from}",
+            }
         response = requests.get(url, params=params)
         root = ET.fromstring(response.text)
         # get child node
