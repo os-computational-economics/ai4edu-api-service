@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 from langchain.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -8,21 +8,8 @@ from langchain.chains import RetrievalQA, ConversationalRetrievalChain
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 
-
-# Setup environment variables
-os.environ["OPENAI_API_KEY"] = ""
-os.environ["PINECONE_API_KEY"] = ""
-
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 PINECONE_API_KEY = os.environ['PINECONE_API_KEY']
-
-print('os', os.getcwd())
-
-# Load documents and split them into chunks
-loader = DirectoryLoader('./user/static', glob="./*.pdf", loader_cls=PyPDFLoader)
-documents = loader.load()
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-texts = text_splitter.split_documents(documents)
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -37,29 +24,24 @@ if index_name not in pc.list_indexes().names():
     )
 
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-docsearch = PineconeVectorStore.from_documents(texts, embeddings, index_name=index_name)
 
 # Initialize the Conversational Retrieval Chain
-llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4-turbo", streaming=True)
-retriever = docsearch.as_retriever(include_metadata=True, metadata_key='source')
-
-qa_chain = ConversationalRetrievalChain.from_llm(
-    llm=llm,
-    retriever=retriever,
-    return_source_documents=True
-)
-
+llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4o", streaming=True)
+retriever = None
 chat_history = []
 
 # FastAPI router
 router = APIRouter()
 
+
 class QueryRequest(BaseModel):
     question: str
+
 
 class QueryResponse(BaseModel):
     answer: str
     sources: list
+
 
 def parse_response(response):
     sources = []
@@ -69,10 +51,37 @@ def parse_response(response):
         sources.append(f"{source_info} page #: {page_info}")
     return response['answer'], sources
 
+
+@router.post("/upload_file")
+async def upload_file(file: UploadFile = None):
+    global retriever
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file provided")
+    try:
+        file_path = f"./volume_cache/{file.filename}"
+        with file.file as f:
+            # write to "./volume_cache/file_name"
+            with open(file_path, "wb") as file_object:
+                file_object.write(f.read())
+        # start file embedding
+        loader = PyPDFLoader(file_path)
+        pages = loader.load_and_split()
+        doc_store = PineconeVectorStore.from_documents(pages, embeddings, index_name=index_name)
+        retriever = doc_store.as_retriever(include_metadata=True, metadata_key='source')
+        return {"url": "xxx"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/test_query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest):
-    global chat_history
+    global chat_history, retriever
     try:
+        qa_chain = ConversationalRetrievalChain.from_llm(
+            llm=llm,
+            retriever=retriever,
+            return_source_documents=True
+        )
         response = qa_chain({"question": request.question, "chat_history": chat_history})
         answer, sources = parse_response(response)
         chat_history.append((request.question, response['answer']))
@@ -80,13 +89,14 @@ async def query_endpoint(request: QueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/test_query/history")
 async def get_history():
     return {"chat_history": chat_history}
+
 
 @router.get("/test_query/clear_history")
 async def get_history():
     global chat_history
     chat_history = []
     return {"chat_history": chat_history}
-

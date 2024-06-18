@@ -27,4 +27,5 @@ endpoint_access_map = {
     "/test_query": {"student": True, "teacher": True, "admin": True},
     "/test_query/history": {"student": True, "teacher": True, "admin": True},
     "/test_query/clear_history": {"student": True, "teacher": True, "admin": True},
+    "/upload_file": {"student": True, "teacher": True, "admin": True},
 }
