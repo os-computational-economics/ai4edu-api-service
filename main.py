@@ -37,6 +37,7 @@ from user.GetAgent import router as GetAgentRouter
 from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 from admin.Access import router as AccessRouter
+from user.test_query import router as TestQueryRouter
 
 from utils.token_utils import jwt_generator
 
@@ -96,8 +97,13 @@ app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/age
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
 
+# new chat test router
+app.include_router(TestQueryRouter, prefix=f"{URL_PATHS['current_dev_user']}")
+app.include_router(TestQueryRouter, prefix=f"{URL_PATHS['current_prod_user']}")
+
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
+
 
 origins = [
     "http://127.0.0.1:8001",

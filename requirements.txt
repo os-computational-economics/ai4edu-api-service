@@ -47,3 +47,10 @@ tqdm==4.66.3
 typing_extensions==4.11.0
 urllib3==2.2.1
 uvicorn==0.29.0
+langchain
+langchain_openai
+langchain_pinecone
+pinecone-client
+langchain-community
+pypdf
+charset_normalizer
