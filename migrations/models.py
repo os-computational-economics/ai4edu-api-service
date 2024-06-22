@@ -75,3 +75,19 @@ class RefreshToken(Base):
 
     def __repr__(self):
         return f"RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {self.token}"
+
+
+class File(Base):
+    __tablename__ = "ai_files"
+
+    file_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    file_name = Column(String, nullable=False)
+    file_desc = Column(String)
+    file_type = Column(String(63), nullable=False)
+    file_ext = Column(String(15))
+    file_status = Column(Integer, default=1)
+    chunking_separator = Column(String(15))
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f"Files id: {self.file_id}, name: {self.file_name}, type: {self.file_type}, status: {self.file_status}"

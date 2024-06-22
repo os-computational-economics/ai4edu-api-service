@@ -6,7 +6,9 @@
 @email: rxy216@case.edu
 @time: 3/16/24 17:52
 """
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
+from typing import Optional
+
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv, dotenv_values
@@ -37,7 +39,6 @@ from user.GetAgent import router as GetAgentRouter
 from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 from admin.Access import router as AccessRouter
-from user.test_query import router as TestQueryRouter
 
 from utils.token_utils import jwt_generator
 
@@ -78,6 +79,7 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
               openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+file_storage = FileStorageHandler()
 
 # Admin AgentRouter
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
@@ -97,13 +99,8 @@ app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/age
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
 
-# new chat test router
-app.include_router(TestQueryRouter, prefix=f"{URL_PATHS['current_dev_user']}")
-app.include_router(TestQueryRouter, prefix=f"{URL_PATHS['current_prod_user']}")
-
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
-
 
 origins = [
     "http://127.0.0.1:8001",
@@ -216,6 +213,47 @@ def get_new_thread(user_id: str, agent_id: str):
     return new_thread(user_id, agent_id)
 
 
+@app.post(f"{URL_PATHS['current_dev_admin']}/upload_file")
+@app.post(f"{URL_PATHS['current_prod_admin']}/upload_file")
+@app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
+@app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
+async def upload_file(file: UploadFile,
+                      file_desc: Optional[str] = None,
+                      chunking_separator: Optional[str] = None):
+    """
+    ENDPOINT: /upload_file
+    :param file:
+    :param file_desc:
+    :param chunking_separator:
+    :return:
+    """
+    if file is None:
+        return response(success=False, message="No file provided", status_code=400)
+    try:
+        # Read the file content
+        file_content = await file.read()
+
+        # Determine file type (you might want to implement a more sophisticated method)
+        file_type = file.content_type or "application/octet-stream"
+
+        # Use FileStorageHandler to store the file
+        file_id = file_storage.put_file(
+            file_obj=file_content,
+            file_name=file.filename,
+            file_desc=file_desc or "",
+            file_type=file_type,
+            chunking_separator=chunking_separator
+        )
+
+        if file_id is None:
+            return response(success=False, message="Failed to upload file", status_code=500)
+        print(file_storage.get_file("88618a63-0379-43df-bfaa-b5efa4935cae"))
+        return response(success=True, data={"file_id": file_id})
+    except Exception as e:
+        logging.error(f"Failed to upload file: {str(e)}")
+    return response(success=False, message="unable to upload file", status_code=500)
+
+
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_dev_user']}/generate_access_token")
@@ -243,7 +281,8 @@ def generate_test_token():
     Generates a test token.
     :return:
     """
-    token = jwt_generator("2", "test_first_name", "test_last_name", "2", {"student": True, "teacher": True, "admin": True }, "test_email")
+    token = jwt_generator("2", "test_first_name", "test_last_name", "2",
+                          {"student": True, "teacher": True, "admin": True}, "test_email")
     return token
 
 

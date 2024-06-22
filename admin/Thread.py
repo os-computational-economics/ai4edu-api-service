@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from migrations.models import Thread, Agent
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -31,6 +30,7 @@ class ThreadListQuery(BaseModel):
     page_size: int = Field(default=10, ge=1, le=100)
     agent_name: Optional[str] = None
     course_id: Optional[str] = None
+
 
 class ThreadContent(BaseModel):
     thread_id: str
@@ -60,19 +60,20 @@ def get_thread_by_id(thread_id: UUID):
 
 @router.get("/get_thread_list")
 def get_thread_list(
-    creator: str,
-    db: Session = Depends(get_db),
-    page: int = 1,
-    page_size: int = 10,
-    agent_name: Optional[str] = None,
-    course_id: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+        creator: str,
+        db: Session = Depends(get_db),
+        page: int = 1,
+        page_size: int = 10,
+        agent_name: Optional[str] = None,
+        course_id: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
 ):
     """
     List threads with pagination, filtered by agent creator.
    """
-    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Agent.agent_name, Agent.course_id).
+    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Agent.agent_name,
+                      Agent.course_id).
              join(Agent, Agent.agent_id == Thread.agent_id).
              filter(Agent.creator == creator, Agent.status != 2))
 
@@ -85,13 +86,15 @@ def get_thread_list(
             start_datetime = datetime.fromisoformat(start_date)
             query = query.filter(Thread.created_at >= start_datetime)
         except ValueError:
-            raise response(False, status_code=400, message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+            raise response(False, status_code=400,
+                           message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
     if end_date:
         try:
             end_datetime = datetime.fromisoformat(end_date)
             query = query.filter(Thread.created_at <= end_datetime)
         except ValueError:
-            raise response(False, status_code=400, message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+            raise response(False, status_code=400,
+                           message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
 
     total = query.count()
     threads = (query.order_by(Thread.created_at.desc()).
