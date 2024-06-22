@@ -247,7 +247,6 @@ async def upload_file(file: UploadFile,
 
         if file_id is None:
             return response(success=False, message="Failed to upload file", status_code=500)
-        print(file_storage.get_file("88618a63-0379-43df-bfaa-b5efa4935cae"))
         return response(success=True, data={"file_id": file_id})
     except Exception as e:
         logging.error(f"Failed to upload file: {str(e)}")
