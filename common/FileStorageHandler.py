@@ -143,7 +143,7 @@ class FileStorageHandler:
 
         # Upload to S3
         s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
-        upload_status = self.__upload_file(self.BUCKET_NAME, local_path, s3_object_name)
+        upload_status = self.__upload_file(self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type)
 
         if upload_status:
             try:
@@ -171,9 +171,12 @@ class FileStorageHandler:
             logger.error(f"Failed to upload file {file_name} to S3")
             return None
 
-    def __upload_file(self, bucket: str, local_path: str, object_name: str) -> bool:
+    def __upload_file(self, bucket: str, local_path: str, object_name: str, content_type: str = None) -> bool:
         try:
-            self.s3_client.upload_file(local_path, bucket, object_name)
+            if content_type:
+                self.s3_client.upload_file(local_path, bucket, object_name, ExtraArgs={'ContentType': content_type})
+            else:
+                self.s3_client.upload_file(local_path, bucket, object_name)
         except ClientError as e:
             logger.error(f"Error uploading file to S3: {e}")
             return False
