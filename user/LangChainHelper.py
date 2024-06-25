@@ -77,34 +77,14 @@ history_aware_retriever_anthropic = create_history_aware_retriever(
     llm2, merger_retriever, contextualize_q_prompt
 )
 
-### Answer question ###
-# This prompt will be used to answer the actual question
-qa_system_prompt = """You are an assistant for Case Western Reserve University. \
-Use the following pieces of retrieved context to answer the question. \
-If you don't know the answer, just say that you don't know. \
-Keep the answer concise.\
-
-{context}"""
-qa_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", qa_system_prompt),
-        MessagesPlaceholder("chat_history"),
-        ("human", "{input}"),
-    ]
-)
-
-question_answer_chain_openai = create_stuff_documents_chain(llm, qa_prompt)
-
-question_answer_chain_anthropic = create_stuff_documents_chain(llm2, qa_prompt)
-
 
 def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseChatMessageHistory:
     print(thread_id)
     history = ChatMessageHistory()
     for idx, message in history_from_request.items():
-        if message["role"] == "human":
+        if message["role"] == "user":
             history.add_message(HumanMessage(message["content"]))
-        elif message["role"] == "ai":
+        elif message["role"] == "assistant":
             history.add_message(AIMessage(message["content"]))
     print(history)
     return history
@@ -112,6 +92,7 @@ def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseCh
 
 def chat_stream_with_retrieve(thread_id: str,
                               question: str,
+                              system_prompt: str = "You are an assistant for Case Western Reserve University.",
                               history_from_request: dict = None,
                               llm_for_question_consolidation: str = "openai",
                               llm_for_answer: str = "openai") -> Iterable[str]:
@@ -119,6 +100,7 @@ def chat_stream_with_retrieve(thread_id: str,
     Chat stream with retrieval.
     :param thread_id: thread id of the chat.
     :param question: the user's latest question.
+    :param system_prompt: system prompt for the chat.
     :param history_from_request: chat history from the request. if None, will try to retrieve from the redis using thread_id.
     :param llm_for_question_consolidation: which LLM to use for question consolidation. can be "openai" or "anthropic".
     :param llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
@@ -131,10 +113,30 @@ def chat_stream_with_retrieve(thread_id: str,
     else:
         history_aware_retriever = history_aware_retriever_openai
 
+    qa_system_prompt = """You are an assistant for Case Western Reserve University. \
+    Use the following pieces of retrieved context to answer the question. \
+    If you don't know the answer, just say that you don't know. \
+    Keep the answer concise.\
+    {additional_system_prompt}\
+    {context}"""
+
+    qa_system_prompt = qa_system_prompt.format(
+        additional_system_prompt=system_prompt,
+        context="{context}"
+    )
+
+    qa_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", qa_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ]
+    )
+
     if llm_for_answer == "anthropic":
-        question_answer_chain = question_answer_chain_anthropic
+        question_answer_chain = create_stuff_documents_chain(llm2, qa_prompt)
     else:
-        question_answer_chain = question_answer_chain_openai
+        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
 
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
@@ -186,9 +188,10 @@ def chat_stream_with_retrieve(thread_id: str,
 # Example usage:
 # for chunk in chat_stream_with_retrieve("12345",
 #                                        "How to contact the first guy?",
+#                                        system_prompt="You are an assistant for Case Western Reserve University.",
 #                                        history_from_request={
-#                                            0: {"role": "human", "content": "Who is the author of the report?"},
-#                                            1: {"role": "ai",
+#                                            0: {"role": "user", "content": "Who is the author of the report?"},
+#                                            1: {"role": "assistant",
 #                                                "content": "The authors of the report are Ruilin Jin and Haoran Yu."}
 #                                        },
 #                                        llm_for_question_consolidation="anthropic",

@@ -28,6 +28,7 @@ class AgentCreate(BaseModel):
     allow_model_choice: bool = Field(default=True)
     model: Optional[str] = None
     system_prompt: str
+    agent_files: Optional[dict] = {}
 
 
 class AgentDelete(BaseModel):
@@ -44,6 +45,7 @@ class AgentUpdate(BaseModel):
     allow_model_choice: Optional[bool] = None
     model: Optional[str] = None
     system_prompt: str
+    agent_files: Optional[dict] = {}
 
 
 class AgentResponse(BaseModel):
@@ -78,7 +80,8 @@ def create_agent(
         voice=agent_data.voice,
         status=agent_data.status,
         allow_model_choice=agent_data.allow_model_choice,
-        model=agent_data.model
+        model=agent_data.model,
+        agent_files=agent_data.agent_files
     )
     db.add(new_agent)
     agent_prompt_handler.put_agent_prompt(str(new_agent.agent_id), agent_data.system_prompt)
@@ -147,6 +150,8 @@ def edit_agent(
         agent_to_update.allow_model_choice = update_data.allow_model_choice
     if update_data.model is not None:
         agent_to_update.model = update_data.model
+    if update_data.agent_files is not None:
+        agent_to_update.agent_files = update_data.agent_files
     agent_to_update.updated_at = datetime.now()
 
     if update_data.system_prompt is not None:

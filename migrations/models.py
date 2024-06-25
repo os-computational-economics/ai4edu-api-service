@@ -27,6 +27,7 @@ class Agent(Base):
     status = Column(Integer, default=1, nullable=False)  # 1-active, 0-inactive, 2-deleted
     allow_model_choice = Column(Boolean, default=True, nullable=False)
     model = Column(String(16))
+    agent_files = Column(JSON)  # {"file_id": "file_name"}
 
     def __repr__(self):
         return f"Agent id: {self.agent_id}, name: {self.agent_name}, course_id: {self.course_id}, creator: {self.creator}, status: {self.status}, model: {self.model}"

@@ -14,6 +14,7 @@ from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AgentPromptHandler import AgentPromptHandler
 import uuid
+from LangChainHelper import chat_stream_with_retrieve
 
 
 class ChatStreamModel(BaseModel):
@@ -68,26 +69,30 @@ class ChatStream:
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
         self.tts_voice_enabled = chat_stream_model.voice
-        messages = self.__messages_processor(chat_stream_model.messages)
+        # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
-                                                 messages[-1]["content"])
-        return EventSourceResponse(self.__chat_generator(messages))
+                                                 chat_stream_model.messages[len(chat_stream_model.messages) - 1][
+                                                     "content"])
+        #  get agent prompt
+        agent_prompt_handler = AgentPromptHandler()
+        agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        return EventSourceResponse(self.__chat_generator(chat_stream_model.messages, agent_prompt))
 
-    def __chat_generator(self, messages: List[dict[str, str]]):
+    def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt):
         """
         Chat generator.
         :param messages:
         :return:
         """
-        if self.requested_provider == "openai":
-            print("Using OpenAI")
-            stream = self.__openai_chat_generator(messages)
-        elif self.requested_provider == "anthropic":
+        if self.requested_provider == "anthropic":
             print("Using Anthropic")
-            stream = self.__anthropic_chat_generator(messages)
+            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"], system_prompt,
+                                               messages, "anthropic", "anthropic")
         else:
-            stream = self.__openai_chat_generator(messages)
+            print("Using OpenAI")
+            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"], system_prompt,
+                                               messages, "openai", "openai")
         response_text = ""
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
