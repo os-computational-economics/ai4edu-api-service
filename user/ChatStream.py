@@ -14,7 +14,7 @@ from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AgentPromptHandler import AgentPromptHandler
 import uuid
-from LangChainHelper import chat_stream_with_retrieve
+from user.LangChainHelper import chat_stream_with_retrieve
 
 
 class ChatStreamModel(BaseModel):
