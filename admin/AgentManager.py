@@ -104,7 +104,7 @@ def delete_agent(
 ):
     """
     Delete an existing agent record in the database by marking it as status=2.
-    Will not actually delete the record or prompt from the database.
+    Will not actually delete the record or prompt from the database..
     """
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
