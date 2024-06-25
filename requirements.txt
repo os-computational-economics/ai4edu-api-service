@@ -38,6 +38,7 @@ langchain==0.2.5
 langchain-community==0.2.5
 langchain-core==0.2.8
 langchain-openai==0.1.8
+langchain-anthropic==0.1.15
 langchain-pinecone==0.1.1
 langchain-text-splitters==0.2.1
 langsmith==0.1.79
