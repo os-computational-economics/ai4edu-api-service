@@ -71,6 +71,25 @@ def extract_actual_path(path):
     return actual_path
 
 
+def extract_role(access_token_load) -> dict:
+    """
+    Extract the role from the access token payload
+    if the user is system_admin, the role admin is True
+    if the user is at least one teacher in a workspace, the role teacher is True
+    if the user is at least one student in a workspace, the role student is True
+    :param access_token_load: access token payload
+    :return: a dictionary mapping roles to whether the user has that role
+    """
+    default_role = {"admin": False, "teacher": False, "student": True}
+    if access_token_load['system_admin']:
+        default_role['admin'] = True
+    for workspace, role in access_token_load['workspace_role'].items():
+        if role == 'teacher':
+            default_role['teacher'] = True
+            break
+    return default_role
+
+
 class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = extract_actual_path(request.url.path)
@@ -82,8 +101,9 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         if tokens['access_token'] is not None:
             parse_result = parse_token(tokens['access_token'])
             if parse_result['success']:
-                user_access = parse_result['data']['role']
+                user_access = extract_role(parse_result['data'])
                 if has_access(endpoint_access_map, user_access, path):
+                    request.state.user_jwt_content = parse_result['data']
                     return await call_next(request)
             else:
                 return JSONResponse(content={"success": False, "message": parse_result['message'],

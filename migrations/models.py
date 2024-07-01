@@ -53,7 +53,8 @@ class User(Base):
     last_name = Column(String(60), nullable=False)
     email = Column(String(150), nullable=False, unique=True)
     student_id = Column(String(20), nullable=False, unique=True)
-    role = Column(JSON, nullable=False)
+    workspace_role = Column(JSON, nullable=False)
+    system_admin = Column(Boolean, default=False, nullable=False)
     school_id = Column(Integer, nullable=False)
     last_login = Column(DateTime)
     create_at = Column(DateTime)
@@ -92,3 +93,16 @@ class File(Base):
 
     def __repr__(self):
         return f"Files id: {self.file_id}, name: {self.file_name}, type: {self.file_type}, status: {self.file_status}"
+
+
+class Workspace(Base):
+    __tablename__ = 'ai_workspaces'
+
+    workspace_id = Column(String(16), primary_key=True, nullable=False)
+    workspace_name = Column(String(64), unique=True, nullable=False)
+    workspace_active = Column(Boolean, default=False, nullable=False)
+    school_id = Column(Integer, default=0, nullable=False)
+    workspace_password = Column(String(128), nullable=False)
+
+    def __repr__(self):
+        return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, active: {self.workspace_active}, school_id: {self.school_id}"
