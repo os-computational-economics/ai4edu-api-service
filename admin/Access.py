@@ -1,7 +1,7 @@
 import logging
 from migrations.models import User, RefreshToken
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from utils.response import response
 
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from typing import Dict
 
 
 class RoleUpdate(BaseModel):
-    student_id: str 
+    student_id: str
     role: Dict[str, bool]
 
 
@@ -23,13 +23,29 @@ router = APIRouter()
 
 @router.get("/get_user_list")
 def get_user_list(
+        request: Request,
         db: Session = Depends(get_db),
         page: int = 1,
-        page_size: int = 10
+        page_size: int = 10,
+        workspace_id: str = None
 ):
     """
     Get a list of all users with pagination.
+    :param request: Request object
+    :param db: Database session
+    :param page: Page number.
+    :param page_size: Number of users per page.
+    :param workspace_id: Workspace ID, "all" for all workspaces
     """
+    if workspace_id == "all" and request.state.user_jwt_content['system_admin'] is not True:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None:
+        return response(False, status_code=403, message="You do not have access to this resource")
+
+    is_teacher_or_admin = False
+    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) == 'teacher' or \
+            request.state.user_jwt_content['system_admin']:
+        is_teacher_or_admin = True
     try:
         query = db.query(User)
         total = query.count()
@@ -44,7 +60,7 @@ def get_user_list(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "student_id": user.student_id,
-                "role": user.role,
+                "workspace_role": user.workspace_role if is_teacher_or_admin else None,
             }
             for user in users
         ]
