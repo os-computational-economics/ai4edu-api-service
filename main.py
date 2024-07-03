@@ -40,6 +40,8 @@ from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 from admin.Access import router as AccessRouter
 
+from admin.Workspace import router as WorkspaceRouter
+
 import logging
 from middleware.authorization import AuthorizationMiddleware, extract_token
 
@@ -96,6 +98,10 @@ app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/age
 # Admin AccessRouter
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
+
+# Admin WorkspaceRouter
+app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_dev_admin']}/workspace")
+app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_prod_admin']}/workspace")
 
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
