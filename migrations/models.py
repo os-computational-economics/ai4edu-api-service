@@ -37,9 +37,10 @@ class Thread(Base):
     __tablename__ = "ai_threads"
 
     thread_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    user_id = Column(String(15))
+    student_id = Column(String(16))
     created_at = Column(DateTime, default=func.now(), nullable=False)
     agent_id = Column(UUID(as_uuid=True), ForeignKey('ai_agents.agent_id'), nullable=False)
+    user_id = Column(Integer, nullable=False)
 
     def __repr__(self):
         return f"Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {self.created_at}, agent_id: {self.agent_id}"
