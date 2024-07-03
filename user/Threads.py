@@ -12,15 +12,17 @@ import logging
 from utils.response import response
 from migrations.models import Thread
 from migrations.session import get_db
-
+from fastapi import Request
 
 logger = logging.getLogger(__name__)
 
 
-def new_thread(user_id: str, agent_id: str):
+def new_thread(request: Request, agent_id: str):
     for db in get_db():
+        user_id = request.state.user_jwt_content['user_id']
+        student_id = request.state.user_jwt_content['student_id']
         thread_id = str(uuid.uuid4())
-        thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id)
+        thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id, student_id=student_id)
         db.add(thread)
 
         try:
