@@ -20,7 +20,7 @@ class Agent(Base):
     agent_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     agent_name = Column(String(255), nullable=False)
-    course_id = Column(String(31))
+    workspace_id = Column(String(31))
     creator = Column(String(16))
     updated_at = Column(DateTime, default=func.now(), nullable=False)
     voice = Column(Boolean, default=False, nullable=False)
@@ -106,3 +106,17 @@ class Workspace(Base):
 
     def __repr__(self):
         return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, active: {self.workspace_active}, school_id: {self.school_id}"
+
+
+class UserWorkspace(Base):
+    __tablename__ = 'ai_user_workspace'
+
+    user_id = Column(Integer)
+    workspace_id = Column(String(16), nullable=False)
+    role = Column(String(16), default="pending", nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime)
+    student_id = Column(String(16), nullable=False)
+
+    def __repr__(self):
+        return f"AIUserWorkspace user_id: {self.user_id}, workspace_id: {self.workspace_id}, role: {self.role}"
