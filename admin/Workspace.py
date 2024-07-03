@@ -95,8 +95,8 @@ def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = Fi
         return response(False, status_code=500, message=str(e))
 
 
-@router.post("/add_student_to_workspace")
-def add_student_to_workspace(request: Request, join_workspace: StudentJoinWorkspace, db: Session = Depends(get_db)):
+@router.post("/student_join_workspace")
+def student_join_workspace(request: Request, join_workspace: StudentJoinWorkspace, db: Session = Depends(get_db)):
     user_id = request.state.user_jwt_content['user_id']
     student_id = request.state.user_jwt_content['student_id']
     try:

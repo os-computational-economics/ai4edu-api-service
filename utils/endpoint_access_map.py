@@ -22,7 +22,12 @@ endpoint_access_map = {
     "/get_temp_stt_auth_code": {"student": True, "teacher": True, "admin": True},
     "/get_new_thread": {"student": True, "teacher": True, "admin": True},
     "/access/get_user_list": {"student": False, "teacher": True, "admin": True},
-    "/access/grant_access": {"student": False, "teacher": True, "admin": True},
+    # workspace endpoints
+    "/workspace/create_workspace": {"student": False, "teacher": False, "admin": True},
+    "/workspace/add_users_via_csv": {"student": False, "teacher": True, "admin": True},
+    "/workspace/student_join_workspace": {"student": True, "teacher": True, "admin": True},
+    "/workspace/delete_user_from_workspace": {"student": False, "teacher": True, "admin": True},
+    "/workspace/set_user_role": {"student": False, "teacher": True, "admin": True},
     # testing endpoints
     "/test_query": {"student": True, "teacher": True, "admin": True},
     "/test_query/history": {"student": True, "teacher": True, "admin": True},
