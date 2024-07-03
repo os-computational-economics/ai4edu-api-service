@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from uuid import UUID
@@ -60,27 +60,28 @@ def get_thread_by_id(thread_id: UUID):
 
 @router.get("/get_thread_list")
 def get_thread_list(
-        creator: str,
+        workspace_id: str,
+        request: Request,
         db: Session = Depends(get_db),
         page: int = 1,
         page_size: int = 10,
         agent_name: Optional[str] = None,
-        course_id: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None
 ):
     """
     List threads with pagination, filtered by agent creator.
    """
+    user_workspace_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
+    if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Agent.agent_name,
-                      Agent.course_id).
+                      Agent.workspace_id).
              join(Agent, Agent.agent_id == Thread.agent_id).
-             filter(Agent.creator == creator, Agent.status != 2))
+             filter(Agent.workspace_id == workspace_id))  # even the agent is deleted, the thread still exists
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
-    if course_id:
-        query = query.filter(Agent.course_id == course_id)
     if start_date:
         try:
             start_datetime = datetime.fromisoformat(start_date)
@@ -102,10 +103,10 @@ def get_thread_list(
                limit(page_size).all())
     results = [{"thread_id": str(t.thread_id),
                 "user_id": t.user_id,
+                "student_id": t.student_id,
                 "created_at": str(t.created_at),
                 "agent_id": str(t.agent_id),
                 "agent_name": str(t.agent_name),
-                "course_id": str(t.course_id),
-                "creator": creator,
+                "workspace_id": workspace_id,
                 } for t in threads]
     return response(True, data={"threads": results, "total": total})
