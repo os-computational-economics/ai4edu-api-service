@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -21,7 +21,7 @@ agent_prompt_handler = AgentPromptHandler()
 
 class AgentCreate(BaseModel):
     agent_name: str
-    course_id: Optional[str] = None
+    workspace_id: str
     creator: Optional[str] = None
     voice: bool = Field(default=False)
     status: int = Field(default=1, description='1-active, 0-inactive, 2-deleted')
@@ -37,8 +37,8 @@ class AgentDelete(BaseModel):
 
 class AgentUpdate(BaseModel):
     agent_id: UUID
+    workspace_id: Optional[str] = None
     agent_name: Optional[str] = None
-    course_id: Optional[str] = None
     creator: Optional[str] = None
     voice: Optional[bool] = None
     status: Optional[int] = None
@@ -51,7 +51,7 @@ class AgentUpdate(BaseModel):
 class AgentResponse(BaseModel):
     agent_id: UUID
     agent_name: str
-    course_id: Optional[str] = None
+    workspace_id: str
     creator: Optional[str] = None
     voice: bool
     status: int
@@ -64,17 +64,21 @@ class AgentResponse(BaseModel):
 
 @router.post("/add_agent")
 def create_agent(
+        request: Request,
         agent_data: AgentCreate,
         db: Session = Depends(get_db)
 ):
     """
     Create a new agent record in the database.
     """
+    if request.state.user_jwt_content['workspace_role'].get(agent_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     new_agent = Agent(
         agent_id=uuid4(),
         created_at=datetime.now(),
         agent_name=agent_data.agent_name,
-        course_id=agent_data.course_id,
+        workspace_id=agent_data.workspace_id,
         creator=agent_data.creator,
         updated_at=datetime.now(),
         voice=agent_data.voice,
@@ -99,6 +103,7 @@ def create_agent(
 
 @router.post("/delete_agent")
 def delete_agent(
+        request: Request,
         delete_data: AgentDelete,
         db: Session = Depends(get_db)
 ):
@@ -106,6 +111,9 @@ def delete_agent(
     Delete an existing agent record in the database by marking it as status=2.
     Will not actually delete the record or prompt from the database..
     """
+    if request.state.user_jwt_content['workspace_role'].get(delete_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
         logger.error(f"Agent not found: {delete_data.agent_id}")
@@ -124,12 +132,16 @@ def delete_agent(
 
 @router.post("/update_agent")
 def edit_agent(
+        request: Request,
         update_data: AgentUpdate,
         db: Session = Depends(get_db)
 ):
     """
     Update an existing agent record in the database.
     """
+    if request.state.user_jwt_content['workspace_role'].get(update_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     agent_to_update = db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
     if not agent_to_update:
         logger.error(f"Agent not found: {update_data.agent_id}")
@@ -138,8 +150,8 @@ def edit_agent(
     # Update the agent fields if provided
     if update_data.agent_name is not None:
         agent_to_update.agent_name = update_data.agent_name
-    if update_data.course_id is not None:
-        agent_to_update.course_id = update_data.course_id
+    if update_data.workspace_id is not None:
+        agent_to_update.workspace_id = update_data.workspace_id
     if update_data.creator is not None:
         agent_to_update.creator = update_data.creator
     if update_data.voice is not None:
@@ -170,15 +182,18 @@ def edit_agent(
 
 @router.get("/agents")
 def list_agents(
-    creator: str,
-    db: Session = Depends(get_db),
-    page: int = 1,
-    page_size: int = 10
+        request: Request,
+        workspace_id: str,
+        db: Session = Depends(get_db),
+        page: int = 1,
+        page_size: int = 10
 ):
     """
     List agents with pagination.
     """
-    query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
+    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    query = db.query(Agent).filter(Agent.workspace_id == workspace_id, Agent.status != 2)  # exclude deleted agents
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
@@ -191,6 +206,7 @@ def list_agents(
 
 @router.get("/agent/{agent_id}")
 def get_agent_by_id(
+        request: Request,
         agent_id: UUID,
         db: Session = Depends(get_db)
 ):
@@ -200,4 +216,8 @@ def get_agent_by_id(
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()  # exclude deleted agents
     if agent is None:
         response(False, status_code=404, message="Agent not found")
+    agent_workspace = agent.workspace_id
+    if request.state.user_jwt_content['workspace_role'].get(agent_workspace, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     return response(True, data=agent)
