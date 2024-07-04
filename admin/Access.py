@@ -7,7 +7,6 @@ from utils.response import response
 from sqlalchemy.orm import Session
 from migrations.session import get_db
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -31,7 +30,8 @@ def get_user_list(
     """
     if workspace_id == "all" and request.state.user_jwt_content['system_admin'] is not True:
         return response(False, status_code=403, message="You do not have access to this resource")
-    elif request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None:
+    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None and \
+            not request.state.user_jwt_content['system_admin']:
         return response(False, status_code=403, message="You do not have access to this resource")
 
     is_teacher_or_admin = False
