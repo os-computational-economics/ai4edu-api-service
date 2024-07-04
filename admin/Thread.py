@@ -76,10 +76,9 @@ def get_thread_list(
     user_workspace_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
     if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
         return response(False, status_code=403, message="You do not have access to this resource")
-    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Agent.agent_name,
-                      Agent.workspace_id, Thread.student_id).
-             join(Agent, Agent.agent_id == Thread.agent_id).
-             filter(Agent.workspace_id == workspace_id))  # even the agent is deleted, the thread still exists
+    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Thread.agent_name,
+                      Thread.workspace_id, Thread.student_id).
+             filter(Thread.workspace_id == workspace_id))  # even the agent is deleted, the thread still exists
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
