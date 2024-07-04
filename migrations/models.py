@@ -8,7 +8,7 @@
 """
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID, ForeignKey, JSON, \
-    UniqueConstraint
+    UniqueConstraint, PrimaryKeyConstraint
 
 Base = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
@@ -118,6 +118,10 @@ class UserWorkspace(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime)
     student_id = Column(String(16), nullable=False)
+
+    __table_args__ = (
+        PrimaryKeyConstraint('workspace_id', 'student_id', name='ai_user_workspace_pk'),
+    )
 
     def __repr__(self):
         return f"AIUserWorkspace user_id: {self.user_id}, workspace_id: {self.workspace_id}, role: {self.role}"
