@@ -191,3 +191,23 @@ def set_user_role(request: Request, user_role_update: UserRoleUpdate, db: Sessio
         logger.error(f"Error setting user role: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
+
+
+@router.get("/get_workspace_list")
+def get_workspace_list(request: Request, db: Session = Depends(get_db)):
+    if not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    try:
+        workspaces = db.query(Workspace).all()
+        workspace_list = [
+            {
+                "workspace_id": workspace.workspace_id,
+                "workspace_name": workspace.workspace_name,
+                "school_id": workspace.school_id
+            }
+            for workspace in workspaces
+        ]
+        return response(True, data={"workspace_list": workspace_list})
+    except Exception as e:
+        logger.error(f"Error fetching workspace list: {e}")
+        return response(False, status_code=500, message=str(e))

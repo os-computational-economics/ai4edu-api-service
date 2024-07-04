@@ -28,6 +28,7 @@ endpoint_access_map = {
     "/workspace/student_join_workspace": {"student": True, "teacher": True, "admin": True},
     "/workspace/delete_user_from_workspace": {"student": False, "teacher": True, "admin": True},
     "/workspace/set_user_role": {"student": False, "teacher": True, "admin": True},
+    "/workspace/get_workspace_list": {"student": False, "teacher": False, "admin": True},
     # testing endpoints
     "/test_query": {"student": True, "teacher": True, "admin": True},
     "/test_query/history": {"student": True, "teacher": True, "admin": True},
