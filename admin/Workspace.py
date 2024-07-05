@@ -9,6 +9,7 @@
 import csv
 import io
 import logging
+import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -71,7 +72,14 @@ def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = Fi
     if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
         return response(False, status_code=403, message="You do not have access to this resource")
     try:
-        content = file.file.read().decode("utf-8")
+        # Read the file to detect encoding
+        raw_content = file.file.read()
+        result = chardet.detect(raw_content)
+        encoding = result['encoding']
+
+        # Decode the content using the detected encoding
+        content = raw_content.decode(encoding)
+
         reader = csv.DictReader(io.StringIO(content))
 
         for row in reader:
