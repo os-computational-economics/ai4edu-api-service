@@ -88,6 +88,13 @@ def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = Fi
             if not student_id:
                 continue
 
+            # Check if the record already exists
+            existing_user_workspace = db.query(UserWorkspace).filter_by(workspace_id=workspace_id,
+                                                                        student_id=student_id).first()
+
+            if existing_user_workspace:
+                continue  # Skip this row if it already exists
+
             user_workspace = UserWorkspace(
                 student_id=student_id,
                 workspace_id=workspace_id,
@@ -98,7 +105,7 @@ def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = Fi
 
         return response(True, message="Users added via CSV successfully")
     except Exception as e:
-        logger.error(f"Error adding users via CSV: {e}")
+        logger.error(f"Error adding users via CSV: Please make sure you save the roster as a CSV file and try again")
         db.rollback()
         return response(False, status_code=500, message=str(e))
 
