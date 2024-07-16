@@ -13,6 +13,7 @@ import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.attributes import flag_modified
 
 from migrations.models import User, UserWorkspace, Workspace
 from migrations.session import get_db
@@ -136,9 +137,8 @@ def student_join_workspace(request: Request, join_workspace: StudentJoinWorkspac
             return response(False, status_code=400, message="User already in this workspace")
 
         user_workspace.role = "student"
-        user_current_workspace = user.workspace_role
-        user_current_workspace[join_workspace.workspace_id] = "student"
-        user.workspace_role = user_current_workspace
+        user.workspace_role[join_workspace.workspace_id] = "student"
+        flag_modified(user, "workspace_role")
         db.commit()
 
         return response(True, message="User added to workspace successfully")
