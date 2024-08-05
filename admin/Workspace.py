@@ -211,6 +211,52 @@ def set_user_role(request: Request, user_role_update: UserRoleUpdate, db: Sessio
         return response(False, status_code=500, message=str(e))
 
 
+@router.post("/set_user_role_with_student_id")
+def set_user_role_with_student_id(request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)):
+    """
+    This should be able to set any user to any role in any workspace, even if the user is not in that workspace
+    :param request:
+    :param user_role_update:
+    :param db:
+    :return:
+    """
+    if not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    try:
+        user = db.query(User).filter(User.student_id == user_role_update.student_id).first()
+        if not user:
+            return response(False, status_code=404, message="User not found")
+
+        user_workspace = db.query(UserWorkspace).filter(
+            UserWorkspace.user_id == user.user_id,
+            UserWorkspace.student_id == user_role_update.student_id,
+            UserWorkspace.workspace_id == user_role_update.workspace_id
+        ).first()
+
+        if not user_workspace:
+            # create a new user workspace record
+            new_user_workspace = UserWorkspace(
+                user_id=user.user_id,
+                student_id=user.student_id,
+                workspace_id=user_role_update.workspace_id,
+                role=user_role_update.role
+            )
+            db.add(new_user_workspace)
+            db.commit()
+        else:
+            user_workspace.role = user_role_update.role
+
+        user.workspace_role[user_role_update.workspace_id] = user_role_update.role
+        flag_modified(user, "workspace_role")
+        db.commit()
+
+        return response(True, message="User role updated successfully")
+    except Exception as e:
+        logger.error(f"Error setting user role: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
+
+
 @router.get("/get_workspace_list")
 def get_workspace_list(request: Request, db: Session = Depends(get_db)):
     if not request.state.user_jwt_content['system_admin']:
