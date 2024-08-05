@@ -17,10 +17,14 @@ from fastapi import Request
 logger = logging.getLogger(__name__)
 
 
-def new_thread(request: Request, agent_id: str):
+def new_thread(request: Request, agent_id: str, workspace_id: str):
     for db in get_db():
         user_id = request.state.user_jwt_content['user_id']
         student_id = request.state.user_jwt_content['student_id']
+        is_user_in_workspace = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
+        if not is_user_in_workspace:
+            logger.error(f"User {user_id} is not in workspace {workspace_id}")
+            return response(False, {}, "User is not in workspace")
         thread_id = str(uuid.uuid4())
         thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id, student_id=student_id)
         db.add(thread)

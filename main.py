@@ -208,13 +208,13 @@ def get_temp_stt_auth_code(dynamic_auth_code: str):
 
 @app.get(f"{URL_PATHS['current_dev_user']}/get_new_thread")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_new_thread")
-def get_new_thread(request: Request, agent_id: str):
+def get_new_thread(request: Request, agent_id: str, workspace_id: str):
     """
     ENDPOINT: /user/get_new_thread
     Generates a new thread id for the user.
     :return:
     """
-    return new_thread(request, agent_id)
+    return new_thread(request, agent_id, workspace_id)
 
 
 @app.post(f"{URL_PATHS['current_dev_admin']}/upload_file")
