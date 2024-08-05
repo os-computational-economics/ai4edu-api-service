@@ -251,7 +251,7 @@ async def upload_file(file: UploadFile,
 
         if file_id is None:
             return response(success=False, message="Failed to upload file", status_code=500)
-        return response(success=True, data={"file_id": file_id})
+        return response(success=True, data={"file_id": file_id, "file_name": file.filename})
     except Exception as e:
         logging.error(f"Failed to upload file: {str(e)}")
     return response(success=False, message="unable to upload file", status_code=500)
