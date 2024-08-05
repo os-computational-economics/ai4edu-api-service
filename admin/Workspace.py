@@ -170,6 +170,7 @@ def delete_user_from_workspace(request: Request, user_role_update: UserRoleUpdat
 
         db.delete(user_workspace)
         del user.workspace_role[user_role_update.workspace_id]
+        flag_modified(user, "workspace_role")
         db.commit()
 
         return response(True, message="User deleted from workspace successfully")
