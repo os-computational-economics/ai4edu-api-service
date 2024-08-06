@@ -11,6 +11,7 @@ import logging
 
 from utils.response import response
 from migrations.models import Thread
+from migrations.models import Agent
 from migrations.session import get_db
 from fastapi import Request
 
@@ -26,7 +27,12 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")
         thread_id = str(uuid.uuid4())
-        thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id, student_id=student_id)
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+        if not agent:
+            logger.error(f"Agent not found: {agent_id}")
+            return response(False, {}, "Agent not found")
+        thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id, student_id=student_id,
+                        workspace_id=workspace_id, agent_name=agent.agent_name)
         db.add(thread)
 
         try:
