@@ -100,7 +100,7 @@ def create_agent(
             file_path = fsh.get_file(file_id)
             if file_path:
                 embed_file("namespace-test", f'{agent_data.workspace_id}-{new_agent_id}',
-                           file_path, file_id, "pdf", str(new_agent_id), agent_data.workspace_id)
+                           file_path, file_id, file_name, "pdf", str(new_agent_id), agent_data.workspace_id)
             else:
                 logger.error(f"Failed to embed file: {file_id}")
 
@@ -184,7 +184,7 @@ def edit_agent(
             file_path = fsh.get_file(file_id)
             if file_path:
                 embed_file("namespace-test", f'{update_data.workspace_id}-{update_data.agent_id}',
-                           file_path, file_id, "pdf", str(update_data.agent_id), update_data.workspace_id)
+                           file_path, file_id, file_name, "pdf", str(update_data.agent_id), update_data.workspace_id)
             else:
                 logger.error(f"Failed to embed file: {file_id}")
     agent_to_update.updated_at = datetime.now()

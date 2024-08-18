@@ -26,7 +26,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
 
-def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, file_type: str, agent_id: str = "NA",
+def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, file_name: str, file_type: str, agent_id: str = "NA",
                workspace_id: str = "NA") -> bool:
     """
     Embed the file and put the embeddings into the Pinecone index.
@@ -34,6 +34,7 @@ def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, fi
     :param namespace: The namespace of the Pinecone index.
     :param file_path: The path of the file to be embedded.
     :param file_id: The ID of the file.
+    :param file_name: The name of the file.
     :param file_type: The type of the file.
     :param agent_id: The ID of the agent. Optional.
     :param workspace_id: The ID of the workspace. Optional.
@@ -47,7 +48,7 @@ def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, fi
                 page.metadata = {}
             page.metadata.update(
                 {"file_id": file_id, "file_type": file_type, "file_path": file_path, "agent_id": agent_id,
-                 "workspace_id": workspace_id})
+                 "workspace_id": workspace_id, "file_name": file_name})
         PineconeVectorStore.from_documents(pages, embeddings, index_name=index_name,
                                            namespace=namespace)
         return True
