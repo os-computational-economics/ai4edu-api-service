@@ -137,6 +137,7 @@ def student_join_workspace(request: Request, join_workspace: StudentJoinWorkspac
             return response(False, status_code=400, message="User already in this workspace")
 
         user_workspace.role = "student"
+        user_workspace.user_id = user_id
         user.workspace_role[join_workspace.workspace_id] = "student"
         flag_modified(user, "workspace_role")
         db.commit()
