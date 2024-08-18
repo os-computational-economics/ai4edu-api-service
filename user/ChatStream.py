@@ -99,29 +99,37 @@ class ChatStream:
                                                self.retrieval_namespace, system_prompt,
                                                messages, "openai", "openai")
         response_text = ""
+        all_sources = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
         chunk_buffer = ""
         for text_chunk in stream:
-            new_text = text_chunk
-            response_text += new_text
-            if len(chunk_buffer.split()) > 17 + (chunk_id * 12):  # dynamically adjust the chunk size
-                if sentence_ender[0] in new_text:  # if the chunk contains a sentence ender .
-                    chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[0], new_text, chunk_buffer,
-                                                                     chunk_id)
-                elif sentence_ender[1] in new_text:  # if the chunk contains a sentence ender ?
-                    chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[1], new_text, chunk_buffer,
-                                                                     chunk_id)
-                elif sentence_ender[2] in new_text:  # if the chunk contains a sentence ender !
-                    chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[2], new_text, chunk_buffer,
-                                                                     chunk_id)
-                else:  # if the chunk does not contain a sentence ender
+            if text_chunk[0] == "answer":
+                new_text = text_chunk[1]
+                response_text += new_text
+                if len(chunk_buffer.split()) > 17 + (chunk_id * 12):  # dynamically adjust the chunk size
+                    if sentence_ender[0] in new_text:  # if the chunk contains a sentence ender .
+                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[0], new_text, chunk_buffer,
+                                                                         chunk_id)
+                    elif sentence_ender[1] in new_text:  # if the chunk contains a sentence ender ?
+                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[1], new_text, chunk_buffer,
+                                                                         chunk_id)
+                    elif sentence_ender[2] in new_text:  # if the chunk contains a sentence ender !
+                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[2], new_text, chunk_buffer,
+                                                                         chunk_id)
+                    else:  # if the chunk does not contain a sentence ender
+                        chunk_buffer += new_text
+                else:  # if the chunk is less than 21 words
                     chunk_buffer += new_text
-            else:  # if the chunk is less than 21 words
-                chunk_buffer += new_text
-            yield json.dumps(
-                {"response": response_text, "tts_session_id": self.tts_session_id,
-                 "tts_max_chunk_id": chunk_id})
+                yield json.dumps(
+                    {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id,
+                     "tts_max_chunk_id": chunk_id})
+            elif text_chunk[0] == "source":
+                source_text = text_chunk[1]
+                all_sources.append(source_text)
+                yield json.dumps(
+                    {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id,
+                     "tts_max_chunk_id": chunk_id})
         # put the finished response into the database (AI message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, self.requested_provider, response_text)
         # Process any remaining text in the chunk_buffer after the stream has finished
@@ -130,7 +138,7 @@ class ChatStream:
             if self.tts_voice_enabled:
                 self.tts.stream_tts(chunk_buffer, str(chunk_id))
             yield json.dumps(
-                {"response": response_text, "tts_session_id": self.tts_session_id, "tts_max_chunk_id": chunk_id})
+                {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id, "tts_max_chunk_id": chunk_id})
 
     def __openai_chat_generator(self, messages: List[dict[str, str]]):
         """

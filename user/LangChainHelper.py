@@ -181,13 +181,13 @@ def chat_stream_with_retrieve(thread_id: str,
     ):
         answer = chunk.get("answer")
         if answer:
-            yield answer
+            yield "answer", answer
             continue
         context = chunk.get("context")
         if context:
             sources = chunk.get("context")
             for doc in sources:
-                yield str(doc.metadata)
+                yield "source", str(doc.metadata)
 
 # Example usage:
 # for chunk in chat_stream_with_retrieve("12345",
