@@ -1,7 +1,7 @@
 # Copyright (c) 2024.
 # -*-coding:utf-8 -*-
 """
-@file: AuthSSO.py.py
+@file: AuthSSO.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 5/6/24 10:23
