@@ -72,7 +72,7 @@ def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseCh
 def chat_stream_with_retrieve(thread_id: str,
                               question: str,
                               retrieval_namespace: str,
-                              system_prompt: str = "You are an assistant for Case Western Reserve University.",
+                              system_prompt: str = "You are a personalized assistant.",
                               history_from_request: dict = None,
                               llm_for_question_consolidation: str = "openai",
                               llm_for_answer: str = "openai") -> Iterable[str]:
@@ -117,7 +117,7 @@ def chat_stream_with_retrieve(thread_id: str,
         )
         history_aware_retriever = history_aware_retriever_openai
 
-    qa_system_prompt = """You are an assistant for Case Western Reserve University. \
+    qa_system_prompt = """You are a personalized assistant. \
     Use the following pieces of retrieved context to answer the question. \
     If you don't know the answer, just say that you don't know. \
     Keep the answer concise.\
