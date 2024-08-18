@@ -294,6 +294,18 @@ def generate_token(request: Request):
         return response(success=False, message="Failed to generate access token", status_code=401)
 
 
+@app.get(f"{URL_PATHS['current_dev_admin']}/ping")
+@app.get(f"{URL_PATHS['current_prod_admin']}/ping")
+@app.get(f"{URL_PATHS['current_dev_user']}/ping")
+@app.get(f"{URL_PATHS['current_prod_user']}/ping")
+async def ping():
+    """
+    ENDPOINT: /ping
+    :return:
+    """
+    return response(success=True, message="pong")
+
+
 @app.get(f"{URL_PATHS['current_dev_admin']}/")
 @app.get(f"{URL_PATHS['current_prod_admin']}/")
 @app.get(f"{URL_PATHS['current_dev_user']}/")
