@@ -12,6 +12,8 @@ from migrations.models import Agent
 
 from utils.response import response
 from common.AgentPromptHandler import AgentPromptHandler
+from common.EmbeddingHandler import embed_file
+from common.FileStorageHandler import FileStorageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +76,9 @@ def create_agent(
     if request.state.user_jwt_content['workspace_role'].get(agent_data.workspace_id, None) != 'teacher' and \
             not request.state.user_jwt_content['system_admin']:
         return response(False, status_code=403, message="You do not have access to this resource")
+    new_agent_id = uuid4()
     new_agent = Agent(
-        agent_id=uuid4(),
+        agent_id=new_agent_id,
         created_at=datetime.now(),
         agent_name=agent_data.agent_name,
         workspace_id=agent_data.workspace_id,
@@ -89,6 +92,17 @@ def create_agent(
     )
     db.add(new_agent)
     agent_prompt_handler.put_agent_prompt(str(new_agent.agent_id), agent_data.system_prompt)
+
+    # if there is agent files, embed the files with pinecone
+    if agent_data.agent_files:
+        fsh = FileStorageHandler()
+        for file_id, file_name in agent_data.agent_files.items():
+            file_path = fsh.get_file(file_id)
+            if file_path:
+                embed_file("namespace-test", f'{agent_data.workspace_id}-{new_agent_id}',
+                           file_path, file_id, "pdf", str(new_agent_id), agent_data.workspace_id)
+            else:
+                logger.error(f"Failed to embed file: {file_id}")
 
     try:
         db.commit()
@@ -164,6 +178,15 @@ def edit_agent(
         agent_to_update.model = update_data.model
     if update_data.agent_files is not None:
         agent_to_update.agent_files = update_data.agent_files
+        # embed the files with pinecone
+        fsh = FileStorageHandler()
+        for file_id, file_name in update_data.agent_files.items():
+            file_path = fsh.get_file(file_id)
+            if file_path:
+                embed_file("namespace-test", f'{update_data.workspace_id}-{update_data.agent_id}',
+                           file_path, file_id, "pdf", str(update_data.agent_id), update_data.workspace_id)
+            else:
+                logger.error(f"Failed to embed file: {file_id}")
     agent_to_update.updated_at = datetime.now()
 
     if update_data.system_prompt is not None:

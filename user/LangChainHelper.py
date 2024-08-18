@@ -46,36 +46,15 @@ llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4
 llm2 = ChatAnthropic(temperature=0, api_key=ANTHROPIC_API_KEY,
                      model_name="claude-3-5-sonnet-20240620", streaming=True)
 
-vectorstore_1 = PineconeVectorStore.from_existing_index(index_name, embeddings,
-                                                        namespace='CSDS001-7d3c60ab-2cd1-4146-9bd2-d73c48546670-case001')
-vectorstore_2 = PineconeVectorStore.from_existing_index(index_name, embeddings,
-                                                        namespace='MATH001-bb2f9918-152c-4c79-b6a8-86e970992997-case003')
 
-retriever_1 = vectorstore_1.as_retriever()
-retriever_2 = vectorstore_2.as_retriever()
-merger_retriever = MergerRetriever(retrievers=[retriever_1, retriever_2])
-
-### Contextualize question ###
-# This prompt will be used to contextualize the question, making the question for vector search
-contextualize_q_system_prompt = """Given a chat history and the latest user question \
-which might reference context in the chat history, formulate a standalone question \
-which can be understood without the chat history. Do NOT answer the question, \
-just reformulate it if needed and otherwise return it as is."""
-contextualize_q_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", contextualize_q_system_prompt),
-        MessagesPlaceholder("chat_history"),
-        ("human", "{input}"),
-    ]
-)
-# This is the first step in the chain, which will retrieve the context for the question
-history_aware_retriever_openai = create_history_aware_retriever(
-    llm, merger_retriever, contextualize_q_prompt
-)
-
-history_aware_retriever_anthropic = create_history_aware_retriever(
-    llm2, merger_retriever, contextualize_q_prompt
-)
+# vectorstore_1 = PineconeVectorStore.from_existing_index(index_name, embeddings,
+#                                                         namespace='CSDS001-7d3c60ab-2cd1-4146-9bd2-d73c48546670-case001')
+# vectorstore_2 = PineconeVectorStore.from_existing_index(index_name, embeddings,
+#                                                         namespace='MATH001-bb2f9918-152c-4c79-b6a8-86e970992997-case003')
+#
+# retriever_1 = vectorstore_1.as_retriever()
+# retriever_2 = vectorstore_2.as_retriever()
+# merger_retriever = MergerRetriever(retrievers=[retriever_1, retriever_2])
 
 
 def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseChatMessageHistory:
@@ -92,6 +71,7 @@ def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseCh
 
 def chat_stream_with_retrieve(thread_id: str,
                               question: str,
+                              retrieval_namespace: str,
                               system_prompt: str = "You are an assistant for Case Western Reserve University.",
                               history_from_request: dict = None,
                               llm_for_question_consolidation: str = "openai",
@@ -100,17 +80,41 @@ def chat_stream_with_retrieve(thread_id: str,
     Chat stream with retrieval.
     :param thread_id: thread id of the chat.
     :param question: the user's latest question.
+    :param retrieval_namespace: the namespace of the Pinecone index for retrieval.
     :param system_prompt: system prompt for the chat.
     :param history_from_request: chat history from the request. if None, will try to retrieve from the redis using thread_id.
     :param llm_for_question_consolidation: which LLM to use for question consolidation. can be "openai" or "anthropic".
     :param llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
     :return: a generator that yields the chat messages.
     """
+    vectorstore = PineconeVectorStore.from_existing_index(index_name, embeddings, namespace=retrieval_namespace)
+    retriever = vectorstore.as_retriever()
+
+    ### Contextualize question ###
+    # This prompt will be used to contextualize the question, making the question for vector search
+    contextualize_q_system_prompt = """Given a chat history and the latest user question \
+    which might reference context in the chat history, formulate a standalone question \
+    which can be understood without the chat history. Do NOT answer the question, \
+    just reformulate it if needed and otherwise return it as is."""
+    contextualize_q_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", contextualize_q_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ]
+    )
+
     if history_from_request is None:
         history_from_request = {}
     if llm_for_question_consolidation == "anthropic":
+        history_aware_retriever_anthropic = create_history_aware_retriever(
+            llm2, retriever, contextualize_q_prompt
+        )
         history_aware_retriever = history_aware_retriever_anthropic
     else:
+        history_aware_retriever_openai = create_history_aware_retriever(
+            llm, retriever, contextualize_q_prompt
+        )
         history_aware_retriever = history_aware_retriever_openai
 
     qa_system_prompt = """You are an assistant for Case Western Reserve University. \

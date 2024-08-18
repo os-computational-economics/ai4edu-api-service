@@ -25,6 +25,7 @@ class ChatStreamModel(BaseModel):
     user_id: str
     agent_id: str
     voice: bool
+    workspace_id: str
 
 
 class ChatSingleCallResponse(BaseModel):
@@ -48,6 +49,7 @@ class ChatStream:
     """
 
     def __init__(self, requested_provider, openai_client, anthropic_client):
+        self.retrieval_namespace = None
         self.tts_voice_enabled = None
         self.user_id = None
         self.thread_id = None
@@ -69,6 +71,7 @@ class ChatStream:
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
         self.tts_voice_enabled = chat_stream_model.voice
+        self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
         self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
@@ -87,11 +90,13 @@ class ChatStream:
         """
         if self.requested_provider == "anthropic":
             print("Using Anthropic")
-            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"], system_prompt,
+            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
+                                               self.retrieval_namespace, system_prompt,
                                                messages, "anthropic", "anthropic")
         else:
             print("Using OpenAI")
-            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"], system_prompt,
+            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
+                                               self.retrieval_namespace, system_prompt,
                                                messages, "openai", "openai")
         response_text = ""
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
