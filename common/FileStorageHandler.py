@@ -171,6 +171,37 @@ class FileStorageHandler:
             logger.error(f"Failed to upload file {file_name} to S3")
             return None
 
+    def get_presigned_url(self, file_id: str, expiration: int = 3600) -> Optional[str]:
+        """
+        Generate a presigned URL for a file in the S3 bucket.
+        :param file_id: The ID of the file.
+        :param expiration: The expiration time of the URL in seconds.
+        :return: The presigned URL, or None if the file is not found.
+        """
+        try:
+            file_info = self._get_cached_file_info(file_id)
+            if not file_info:
+                file_obj = self._get_db().query(File).filter(File.file_id == file_id).first()
+                if not file_obj:
+                    return None
+                self._cache_file_info(file_obj)
+                file_info = {
+                    "file_name": file_obj.file_name,
+                    "file_ext": file_obj.file_ext
+                }
+
+            file_name, file_ext = file_info["file_name"], file_info["file_ext"]
+            s3_object_name = self._get_s3_object_name(file_id, file_ext)
+            url = self.s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': self.BUCKET_NAME, 'Key': s3_object_name},
+                ExpiresIn=expiration
+            )
+            return url
+        except Exception as e:
+            logger.error(f"Error generating presigned URL: {str(e)}")
+            return None
+
     def __upload_file(self, bucket: str, local_path: str, object_name: str, content_type: str = None) -> bool:
         try:
             if content_type:

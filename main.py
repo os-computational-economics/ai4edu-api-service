@@ -257,6 +257,22 @@ async def upload_file(file: UploadFile,
     return response(success=False, message="unable to upload file", status_code=500)
 
 
+@app.get(f"{URL_PATHS['current_dev_admin']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_prod_admin']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_dev_user']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_prod_user']}/get_presigned_url_for_file")
+async def get_presigned_url_for_file(file_id: str):
+    """
+    ENDPOINT: /get_presigned_url_for_file
+    :param file_id:
+    :return:
+    """
+    url = file_storage.get_presigned_url(file_id)
+    if url is None:
+        return response(success=False, message="Failed to generate presigned URL", status_code=500)
+    return response(success=True, data={"url": url})
+
+
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_dev_user']}/generate_access_token")
