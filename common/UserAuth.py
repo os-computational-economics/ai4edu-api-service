@@ -40,7 +40,8 @@ class UserAuth:
                     last_name=user_info['sn'],
                     email=user_info['mail'],
                     student_id=student_id,
-                    role={'student': True, 'teacher': False, 'admin': False},
+                    workspace_role={"wsom": "student"},
+                    system_admin=False,
                     # default role is student
                     school_id=0,
                     last_login=datetime.now(),
@@ -97,10 +98,12 @@ class UserAuth:
                 first_name = user.first_name
                 last_name = user.last_name
                 student_id = user.student_id
-                role = user.role
+                system_admin = user.system_admin
+                workspace_role = user.workspace_role
                 email = user.email
                 try:
-                    token = jwt_generator(user_id, first_name, last_name, student_id, role, email)
+                    token = jwt_generator(user_id, first_name, last_name, student_id, workspace_role, system_admin,
+                                          email)
                     refresh_token_obj.issued_token_count += 1
                     self.db.commit()
                     return token

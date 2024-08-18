@@ -53,14 +53,16 @@ if public_key[header_end] == 'n':
 algorithm = "RS256"
 
 
-def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str, role: dict, email: str) -> str:
+def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str, workspace_role: dict,
+                  system_admin: bool, email: str) -> str:
     payload = {
         "user_id": user_id,
         "email": email,
         "first_name": first_name,
         "last_name": last_name,
         "student_id": student_id,
-        "role": role,
+        "workspace_role": workspace_role,
+        "system_admin": system_admin,
         "iat": datetime.now(tz=timezone.utc),
         "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
     }

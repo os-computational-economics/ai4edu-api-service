@@ -6,7 +6,9 @@
 @email: rxy216@case.edu
 @time: 3/16/24 17:52
 """
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
+from typing import Optional
+
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv, dotenv_values
@@ -38,7 +40,7 @@ from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
 from admin.Access import router as AccessRouter
 
-from utils.token_utils import jwt_generator
+from admin.Workspace import router as WorkspaceRouter
 
 import logging
 from middleware.authorization import AuthorizationMiddleware, extract_token
@@ -77,6 +79,7 @@ app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{UR
               openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+file_storage = FileStorageHandler()
 
 # Admin AgentRouter
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
@@ -96,6 +99,10 @@ app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/age
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
 
+# Admin WorkspaceRouter
+app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_dev_admin']}/workspace")
+app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_prod_admin']}/workspace")
+
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
 
@@ -111,6 +118,7 @@ origins = [
     "https://ai4edu-dashboard.vercel.app",
     "https://chat.ai4edu.io",
     "https://dashboard.ai4edu.io",
+    "https://ai4edu-temp-dev.jerryang.org",
 ]
 
 regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
@@ -144,9 +152,9 @@ async def stream_chat(chat_stream_model: ChatStreamModel):
     ENDPOINT: /user/stream_chat
     :param chat_stream_model:
     """
-    auth = DynamicAuth()
-    if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
-        return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
+    # auth = DynamicAuth()
+    # if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
+    #     return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
     chat_instance = ChatStream(chat_stream_model.provider, openai_client, anthropic_client)
     return chat_instance.stream_chat(chat_stream_model)
 
@@ -200,13 +208,69 @@ def get_temp_stt_auth_code(dynamic_auth_code: str):
 
 @app.get(f"{URL_PATHS['current_dev_user']}/get_new_thread")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_new_thread")
-def get_new_thread(user_id: str, agent_id: str):
+def get_new_thread(request: Request, agent_id: str, workspace_id: str):
     """
     ENDPOINT: /user/get_new_thread
     Generates a new thread id for the user.
     :return:
     """
-    return new_thread(user_id, agent_id)
+    return new_thread(request, agent_id, workspace_id)
+
+
+@app.post(f"{URL_PATHS['current_dev_admin']}/upload_file")
+@app.post(f"{URL_PATHS['current_prod_admin']}/upload_file")
+@app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
+@app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
+async def upload_file(file: UploadFile,
+                      file_desc: Optional[str] = None,
+                      chunking_separator: Optional[str] = None):
+    """
+    ENDPOINT: /upload_file
+    :param file:
+    :param file_desc:
+    :param chunking_separator:
+    :return:
+    """
+    if file is None:
+        return response(success=False, message="No file provided", status_code=400)
+    try:
+        # Read the file content
+        file_content = await file.read()
+
+        # Determine file type (you might want to implement a more sophisticated method)
+        file_type = file.content_type or "application/octet-stream"
+
+        # Use FileStorageHandler to store the file
+        file_id = file_storage.put_file(
+            file_obj=file_content,
+            file_name=file.filename,
+            file_desc=file_desc or "",
+            file_type=file_type,
+            chunking_separator=chunking_separator
+        )
+
+        if file_id is None:
+            return response(success=False, message="Failed to upload file", status_code=500)
+        return response(success=True, data={"file_id": file_id, "file_name": file.filename})
+    except Exception as e:
+        logging.error(f"Failed to upload file: {str(e)}")
+    return response(success=False, message="unable to upload file", status_code=500)
+
+
+@app.get(f"{URL_PATHS['current_dev_admin']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_prod_admin']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_dev_user']}/get_presigned_url_for_file")
+@app.get(f"{URL_PATHS['current_prod_user']}/get_presigned_url_for_file")
+async def get_presigned_url_for_file(file_id: str):
+    """
+    ENDPOINT: /get_presigned_url_for_file
+    :param file_id:
+    :return:
+    """
+    url = file_storage.get_presigned_url(file_id)
+    if url is None:
+        return response(success=False, message="Failed to generate presigned URL", status_code=500)
+    return response(success=True, data={"url": url})
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
@@ -228,16 +292,6 @@ def generate_token(request: Request):
         return response(success=True, data={"access_token": access_token})
     else:
         return response(success=False, message="Failed to generate access token", status_code=401)
-
-
-@app.get("/generate_test_token")
-def generate_test_token():
-    """
-    Generates a test token.
-    :return:
-    """
-    token = jwt_generator("2", "test_first_name", "test_last_name", "2", {"student": True, "teacher": True, "admin": True }, "test_email")
-    return token
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/")

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -12,6 +12,8 @@ from migrations.models import Agent
 
 from utils.response import response
 from common.AgentPromptHandler import AgentPromptHandler
+from common.EmbeddingHandler import embed_file
+from common.FileStorageHandler import FileStorageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +23,14 @@ agent_prompt_handler = AgentPromptHandler()
 
 class AgentCreate(BaseModel):
     agent_name: str
-    course_id: Optional[str] = None
+    workspace_id: str
     creator: Optional[str] = None
     voice: bool = Field(default=False)
     status: int = Field(default=1, description='1-active, 0-inactive, 2-deleted')
     allow_model_choice: bool = Field(default=True)
     model: Optional[str] = None
     system_prompt: str
+    agent_files: Optional[dict] = {}
 
 
 class AgentDelete(BaseModel):
@@ -36,20 +39,21 @@ class AgentDelete(BaseModel):
 
 class AgentUpdate(BaseModel):
     agent_id: UUID
+    workspace_id: Optional[str] = None
     agent_name: Optional[str] = None
-    course_id: Optional[str] = None
     creator: Optional[str] = None
     voice: Optional[bool] = None
     status: Optional[int] = None
     allow_model_choice: Optional[bool] = None
     model: Optional[str] = None
     system_prompt: str
+    agent_files: Optional[dict] = {}
 
 
 class AgentResponse(BaseModel):
     agent_id: UUID
     agent_name: str
-    course_id: Optional[str] = None
+    workspace_id: str
     creator: Optional[str] = None
     voice: bool
     status: int
@@ -62,26 +66,43 @@ class AgentResponse(BaseModel):
 
 @router.post("/add_agent")
 def create_agent(
+        request: Request,
         agent_data: AgentCreate,
         db: Session = Depends(get_db)
 ):
     """
     Create a new agent record in the database.
     """
+    if request.state.user_jwt_content['workspace_role'].get(agent_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    new_agent_id = uuid4()
     new_agent = Agent(
-        agent_id=uuid4(),
+        agent_id=new_agent_id,
         created_at=datetime.now(),
         agent_name=agent_data.agent_name,
-        course_id=agent_data.course_id,
+        workspace_id=agent_data.workspace_id,
         creator=agent_data.creator,
         updated_at=datetime.now(),
         voice=agent_data.voice,
         status=agent_data.status,
         allow_model_choice=agent_data.allow_model_choice,
-        model=agent_data.model
+        model=agent_data.model,
+        agent_files=agent_data.agent_files
     )
     db.add(new_agent)
     agent_prompt_handler.put_agent_prompt(str(new_agent.agent_id), agent_data.system_prompt)
+
+    # if there is agent files, embed the files with pinecone
+    if agent_data.agent_files:
+        fsh = FileStorageHandler()
+        for file_id, file_name in agent_data.agent_files.items():
+            file_path = fsh.get_file(file_id)
+            if file_path:
+                embed_file("namespace-test", f'{agent_data.workspace_id}-{new_agent_id}',
+                           file_path, file_id, file_name, "pdf", str(new_agent_id), agent_data.workspace_id)
+            else:
+                logger.error(f"Failed to embed file: {file_id}")
 
     try:
         db.commit()
@@ -96,13 +117,17 @@ def create_agent(
 
 @router.post("/delete_agent")
 def delete_agent(
+        request: Request,
         delete_data: AgentDelete,
         db: Session = Depends(get_db)
 ):
     """
     Delete an existing agent record in the database by marking it as status=2.
-    Will not actually delete the record or prompt from the database.
+    Will not actually delete the record or prompt from the database..
     """
+    if request.state.user_jwt_content['workspace_role'].get(delete_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     agent_to_delete = db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     if not agent_to_delete:
         logger.error(f"Agent not found: {delete_data.agent_id}")
@@ -121,12 +146,16 @@ def delete_agent(
 
 @router.post("/update_agent")
 def edit_agent(
+        request: Request,
         update_data: AgentUpdate,
         db: Session = Depends(get_db)
 ):
     """
     Update an existing agent record in the database.
     """
+    if request.state.user_jwt_content['workspace_role'].get(update_data.workspace_id, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     agent_to_update = db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
     if not agent_to_update:
         logger.error(f"Agent not found: {update_data.agent_id}")
@@ -135,8 +164,8 @@ def edit_agent(
     # Update the agent fields if provided
     if update_data.agent_name is not None:
         agent_to_update.agent_name = update_data.agent_name
-    if update_data.course_id is not None:
-        agent_to_update.course_id = update_data.course_id
+    if update_data.workspace_id is not None:
+        agent_to_update.workspace_id = update_data.workspace_id
     if update_data.creator is not None:
         agent_to_update.creator = update_data.creator
     if update_data.voice is not None:
@@ -147,6 +176,17 @@ def edit_agent(
         agent_to_update.allow_model_choice = update_data.allow_model_choice
     if update_data.model is not None:
         agent_to_update.model = update_data.model
+    if update_data.agent_files is not None:
+        agent_to_update.agent_files = update_data.agent_files
+        # embed the files with pinecone
+        fsh = FileStorageHandler()
+        for file_id, file_name in update_data.agent_files.items():
+            file_path = fsh.get_file(file_id)
+            if file_path:
+                embed_file("namespace-test", f'{update_data.workspace_id}-{update_data.agent_id}',
+                           file_path, file_id, file_name, "pdf", str(update_data.agent_id), update_data.workspace_id)
+            else:
+                logger.error(f"Failed to embed file: {file_id}")
     agent_to_update.updated_at = datetime.now()
 
     if update_data.system_prompt is not None:
@@ -165,15 +205,18 @@ def edit_agent(
 
 @router.get("/agents")
 def list_agents(
-    creator: str,
-    db: Session = Depends(get_db),
-    page: int = 1,
-    page_size: int = 10
+        request: Request,
+        workspace_id: str,
+        db: Session = Depends(get_db),
+        page: int = 1,
+        page_size: int = 10
 ):
     """
     List agents with pagination.
     """
-    query = db.query(Agent).filter(Agent.creator == creator, Agent.status != 2)  # exclude deleted agents
+    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None:
+        return response(False, status_code=403, message="You do not have access to this resource")
+    query = db.query(Agent).filter(Agent.workspace_id == workspace_id, Agent.status != 2)  # exclude deleted agents
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
@@ -186,6 +229,7 @@ def list_agents(
 
 @router.get("/agent/{agent_id}")
 def get_agent_by_id(
+        request: Request,
         agent_id: UUID,
         db: Session = Depends(get_db)
 ):
@@ -195,4 +239,8 @@ def get_agent_by_id(
     agent = db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()  # exclude deleted agents
     if agent is None:
         response(False, status_code=404, message="Agent not found")
+    agent_workspace = agent.workspace_id
+    if request.state.user_jwt_content['workspace_role'].get(agent_workspace, None) != 'teacher' and \
+            not request.state.user_jwt_content['system_admin']:
+        return response(False, status_code=403, message="You do not have access to this resource")
     return response(True, data=agent)
