@@ -11,6 +11,7 @@ import json
 from typing import Any, Optional
 import boto3
 from botocore.exceptions import ClientError
+from botocore.config import Config
 from dotenv import load_dotenv
 import uuid
 import logging
@@ -30,7 +31,7 @@ class FileStorageHandler:
 
     def __init__(self):
         load_dotenv()
-        self.s3_client = boto3.client('s3')
+        self.s3_client = boto3.client('s3', config=Config(signature_version='s3v4'))
         self.db: Optional[Session] = None
         self.redis_client = redis.Redis(
             host=os.getenv("REDIS_ADDRESS"),
