@@ -40,7 +40,7 @@ class UserAuth:
                     last_name=user_info['sn'],
                     email=user_info['mail'],
                     student_id=student_id,
-                    workspace_role={"wsom": "student"},
+                    workspace_role={},
                     system_admin=False,
                     # default role is student
                     school_id=0,
