@@ -74,7 +74,7 @@ def get_thread_list(
     List threads with pagination, filtered by agent creator.
    """
     user_workspace_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
-    if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
+    if user_workspace_role != 'teacher' and request.state.user_jwt_content['student_id'] != student_id:
         return response(False, status_code=403, message="You do not have access to this resource")
     query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Thread.agent_name,
                       Thread.workspace_id, Thread.student_id).
@@ -83,7 +83,8 @@ def get_thread_list(
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
     if student_id:
-        query = query.filter(Thread.student_id == student_id)
+        if student_id != "all":
+            query = query.filter(Thread.student_id == student_id)
     if start_date:
         try:
             start_datetime = datetime.fromisoformat(start_date)
