@@ -169,6 +169,7 @@ class FileStorageHandler:
                 return str(file_id)
             except Exception as e:
                 logger.error(f"Error saving file metadata to database: {str(e)}")
+                self._get_db().rollback()
                 return None
         else:
             logger.error(f"Failed to upload file {file_name} to S3")
