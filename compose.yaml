@@ -23,6 +23,9 @@ services:
       - ai4edu-secret
     networks:
       - localnet
+    depends_on:
+      db:
+        condition: service_healthy
   redis-local-server:
     image: redis/redis-stack:latest
     container_name: redis-stack
@@ -30,6 +33,28 @@ services:
       - 8001:8001
     networks:
       - localnet
+  db:
+    image: postgres
+    restart: always
+    user: postgres
+    env_file: ./.env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d
+    ports:
+      - 5432:5432
+    expose:
+      - 5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - localnet
+
+volumes:
+  db-data:
 
 networks:
   localnet:
@@ -37,6 +62,7 @@ networks:
 secrets:
   ai4edu-secret:
     file: .env
+
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
