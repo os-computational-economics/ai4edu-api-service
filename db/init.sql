@@ -55,6 +55,24 @@ comment on column ai_files.file_ext is 'extension of file, without dot';
 
 comment on column ai_files.file_status is ' 0 is deleted';
 
+create table ai_users
+(
+    user_id        serial
+        constraint ai_users_pk
+            unique,
+    first_name     varchar(60)           not null,
+    last_name      varchar(60)           not null,
+    email          varchar(150)          not null
+        unique,
+    student_id     varchar(20)           not null,
+    workspace_role json                  not null,
+    school_id      integer               not null,
+    last_login     timestamp,
+    create_at      timestamp,
+    system_admin   boolean default false not null,
+    primary key (user_id, email)
+);
+
 create table ai_refresh_tokens
 (
     token_id           uuid                    not null
@@ -94,40 +112,4 @@ create table ai_user_workspace
     student_id   varchar(16)                                      not null,
     constraint ai_user_workspace_pk
         primary key (workspace_id, student_id)
-);
-
-create table ai_users
-(
-    user_id        serial
-        constraint ai_users_pk
-            unique,
-    first_name     varchar(60)           not null,
-    last_name      varchar(60)           not null,
-    email          varchar(150)          not null
-        unique,
-    student_id     varchar(20)           not null,
-    workspace_role json                  not null,
-    school_id      integer               not null,
-    last_login     timestamp,
-    create_at      timestamp,
-    system_admin   boolean default false not null,
-    primary key (user_id, email)
-);
-
-create table ai_users
-(
-    user_id        serial
-        constraint ai_users_pk
-            unique,
-    first_name     varchar(60)           not null,
-    last_name      varchar(60)           not null,
-    email          varchar(150)          not null
-        unique,
-    student_id     varchar(20)           not null,
-    workspace_role json                  not null,
-    school_id      integer               not null,
-    last_login     timestamp,
-    create_at      timestamp,
-    system_admin   boolean default false not null,
-    primary key (user_id, email)
 );

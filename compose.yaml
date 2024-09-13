@@ -52,6 +52,17 @@ services:
       retries: 5
     networks:
       - localnet
+  nginx:
+    image: nginx:latest
+    env_file: ./.env
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx_conf/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - localnet
 
 volumes:
   db-data:
