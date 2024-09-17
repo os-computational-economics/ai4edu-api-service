@@ -69,6 +69,7 @@ volumes:
 
 networks:
   localnet:
+    driver: bridge
 
 secrets:
   ai4edu-secret:

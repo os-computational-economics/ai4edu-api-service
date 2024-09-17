@@ -22,6 +22,8 @@
             podman
             python3
             openssl
+            postman
+            dig
             pgadmin4-desktopmode
           ];
         };

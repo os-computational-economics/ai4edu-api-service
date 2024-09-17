@@ -61,6 +61,7 @@ server {
     ssl_session_timeout 10m;
     add_header Strict-Transport-Security "max-age=31536000";
     error_page 497  https://$host$request_uri;
+    resolver host.docker.internal ipv6=off valid=5s;
 
     location /v1/dev/admin/ {
         proxy_set_header Host $http_host;
@@ -70,7 +71,8 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_redirect off;
         proxy_buffering off;
-        proxy_pass http://$ADMIN_DEV_NAME:5000;
+        set $backend "http://$ADMIN_DEV_NAME:5000";
+        proxy_pass $backend;
     }
 
     location /v1/prod/admin/ {
@@ -81,7 +83,8 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_redirect off;
         proxy_buffering off;
-        proxy_pass http://$ADMIN_PROD_NAME:5000;
+        set $backend "http://$ADMIN_PROD_NAME:5000";
+        proxy_pass $backend;
     }
 
     location /v1/dev/user/ {
@@ -92,7 +95,8 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_redirect off;
         proxy_buffering off;
-        proxy_pass http://$USER_DEV_NAME:5000;
+        set $backend "http://$USER_DEV_NAME:5000";
+        proxy_pass $backend;
     }
 
     location /v1/prod/user/ {
@@ -103,7 +107,8 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_redirect off;
         proxy_buffering off;
-        proxy_pass http://$USER_PROD_NAME:5000;
+        set $backend "http://$USER_PROD_NAME:5000";
+        proxy_pass $backend;
     }
 
     location / {
