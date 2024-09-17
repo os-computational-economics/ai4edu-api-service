@@ -331,7 +331,7 @@ def read_root(request: Request):
         # Get the current time
         now = datetime.now()
         # Format the time
-        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        formatted_time = now.strftime("%Y-%m-%d-%H:%M:%S")
 
         #  test redis connection
         r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
@@ -355,8 +355,12 @@ def read_root(request: Request):
 
         # test AWS S3 access
         file_storage = FileStorageHandler()
-        s3_test = file_storage.put_file("test_dir/test.txt", "success-" + formatted_time)
-        s3_test_str = file_storage.get_file("test_dir/test.txt")
+        # open file and read as bytes
+        with open("./volume_cache/test.txt", "rb") as f:
+            file_content = f.read()
+            s3_test_put_file_id = file_storage.put_file(file_content, "success-" + formatted_time, "desc", "text/plain",
+                                                        "")
+        s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id)
 
         # test AWS DynamoDB access
         # current timestamp
@@ -376,8 +380,8 @@ def read_root(request: Request):
                 "POSTGRES": db_result,
                 "VOLUME": volume_result,
                 "S3": {
-                    "Test": s3_test,
-                    "Message": s3_test_str
+                    "File ID": s3_test_put_file_id,
+                    "File Path": s3_test_get_file_path
                 },
                 "DYNAMODB": {
                     "Message Content": test_msg_get_content,

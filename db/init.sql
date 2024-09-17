@@ -16,6 +16,8 @@ create table db_version
             primary key
 );
 
+insert into db_version (version) values ('dev');
+
 create table ai_agents
 (
     agent_id           uuid                         not null

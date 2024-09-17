@@ -39,10 +39,14 @@ services:
     user: postgres
     env_file: ./.env
     volumes:
+      # This is the volume that persists the database data between container restarts.
+      # Remove this "db-data" volume to start with a fresh database every time.
       - db-data:/var/lib/postgresql/data
       - ./db:/docker-entrypoint-initdb.d
-    ports:
-      - 5432:5432
+    # If you want to use an external database viewer, uncomment the following "ports" section.
+    # NOTE: This will cause port conflicts if you have a local PostgreSQL server running.
+#    ports:
+#      - 5432:5432
     expose:
       - 5432
     healthcheck:
