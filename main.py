@@ -312,6 +312,8 @@ async def ping():
 @app.get(f"{URL_PATHS['current_prod_user']}/ai4edu_testing")
 def read_root(request: Request):
     """
+    Please remove (comment out) the app.add_middleware(AuthorizationMiddleware) line from main.py before running this endpoint.
+    This endpoint is for testing purposes. If you see no errors, then your local environment is set up correctly.
     Test endpoint. accessing this endpoint will from any path will trigger a test of the following:
     1. Redis connection
     2. environment variables
