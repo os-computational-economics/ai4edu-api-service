@@ -69,7 +69,7 @@ services:
       - 443:443
     volumes:
     # TODO: Migrate this to use the new templater that supports both local and deploys (see compose.yaml#62)
-      - ./files/nginx_conf:/etc/nginx/conf.d:ro
+      - ./files/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./files/ssl:/etc/nginx/ssl:ro
     networks:
       - devnet
