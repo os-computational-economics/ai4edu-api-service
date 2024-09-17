@@ -68,7 +68,7 @@ services:
       - 80:80
       - 443:443
     volumes:
-    # Migrate this to use the new templater that supports both local and deploys (see compose.yaml#62)
+    # TODO: Migrate this to use the new templater that supports both local and deploys (see compose.yaml#62)
       - ./files/nginx_conf:/etc/nginx/conf.d:ro
       - ./files/ssl:/etc/nginx/ssl:ro
     networks:
@@ -76,7 +76,7 @@ services:
       - prodnet
 
 networks:
-  # Explictly mark networks as bridges, as DNS resolution only works on bridged networking
+  # Explicitly mark networks as bridges, as DNS resolution only works on bridged networking
   devnet:
     driver: bridge
   prodnet:

@@ -51,6 +51,8 @@ server {
 
     # Generate local certificates to test ssl with:
     # `openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=."`
+    # If you are first time local testing, do the following BEFORE running the above command (at the root of the project):
+    # `mkdir -p ssl && cd ssl`
     ssl_certificate /etc/nginx/ssl/${DOMAIN}_bundle.crt;
     ssl_certificate_key /etc/nginx/ssl/${DOMAIN}.key;
 
