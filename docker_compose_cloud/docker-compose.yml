@@ -68,6 +68,7 @@ services:
       - 80:80
       - 443:443
     volumes:
+    # TODO: Migrate this to use the new templater that supports both local and deploys (see compose.yaml#62)
       - ./files/nginx_conf:/etc/nginx/conf.d:ro
       - ./files/ssl:/etc/nginx/ssl:ro
     networks:
@@ -75,8 +76,11 @@ services:
       - prodnet
 
 networks:
+  # Explicitly mark networks as bridges, as DNS resolution only works on bridged networking
   devnet:
+    driver: bridge
   prodnet:
+    driver: bridge
 
 secrets:
   ai4edu-secret:

@@ -306,11 +306,10 @@ async def ping():
     return response(success=True, message="pong")
 
 
-@app.get(f"{URL_PATHS['current_dev_admin']}/")
-@app.get(f"{URL_PATHS['current_prod_admin']}/")
-@app.get(f"{URL_PATHS['current_dev_user']}/")
-@app.get(f"{URL_PATHS['current_prod_user']}/")
-@app.get("/")
+@app.get(f"{URL_PATHS['current_dev_admin']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_prod_admin']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_dev_user']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_prod_user']}/ai4edu_testing")
 def read_root(request: Request):
     """
     Test endpoint. accessing this endpoint will from any path will trigger a test of the following:
