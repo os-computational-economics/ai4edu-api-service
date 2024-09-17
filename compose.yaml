@@ -63,10 +63,12 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ./nginx_conf/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ./nginx_conf/nginx.local.conf.template:/etc/nginx/templates/nginx.local.conf.template:ro
       - ./ssl:/etc/nginx/ssl:ro
     networks:
       - localnet
+    depends_on:
+      - ai4edu-api-server
 
 volumes:
   db-data:
