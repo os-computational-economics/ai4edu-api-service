@@ -56,6 +56,30 @@ services:
       retries: 5
     networks:
       - localnet
+  db-admin:
+    image: dpage/pgadmin4:latest
+    env_file:
+      - ./.env
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_ENDPOINT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    ports:
+      - 5050:80
+    depends_on:
+      db:
+        condition: service_healthy
+    user: root
+    volumes:
+      - ./db/pgadmin_entrypoint.sh:/entrypoint_custom.sh
+    entrypoint: /entrypoint_custom.sh
+    networks:
+      - localnet
   nginx:
     image: nginx:latest
     env_file: ./.env
