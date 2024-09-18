@@ -323,7 +323,7 @@ def read_root(request: Request):
     6. AWS DynamoDB access
     ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user
     :param request:
-    :return:
+    :return: dict of test results
     """
     # test environment variables
     redis_address = config.get("REDIS_ADDRESS") or os.getenv("REDIS_ADDRESS")  # local is prioritized
