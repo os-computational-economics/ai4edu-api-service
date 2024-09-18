@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class FileStorageHandler:
     LOCAL_FOLDER = "./volume_cache/"
-    BUCKET_NAME = "bucket-57h03x"
+    BUCKET_NAME = "ai4edu-storage"
     S3_FOLDER = "ai4edu_data/"
     REDIS_CACHE_EXPIRY = 60 * 60 * 24  # 24 hours in seconds
 
