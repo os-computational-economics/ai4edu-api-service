@@ -321,7 +321,7 @@ def read_root(request: Request):
     4. docker volume access at ./volume_cache
     5. AWS S3 access
     6. AWS DynamoDB access
-    ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
+    ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user
     :param request:
     :return:
     """
