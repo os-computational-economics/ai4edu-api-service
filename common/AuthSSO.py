@@ -15,6 +15,7 @@ import os
 
 class AuthSSO:
     CURRENT_ENV = os.getenv("REDIS_ADDRESS")
+    DOMAIN = os.getenv("DOMAIN")
 
     def __init__(self, ticket, came_from):
         self.student_id = None
@@ -29,12 +30,12 @@ class AuthSSO:
         url = "https://login.case.edu/cas/serviceValidate"
         params = {
             "ticket": self.ticket,
-            "service": f"https://ai4edu-api.jerryang.org/v1/prod/user/sso?came_from={self.came_from}",
+            "service": f"https://{self.DOMAIN}/v1/prod/user/sso?came_from={self.came_from}",
         }
-        if self.CURRENT_ENV == "redis-dev-server":
+        if self.CURRENT_ENV == "redis-dev-server" or self.CURRENT_ENV == "redis-local-server":
             params = {
                 "ticket": self.ticket,
-                "service": f"https://ai4edu-api.jerryang.org/v1/dev/user/sso?came_from={self.came_from}",
+                "service": f"https://{self.DOMAIN}/v1/dev/user/sso?came_from={self.came_from}",
             }
         response = requests.get(url, params=params)
         root = ET.fromstring(response.text)

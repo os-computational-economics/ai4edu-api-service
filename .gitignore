@@ -37,3 +37,15 @@ dist/
 /.venv/
 /ai4edu_api_volume_local/
 /volume_cache/
+
+# PostgreSQL
+
+password.txt
+
+# Direnv
+
+.direnv
+
+# Nginx
+
+ssl

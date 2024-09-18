@@ -306,13 +306,14 @@ async def ping():
     return response(success=True, message="pong")
 
 
-@app.get(f"{URL_PATHS['current_dev_admin']}/")
-@app.get(f"{URL_PATHS['current_prod_admin']}/")
-@app.get(f"{URL_PATHS['current_dev_user']}/")
-@app.get(f"{URL_PATHS['current_prod_user']}/")
-@app.get("/")
+@app.get(f"{URL_PATHS['current_dev_admin']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_prod_admin']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_dev_user']}/ai4edu_testing")
+@app.get(f"{URL_PATHS['current_prod_user']}/ai4edu_testing")
 def read_root(request: Request):
     """
+    Please remove (comment out) the app.add_middleware(AuthorizationMiddleware) line from main.py before running this endpoint.
+    This endpoint is for testing purposes. If you see no errors, then your local environment is set up correctly.
     Test endpoint. accessing this endpoint will from any path will trigger a test of the following:
     1. Redis connection
     2. environment variables
@@ -320,9 +321,9 @@ def read_root(request: Request):
     4. docker volume access at ./volume_cache
     5. AWS S3 access
     6. AWS DynamoDB access
-    ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user, /
+    ENDPOINTS: /v1/dev/admin, /v1/prod/admin, /v1/dev/user, /v1/prod/user
     :param request:
-    :return:
+    :return: dict of test results
     """
     # test environment variables
     redis_address = config.get("REDIS_ADDRESS") or os.getenv("REDIS_ADDRESS")  # local is prioritized
@@ -332,7 +333,7 @@ def read_root(request: Request):
         # Get the current time
         now = datetime.now()
         # Format the time
-        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        formatted_time = now.strftime("%Y-%m-%d-%H:%M:%S")
 
         #  test redis connection
         r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
@@ -356,8 +357,12 @@ def read_root(request: Request):
 
         # test AWS S3 access
         file_storage = FileStorageHandler()
-        s3_test = file_storage.put_file("test_dir/test.txt", "success-" + formatted_time)
-        s3_test_str = file_storage.get_file("test_dir/test.txt")
+        # open file and read as bytes
+        with open("./volume_cache/test.txt", "rb") as f:
+            file_content = f.read()
+            s3_test_put_file_id = file_storage.put_file(file_content, "success-" + formatted_time, "desc", "text/plain",
+                                                        "")
+        s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id)
 
         # test AWS DynamoDB access
         # current timestamp
@@ -377,8 +382,8 @@ def read_root(request: Request):
                 "POSTGRES": db_result,
                 "VOLUME": volume_result,
                 "S3": {
-                    "Test": s3_test,
-                    "Message": s3_test_str
+                    "File ID": s3_test_put_file_id,
+                    "File Path": s3_test_get_file_path
                 },
                 "DYNAMODB": {
                     "Message Content": test_msg_get_content,
