@@ -63,7 +63,7 @@ server {
     ssl_session_timeout 10m;
     add_header Strict-Transport-Security "max-age=31536000";
     error_page 497  https://$host$request_uri;
-    resolver host.docker.internal ipv6=off valid=5s;
+    resolver 127.0.0.11 ipv6=off valid=5s;
 
     location /v1/dev/admin/ {
         proxy_set_header Host $http_host;
