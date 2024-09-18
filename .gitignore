@@ -49,3 +49,5 @@ password.txt
 # Nginx
 
 ssl
+/.env.backup
+/.env.base64
