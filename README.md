@@ -1,5 +1,27 @@
 # AI 4 EDU Backend API containers
 
+## Quick Start Guide (without using nix)
+### Please follow the steps below to get the backend API up and running on your local machine.
+1. Clone the repository to your local machine.
+2. Install Docker on your local machine. (https://docs.docker.com/get-docker/)
+3. Run the following command (one line at a time) in the root directory of the repository to generate the SSL certificates:
+    ```
+    mkdir -p ssl && cd ssl
+    openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=."
+    cd ..
+    ```
+4. Create a new file named `.env` in the root directory of the repository and copy the contents of the `.env.template` file into the `.env` file.
+5. Fill in the values in the `.env` file with the appropriate values.
+6. Run the following command in the root directory of the repository to start the backend API:
+    ```
+    docker-compose up --build
+    ```
+7. In your local frontend code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
+   1. Do not push this change to the repository as it is only for local development.
+8. Tools to help you develop:
+    - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
+    - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
+
 ## This is the repo for the AI4EDU experimental project.
 - The main entry point is main.py. This is the fastapi app that serves the API.
 - To run a local instance of the app, run "run_server_local.py"
