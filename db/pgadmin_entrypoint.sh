@@ -5,7 +5,7 @@ PGPASSFILE="$HOME/.pgpass"
 
 # Create the .pgpass file for password
 echo "Creating pgpass file at $PGPASSFILE"
-echo "${POSTGRES_HOST}:*:*:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > "$PGPASSFILE"
+echo "${POSTGRES_ENDPOINT}:*:*:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > "$PGPASSFILE"
 chmod 600 $PGPASSFILE
 cat $PGPASSFILE
 echo "pgpass file created successfully."
@@ -17,7 +17,7 @@ cat << EOF > $SERVERS_JSON_PATH
         "1": {
             "Name": "My Postgres",
             "Group": "Servers",
-            "Host": "${POSTGRES_HOST}",
+            "Host": "${POSTGRES_ENDPOINT}",
             "Port": 5432,
             "MaintenanceDB": "${POSTGRES_DB}",
             "Username": "${POSTGRES_USER}",
