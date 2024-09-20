@@ -4,6 +4,7 @@
 ### Please follow the steps below to get the backend API up and running on your local machine.
 1. Clone the repository to your local machine.
 2. Install Docker on your local machine. (https://docs.docker.com/get-docker/)
+   1. It is recommended to install **Docker Desktop** for Windows or Mac. Especially if you are new to Docker.
 3. Run the following command (one line at a time) in the root directory of the repository to generate the SSL certificates:
     ```
     mkdir -p ssl && cd ssl
@@ -14,9 +15,11 @@
 5. Fill in the values in the `.env` file with the appropriate values.
 6. Run the following command in the root directory of the repository to start the backend API:
     ```
-    docker-compose up --build
+    docker-compose -f compose.yaml -p ai4edu-api-service up -d --build
     ```
-7. In your local frontend code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
+   1. This command will start a stack of containers that include the backend API, the database, and the Redis cache.
+   2. You can manage (stop, remove, inspect, etc.) the containers using the Docker Desktop application (installed in Step 2) or the docker command line interface.
+7. In your local **frontend** code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
    1. Do not push this change to the repository as it is only for local development.
 8. Tools to help you develop:
     - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
