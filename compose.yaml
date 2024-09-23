@@ -59,7 +59,9 @@ services:
     networks:
       - localnet
   db-admin:
-    image: dpage/pgadmin4:latest
+    image: ai4edu-pgadmin-template:local
+    build:
+      context: ./db/pgadmin
     env_file:
       - ./.env
     ports:
@@ -68,9 +70,6 @@ services:
       db:
         condition: service_healthy
     user: root
-    volumes:
-      - ./db/pgadmin_entrypoint.sh:/entrypoint_custom.sh:ro
-    entrypoint: /entrypoint_custom.sh
     networks:
       - localnet
   nginx:
