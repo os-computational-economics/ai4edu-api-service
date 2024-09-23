@@ -52,3 +52,5 @@ ssl
 /.env.backup
 /.env.base64
 /main.ipynb
+/.env.online
+/jwt_keys/

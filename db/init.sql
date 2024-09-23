@@ -115,3 +115,16 @@ create table ai_user_workspace
     constraint ai_user_workspace_pk
         primary key (workspace_id, student_id)
 );
+
+create table ai_workspaces
+(
+    workspace_id       varchar(16)           not null
+        constraint ai_workspaces_pk
+            primary key,
+    workspace_name     varchar(64)           not null
+        constraint ai_workspaces_pk_2
+            unique,
+    workspace_active   boolean default false not null,
+    school_id          integer default 0     not null,
+    workspace_password varchar(128)          not null
+);
