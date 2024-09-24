@@ -18,17 +18,21 @@
    1. Ask a team member for the values in the `API keys` section.
    2. Do not change anything in the `Domain and server names` and `Redis and Postgres database` sections.
    3. Copy the `publicKey.pem` and `privateKey.pem` file contents generated in Step 4 (Under the `jwt_keys` folder) to the `JWT keys` section. Keep the key header and footer lines. Keep the double quotes wrapping the key including the header and footer lines.
-7. Run the following command in the root directory of the repository to start the backend API:
+7. Run the following command in the root directory of the repository to grant execute permission to the custom entrypoint script:
+    ```
+    chmod +x db/pgadmin/custom_entrypoint.sh
+    ```
+8. Run the following command in the root directory of the repository to start the backend API:
     ```
     docker-compose -f compose.yaml -p ai4edu-api-service up -d --build
     ```
    1. This command will start a stack of containers that include the backend API, the database, and the Redis cache.
    2. You can manage (stop, remove, inspect, etc.) the containers using the Docker Desktop application (installed in Step 2) or the docker command line interface.
-8. In your local **frontend** code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
+9. In your local **frontend** code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
    1. Do not push this change to the repository as it is only for local development.
-9. Tools to help you develop:
-    - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
-    - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
+10. Tools to help you develop:
+     - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
+     - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
 
 ## This is the repo for the AI4EDU experimental project.
 - The main entry point is main.py. This is the fastapi app that serves the API.

@@ -1,0 +1,14 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "AI4EDU Postgres",
+            "Group": "Servers",
+            "Host": "${POSTGRES_ENDPOINT}",
+            "Port": 5432,
+            "MaintenanceDB": "${POSTGRES_DB}",
+            "Username": "${POSTGRES_USER}",
+            "PassFile": "${PGPASSFILE}",
+            "SSLMode": "prefer"
+        }
+    }
+}

@@ -11,22 +11,13 @@ cat $PGPASSFILE
 echo "pgpass file created successfully."
 
 echo "Creating servers.json file in $SERVERS_JSON_PATH"
-cat << EOF > $SERVERS_JSON_PATH
-{
-    "Servers": {
-        "1": {
-            "Name": "My Postgres",
-            "Group": "Servers",
-            "Host": "${POSTGRES_ENDPOINT}",
-            "Port": 5432,
-            "MaintenanceDB": "${POSTGRES_DB}",
-            "Username": "${POSTGRES_USER}",
-            "PassFile": "$PGPASSFILE",
-            "SSLMode": "prefer"
-        }
-    }
-}
-EOF
+# Substitute placeholders in the template file using sed
+sed \
+  -e "s|\${POSTGRES_ENDPOINT}|${POSTGRES_ENDPOINT}|g" \
+  -e "s|\${POSTGRES_DB}|${POSTGRES_DB}|g" \
+  -e "s|\${POSTGRES_USER}|${POSTGRES_USER}|g" \
+  -e "s|\${PGPASSFILE}|${PGPASSFILE}|g" \
+  /pgadmin_init/servers.json.template > "$SERVERS_JSON_PATH"
 
 echo "$SERVERS_JSON_PATH file created successfully."
 cat $SERVERS_JSON_PATH

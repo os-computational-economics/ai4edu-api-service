@@ -69,8 +69,8 @@ services:
         condition: service_healthy
     user: root
     volumes:
-      - ./db/pgadmin_entrypoint.sh:/entrypoint_custom.sh:ro
-    entrypoint: /entrypoint_custom.sh
+      - ./db/pgadmin:/pgadmin_init:ro
+    entrypoint: /pgadmin_init/custom_entrypoint.sh
     networks:
       - localnet
   nginx:
