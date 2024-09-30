@@ -62,6 +62,7 @@ jobs:
             echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
             ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
         - name: add secret sauce
+          if: ${{ !cancelled() }}
           run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && touch ${{ env.SEC_FILE_NAME }} && echo '${{ secrets.DEV_SECRETS }}' | base64 -d > ${{ env.SEC_FILE_NAME }} && exit"
         - name: connect and pull
           if: ${{ !cancelled() }}
