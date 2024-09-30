@@ -2,6 +2,7 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
   outputs = {...}@inputs:
   inputs.flake-utils.lib.eachDefaultSystem (system: let
@@ -125,6 +126,12 @@
         };
         default = docker-python;
       };
+      formatter = let 
+        treefmtconfig = inputs.treefmt-nix.lib.evalModule pkgs {
+          projectRootFile = "flake.nix";
+          programs.black.enable = true;
+        };
+      in treefmtconfig.config.build.wrapper;
       apps = rec {
         pgadmin = {
           type = "app";
