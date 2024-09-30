@@ -8,7 +8,14 @@
 """
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, UploadFile, Depends
+from fastapi import (
+    FastAPI,
+    Request,
+    HTTPException,
+    BackgroundTasks,
+    UploadFile,
+    Depends,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv, dotenv_values
@@ -46,8 +53,7 @@ import logging
 from middleware.authorization import AuthorizationMiddleware, extract_token
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s:     %(name)s - %(message)s'
+    level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s"
 )
 
 DEV_PREFIX = "/dev"
@@ -75,8 +81,11 @@ load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
 load_dotenv()
 
 # initialize FastAPI app and OpenAI client
-app = FastAPI(docs_url=f"{URL_PATHS['current_dev_admin']}/docs", redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
-              openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json")
+app = FastAPI(
+    docs_url=f"{URL_PATHS['current_dev_admin']}/docs",
+    redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
+    openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json",
+)
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 file_storage = FileStorageHandler()
@@ -100,8 +109,12 @@ app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/acces
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/access")
 
 # Admin WorkspaceRouter
-app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_dev_admin']}/workspace")
-app.include_router(WorkspaceRouter, prefix=f"{URL_PATHS['current_prod_admin']}/workspace")
+app.include_router(
+    WorkspaceRouter, prefix=f"{URL_PATHS['current_dev_admin']}/workspace"
+)
+app.include_router(
+    WorkspaceRouter, prefix=f"{URL_PATHS['current_prod_admin']}/workspace"
+)
 
 # system authorization middleware before CORS middleware, so it executes after CORS
 app.add_middleware(AuthorizationMiddleware)
@@ -155,7 +168,9 @@ async def stream_chat(chat_stream_model: ChatStreamModel):
     # auth = DynamicAuth()
     # if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
     #     return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
-    chat_instance = ChatStream(chat_stream_model.provider, openai_client, anthropic_client)
+    chat_instance = ChatStream(
+        chat_stream_model.provider, openai_client, anthropic_client
+    )
     return chat_instance.stream_chat(chat_stream_model)
 
 
@@ -172,7 +187,9 @@ def delete_file_after_delay(file_path: str, delay: float):
 
 @app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
-async def get_tts_file(tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks):
+async def get_tts_file(
+    tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
+):
     """
     ENDPOINT: /user/get_tts_file
     serves the TTS audio file for the specified session id and chunk id.
@@ -181,10 +198,14 @@ async def get_tts_file(tts_session_id: str, chunk_id: str, background_tasks: Bac
     :param background_tasks:
     :return:
     """
-    file_location = f"{TtsStream.TTS_AUDIO_CACHE_FOLDER}/{tts_session_id}_{chunk_id}.mp3"
+    file_location = (
+        f"{TtsStream.TTS_AUDIO_CACHE_FOLDER}/{tts_session_id}_{chunk_id}.mp3"
+    )
     if os.path.isfile(file_location):
         # Add the delete_file_after_delay function as a background task
-        background_tasks.add_task(delete_file_after_delay, file_location, 60)  # 60 seconds delay
+        background_tasks.add_task(
+            delete_file_after_delay, file_location, 60
+        )  # 60 seconds delay
         return FileResponse(path=file_location, media_type="audio/mpeg")
     else:
         raise HTTPException(status_code=404, detail="File not found")
@@ -200,7 +221,9 @@ def get_temp_stt_auth_code(dynamic_auth_code: str):
     """
     auth = DynamicAuth()
     if not auth.verify_auth_code(dynamic_auth_code):
-        return SttApiKeyResponse(status="fail", error_message="Invalid auth code", key="")
+        return SttApiKeyResponse(
+            status="fail", error_message="Invalid auth code", key=""
+        )
     stt_key_instance = SttApiKey()
     api_key, _ = stt_key_instance.generate_key()
     return SttApiKeyResponse(status="success", error_message=None, key=api_key)
@@ -221,9 +244,11 @@ def get_new_thread(request: Request, agent_id: str, workspace_id: str):
 @app.post(f"{URL_PATHS['current_prod_admin']}/upload_file")
 @app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
 @app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
-async def upload_file(file: UploadFile,
-                      file_desc: Optional[str] = None,
-                      chunking_separator: Optional[str] = None):
+async def upload_file(
+    file: UploadFile,
+    file_desc: Optional[str] = None,
+    chunking_separator: Optional[str] = None,
+):
     """
     ENDPOINT: /upload_file
     :param file:
@@ -246,12 +271,16 @@ async def upload_file(file: UploadFile,
             file_name=file.filename,
             file_desc=file_desc or "",
             file_type=file_type,
-            chunking_separator=chunking_separator
+            chunking_separator=chunking_separator,
         )
 
         if file_id is None:
-            return response(success=False, message="Failed to upload file", status_code=500)
-        return response(success=True, data={"file_id": file_id, "file_name": file.filename})
+            return response(
+                success=False, message="Failed to upload file", status_code=500
+            )
+        return response(
+            success=True, data={"file_id": file_id, "file_name": file.filename}
+        )
     except Exception as e:
         logging.error(f"Failed to upload file: {str(e)}")
     return response(success=False, message="unable to upload file", status_code=500)
@@ -269,7 +298,9 @@ async def get_presigned_url_for_file(file_id: str):
     """
     url = file_storage.get_presigned_url(file_id)
     if url is None:
-        return response(success=False, message="Failed to generate presigned URL", status_code=500)
+        return response(
+            success=False, message="Failed to generate presigned URL", status_code=500
+        )
     return response(success=True, data={"url": url})
 
 
@@ -283,15 +314,19 @@ def generate_token(request: Request):
     Generates a temporary STT auth code for the user.
     :return:
     """
-    tokens = extract_token(request.headers.get('Authorization', ''))
-    if tokens['refresh_token'] is None:
-        return response(success=False, message="No refresh token provided", status_code=401)
+    tokens = extract_token(request.headers.get("Authorization", ""))
+    if tokens["refresh_token"] is None:
+        return response(
+            success=False, message="No refresh token provided", status_code=401
+        )
     auth = UserAuth()
-    access_token = auth.gen_access_token(tokens['refresh_token'])
+    access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
         return response(success=True, data={"access_token": access_token})
     else:
-        return response(success=False, message="Failed to generate access token", status_code=401)
+        return response(
+            success=False, message="Failed to generate access token", status_code=401
+        )
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/ping")
@@ -326,9 +361,14 @@ def read_root(request: Request):
     :return: dict of test results
     """
     # test environment variables
-    redis_address = config.get("REDIS_ADDRESS") or os.getenv("REDIS_ADDRESS")  # local is prioritized
+    redis_address = config.get("REDIS_ADDRESS") or os.getenv(
+        "REDIS_ADDRESS"
+    )  # local is prioritized
     if redis_address is None:
-        return {"Warning": "ENV VARIABLE NOT CONFIGURED", "request-path": str(request.url.path)}
+        return {
+            "Warning": "ENV VARIABLE NOT CONFIGURED",
+            "request-path": str(request.url.path),
+        }
     else:
         # Get the current time
         now = datetime.now()
@@ -336,9 +376,11 @@ def read_root(request: Request):
         formatted_time = now.strftime("%Y-%m-%d-%H:%M:%S")
 
         #  test redis connection
-        r = redis.Redis(host=redis_address, port=6379, protocol=3, decode_responses=True)
-        r.set('foo', 'success-' + formatted_time)
-        rds = r.get('foo')
+        r = redis.Redis(
+            host=redis_address, port=6379, protocol=3, decode_responses=True
+        )
+        r.set("foo", "success-" + formatted_time)
+        rds = r.get("foo")
 
         # test database connection
         engine = create_engine(os.getenv("DB_URI"))
@@ -360,18 +402,21 @@ def read_root(request: Request):
         # open file and read as bytes
         with open("./volume_cache/test.txt", "rb") as f:
             file_content = f.read()
-            s3_test_put_file_id = file_storage.put_file(file_content, "success-" + formatted_time, "desc", "text/plain",
-                                                        "")
+            s3_test_put_file_id = file_storage.put_file(
+                file_content, "success-" + formatted_time, "desc", "text/plain", ""
+            )
         s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id)
 
         # test AWS DynamoDB access
         # current timestamp
         test_thread_id = str(uuid.uuid4())
-        test_user_id = 'rxy216'
-        test_role = 'test'
-        test_content = 'test content'
+        test_user_id = "rxy216"
+        test_role = "test"
+        test_content = "test content"
         message = MessageStorageHandler()
-        created_at = message.put_message(test_thread_id, test_user_id, test_role, test_content)
+        created_at = message.put_message(
+            test_thread_id, test_user_id, test_role, test_content
+        )
         test_msg_get_content = message.get_message(test_thread_id, created_at).content
         test_thread_get_content = message.get_thread(test_thread_id)
 
@@ -383,12 +428,12 @@ def read_root(request: Request):
                 "VOLUME": volume_result,
                 "S3": {
                     "File ID": s3_test_put_file_id,
-                    "File Path": s3_test_get_file_path
+                    "File Path": s3_test_get_file_path,
                 },
                 "DYNAMODB": {
                     "Message Content": test_msg_get_content,
-                    "Thread Content": test_thread_get_content
-                }
+                    "Thread Content": test_thread_get_content,
+                },
             },
-            "request-path": str(request.url.path)
+            "request-path": str(request.url.path),
         }

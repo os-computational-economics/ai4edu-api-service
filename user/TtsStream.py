@@ -17,6 +17,7 @@ class TtsStream:
     """
     TtsStream: Text-to-Speech streaming with Deepgram API.
     """
+
     # Define the API endpoint
     URL = "https://api.deepgram.com/v1/speak?model=aura-asteria-en"
     TTS_AUDIO_CACHE_FOLDER = "volume_cache/tts_audio_cache"
@@ -29,7 +30,7 @@ class TtsStream:
         # Define the headers
         headers = {
             "Authorization": f"Token {self.API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         # Define the payload
@@ -46,7 +47,10 @@ class TtsStream:
             if not os.path.exists(self.TTS_AUDIO_CACHE_FOLDER):
                 os.makedirs(self.TTS_AUDIO_CACHE_FOLDER)
             # Save the response content to a file
-            with open(f"./{self.TTS_AUDIO_CACHE_FOLDER}/{self.tts_session_id}_{chunk_id}.mp3", "wb") as f:
+            with open(
+                f"./{self.TTS_AUDIO_CACHE_FOLDER}/{self.tts_session_id}_{chunk_id}.mp3",
+                "wb",
+            ) as f:
                 f.write(response.content)
             print("TTS file saved successfully.")
         else:

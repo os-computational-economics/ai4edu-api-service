@@ -32,7 +32,10 @@ class AuthSSO:
             "ticket": self.ticket,
             "service": f"https://{self.DOMAIN}/v1/prod/user/sso?came_from={self.came_from}",
         }
-        if self.CURRENT_ENV == "redis-dev-server" or self.CURRENT_ENV == "redis-local-server":
+        if (
+            self.CURRENT_ENV == "redis-dev-server"
+            or self.CURRENT_ENV == "redis-local-server"
+        ):
             params = {
                 "ticket": self.ticket,
                 "service": f"https://{self.DOMAIN}/v1/dev/user/sso?came_from={self.came_from}",
@@ -51,11 +54,16 @@ class AuthSSO:
                 access_token = user_auth.gen_access_token(refresh_token)
                 if user_id:
                     return RedirectResponse(
-                        url=f"{self.came_from}?refresh={refresh_token}&access={access_token}")
+                        url=f"{self.came_from}?refresh={refresh_token}&access={access_token}"
+                    )
                 else:
-                    return RedirectResponse(url=f"{self.came_from}?refresh=error&access=error")
+                    return RedirectResponse(
+                        url=f"{self.came_from}?refresh=error&access=error"
+                    )
             else:
-                return RedirectResponse(url=f"{self.came_from}?refresh=error&access=error")
+                return RedirectResponse(
+                    url=f"{self.came_from}?refresh=error&access=error"
+                )
 
     def get_user_info_from_xml(self, child):
         """

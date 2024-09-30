@@ -25,26 +25,32 @@ from langchain_pinecone import PineconeVectorStore
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index_name = 'namespace-test'
+index_name = "namespace-test"
 
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
         dimension=1536,
-        metric='cosine',
-        spec=ServerlessSpec(cloud='aws', region="us-east-1")
+        metric="cosine",
+        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
 
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-llm = ChatOpenAI(temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4o", streaming=True)
-llm2 = ChatAnthropic(temperature=0, api_key=ANTHROPIC_API_KEY,
-                     model_name="claude-3-5-sonnet-20240620", streaming=True)
+llm = ChatOpenAI(
+    temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4o", streaming=True
+)
+llm2 = ChatAnthropic(
+    temperature=0,
+    api_key=ANTHROPIC_API_KEY,
+    model_name="claude-3-5-sonnet-20240620",
+    streaming=True,
+)
 
 
 # vectorstore_1 = PineconeVectorStore.from_existing_index(index_name, embeddings,
@@ -57,7 +63,9 @@ llm2 = ChatAnthropic(temperature=0, api_key=ANTHROPIC_API_KEY,
 # merger_retriever = MergerRetriever(retrievers=[retriever_1, retriever_2])
 
 
-def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseChatMessageHistory:
+def get_session_history(
+    *, thread_id: str, history_from_request: dict
+) -> BaseChatMessageHistory:
     print(thread_id)
     history = ChatMessageHistory()
     for idx, message in history_from_request.items():
@@ -69,13 +77,15 @@ def get_session_history(*, thread_id: str, history_from_request: dict) -> BaseCh
     return history
 
 
-def chat_stream_with_retrieve(thread_id: str,
-                              question: str,
-                              retrieval_namespace: str,
-                              system_prompt: str = "You are a personalized assistant.",
-                              history_from_request: dict = None,
-                              llm_for_question_consolidation: str = "openai",
-                              llm_for_answer: str = "openai") -> Iterable[str]:
+def chat_stream_with_retrieve(
+    thread_id: str,
+    question: str,
+    retrieval_namespace: str,
+    system_prompt: str = "You are a personalized assistant.",
+    history_from_request: dict = None,
+    llm_for_question_consolidation: str = "openai",
+    llm_for_answer: str = "openai",
+) -> Iterable[str]:
     """
     Chat stream with retrieval.
     :param thread_id: thread id of the chat.
@@ -87,7 +97,9 @@ def chat_stream_with_retrieve(thread_id: str,
     :param llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
     :return: a generator that yields the chat messages.
     """
-    vectorstore = PineconeVectorStore.from_existing_index(index_name, embeddings, namespace=retrieval_namespace)
+    vectorstore = PineconeVectorStore.from_existing_index(
+        index_name, embeddings, namespace=retrieval_namespace
+    )
     retriever = vectorstore.as_retriever()
 
     ### Contextualize question ###
@@ -110,7 +122,7 @@ def chat_stream_with_retrieve(thread_id: str,
     history_aware_retriever = create_history_aware_retriever(
         llm2 if llm_for_question_consolidation == "anthropic" else llm,
         retriever,
-        contextualize_q_prompt
+        contextualize_q_prompt,
     )
 
     qa_system_prompt = """You are a personalized assistant. \
@@ -121,8 +133,7 @@ def chat_stream_with_retrieve(thread_id: str,
     {context}"""
 
     qa_system_prompt = qa_system_prompt.format(
-        additional_system_prompt=system_prompt,
-        context="{context}"
+        additional_system_prompt=system_prompt, context="{context}"
     )
 
     qa_prompt = ChatPromptTemplate.from_messages(
@@ -134,8 +145,7 @@ def chat_stream_with_retrieve(thread_id: str,
     )
 
     question_answer_chain = create_stuff_documents_chain(
-        llm2 if llm_for_answer == "anthropic" else llm,
-        qa_prompt
+        llm2 if llm_for_answer == "anthropic" else llm, qa_prompt
     )
 
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
@@ -167,13 +177,13 @@ def chat_stream_with_retrieve(thread_id: str,
     )
 
     for chunk in conversational_rag_chain.stream(
-            {"input": question},
-            config={
-                "configurable": {
-                    "thread_id": thread_id,
-                    "history_from_request": history_from_request
-                }
-            },
+        {"input": question},
+        config={
+            "configurable": {
+                "thread_id": thread_id,
+                "history_from_request": history_from_request,
+            }
+        },
     ):
         answer = chunk.get("answer")
         if answer:
@@ -184,6 +194,7 @@ def chat_stream_with_retrieve(thread_id: str,
             sources = chunk.get("context")
             for doc in sources:
                 yield "source", str(doc.metadata)
+
 
 # Example usage:
 # for chunk in chat_stream_with_retrieve("12345",

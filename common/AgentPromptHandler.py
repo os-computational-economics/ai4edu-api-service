@@ -19,11 +19,19 @@ class AgentPromptHandler:
     DYNAMODB_TABLE_NAME = "ai4edu_agent_prompt"
 
     def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb', region_name='us-east-2',
-                                       aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
-                                       aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"))
+        self.dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-east-2",
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
+        )
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
-        self.redis_client = redis.Redis(host=os.getenv("REDIS_ADDRESS"), port=6379, protocol=3, decode_responses=True)
+        self.redis_client = redis.Redis(
+            host=os.getenv("REDIS_ADDRESS"),
+            port=6379,
+            protocol=3,
+            decode_responses=True,
+        )
 
     def put_agent_prompt(self, agent_id: str, prompt: str) -> bool:
         """
@@ -32,12 +40,7 @@ class AgentPromptHandler:
         :param agent_id: The ID of the agent.
         """
         try:
-            self.table.put_item(
-                Item={
-                    'agent_id': agent_id,
-                    'prompt': prompt
-                }
-            )
+            self.table.put_item(Item={"agent_id": agent_id, "prompt": prompt})
             self.__cache_agent_prompt(agent_id, prompt)
             return True
         except Exception as e:
@@ -51,16 +54,20 @@ class AgentPromptHandler:
         """
         cached_prompt = self.__get_cached_agent_prompt(agent_id)
         if cached_prompt:
-            logging.info(f"Cache hit, getting the agent prompt from the cache. {agent_id}")
+            logging.info(
+                f"Cache hit, getting the agent prompt from the cache. {agent_id}"
+            )
             return cached_prompt
         # if cache miss, get the prompt from the database, and cache it
-        logging.info(f"Cache miss, getting the agent prompt from the database. {agent_id}")
+        logging.info(
+            f"Cache miss, getting the agent prompt from the database. {agent_id}"
+        )
         try:
             response = self.table.query(
-                KeyConditionExpression=Key('agent_id').eq(agent_id)
+                KeyConditionExpression=Key("agent_id").eq(agent_id)
             )
-            if response['Items']:
-                prompt = response['Items'][0]['prompt']
+            if response["Items"]:
+                prompt = response["Items"][0]["prompt"]
                 self.__cache_agent_prompt(agent_id, prompt)
                 return prompt
             else:

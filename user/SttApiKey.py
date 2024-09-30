@@ -40,12 +40,12 @@ class SttApiKey:
             "comment": "user_id",
             "scopes": ["usage:write"],
             "tags": ["user_side"],
-            "time_to_live_in_seconds": 2000
+            "time_to_live_in_seconds": 2000,
         }
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
-            "Authorization": f"Token {self.DEEPGRAM_API_KEY}"
+            "Authorization": f"Token {self.DEEPGRAM_API_KEY}",
         }
 
         response = requests.post(url, json=payload, headers=headers)

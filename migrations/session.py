@@ -15,9 +15,7 @@ load_dotenv()
 
 DATABASE_URL = config.get("DB_URI") or os.getenv("DB_URI")
 
-engine = create_engine(
-    DATABASE_URL
-)
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

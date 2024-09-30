@@ -129,7 +129,12 @@
       formatter = let 
         treefmtconfig = inputs.treefmt-nix.lib.evalModule pkgs {
           projectRootFile = "flake.nix";
-          programs.black.enable = true;
+          programs = {
+            black.enable = true;
+            toml-sort.enable = true;
+            yamlfmt.enable = true;
+            mdformat.enable = true;
+          };
         };
       in treefmtconfig.config.build.wrapper;
       apps = rec {

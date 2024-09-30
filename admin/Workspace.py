@@ -45,22 +45,28 @@ class UserRoleUpdate(BaseModel):
 
 
 @router.post("/create_workspace")
-def create_workspace(request: Request, workspace: WorkspaceCreate, db: Session = Depends(get_db)):
-    if not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+def create_workspace(
+    request: Request, workspace: WorkspaceCreate, db: Session = Depends(get_db)
+):
+    if not request.state.user_jwt_content["system_admin"]:
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
         new_workspace = Workspace(
             workspace_id=workspace.workspace_id,
             workspace_name=workspace.workspace_name,
             workspace_password=workspace.workspace_password,
-            school_id=workspace.school_id
+            school_id=workspace.school_id,
         )
         db.add(new_workspace)
         db.commit()
         return response(True, message="Workspace created successfully")
     except IntegrityError:
         db.rollback()
-        return response(False, status_code=400, message="Workspace with this name already exists")
+        return response(
+            False, status_code=400, message="Workspace with this name already exists"
+        )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
         db.rollback()
@@ -68,15 +74,27 @@ def create_workspace(request: Request, workspace: WorkspaceCreate, db: Session =
 
 
 @router.post("/add_users_via_csv")
-def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    user_workspace_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
-    if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+def add_users_via_csv(
+    request: Request,
+    workspace_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    user_workspace_role = request.state.user_jwt_content["workspace_role"].get(
+        workspace_id, None
+    )
+    if (
+        user_workspace_role != "teacher"
+        and not request.state.user_jwt_content["system_admin"]
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
         # Read the file to detect encoding
         raw_content = file.file.read()
         result = chardet.detect(raw_content)
-        encoding = result['encoding']
+        encoding = result["encoding"]
 
         # Decode the content using the detected encoding
         content = raw_content.decode(encoding)
@@ -90,51 +108,74 @@ def add_users_via_csv(request: Request, workspace_id: str, file: UploadFile = Fi
                 continue
 
             # Check if the record already exists
-            existing_user_workspace = db.query(UserWorkspace).filter_by(workspace_id=workspace_id,
-                                                                        student_id=student_id).first()
+            existing_user_workspace = (
+                db.query(UserWorkspace)
+                .filter_by(workspace_id=workspace_id, student_id=student_id)
+                .first()
+            )
 
             if existing_user_workspace:
                 continue  # Skip this row if it already exists
 
             user_workspace = UserWorkspace(
-                student_id=student_id,
-                workspace_id=workspace_id,
-                role="pending"
+                student_id=student_id, workspace_id=workspace_id, role="pending"
             )
             db.add(user_workspace)
             db.commit()
 
         return response(True, message="Users added via CSV successfully")
     except Exception as e:
-        logger.error(f"Error adding users via CSV: Please make sure you save the roster as a CSV file and try again")
+        logger.error(
+            f"Error adding users via CSV: Please make sure you save the roster as a CSV file and try again"
+        )
         db.rollback()
         return response(False, status_code=500, message=str(e))
 
 
 @router.post("/student_join_workspace")
-def student_join_workspace(request: Request, join_workspace: StudentJoinWorkspace, db: Session = Depends(get_db)):
-    user_id = request.state.user_jwt_content['user_id']
-    student_id = request.state.user_jwt_content['student_id']
+def student_join_workspace(
+    request: Request,
+    join_workspace: StudentJoinWorkspace,
+    db: Session = Depends(get_db),
+):
+    user_id = request.state.user_jwt_content["user_id"]
+    student_id = request.state.user_jwt_content["student_id"]
     try:
-        user = db.query(User).filter(User.user_id == user_id, User.student_id == student_id).first()
+        user = (
+            db.query(User)
+            .filter(User.user_id == user_id, User.student_id == student_id)
+            .first()
+        )
         if not user:
             return response(False, status_code=404, message="User not found")
 
-        workspace = db.query(Workspace).filter(Workspace.workspace_id == join_workspace.workspace_id).first()
+        workspace = (
+            db.query(Workspace)
+            .filter(Workspace.workspace_id == join_workspace.workspace_id)
+            .first()
+        )
 
         if join_workspace.password != workspace.workspace_password:
             return response(False, status_code=400, message="Failed to join workspace")
 
-        user_workspace = db.query(UserWorkspace).filter(
-            UserWorkspace.student_id == student_id,
-            UserWorkspace.workspace_id == join_workspace.workspace_id
-        ).first()
+        user_workspace = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.student_id == student_id,
+                UserWorkspace.workspace_id == join_workspace.workspace_id,
+            )
+            .first()
+        )
 
         if not user_workspace:
-            return response(False, status_code=404, message="Not authorized to join this workspace")
+            return response(
+                False, status_code=404, message="Not authorized to join this workspace"
+            )
 
         if user_workspace.role != "pending":
-            return response(False, status_code=400, message="User already in this workspace")
+            return response(
+                False, status_code=400, message="User already in this workspace"
+            )
 
         user_workspace.role = "student"
         user_workspace.user_id = user_id
@@ -150,24 +191,45 @@ def student_join_workspace(request: Request, join_workspace: StudentJoinWorkspac
 
 
 @router.post("/delete_user_from_workspace")
-def delete_user_from_workspace(request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)):
-    user_workspace_role = request.state.user_jwt_content['workspace_role'].get(user_role_update.workspace_id, None)
-    if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+def delete_user_from_workspace(
+    request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)
+):
+    user_workspace_role = request.state.user_jwt_content["workspace_role"].get(
+        user_role_update.workspace_id, None
+    )
+    if (
+        user_workspace_role != "teacher"
+        and not request.state.user_jwt_content["system_admin"]
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
-        user = db.query(User).filter(User.user_id == user_role_update.user_id,
-                                     User.student_id == user_role_update.student_id).first()
+        user = (
+            db.query(User)
+            .filter(
+                User.user_id == user_role_update.user_id,
+                User.student_id == user_role_update.student_id,
+            )
+            .first()
+        )
         if not user:
             return response(False, status_code=404, message="User not found")
 
-        user_workspace = db.query(UserWorkspace).filter(
-            UserWorkspace.user_id == user.user_id,
-            UserWorkspace.student_id == user_role_update.student_id,
-            UserWorkspace.workspace_id == user_role_update.workspace_id
-        ).first()
+        user_workspace = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.user_id == user.user_id,
+                UserWorkspace.student_id == user_role_update.student_id,
+                UserWorkspace.workspace_id == user_role_update.workspace_id,
+            )
+            .first()
+        )
 
         if not user_workspace:
-            return response(False, status_code=404, message="User not in this workspace")
+            return response(
+                False, status_code=404, message="User not in this workspace"
+            )
 
         db.delete(user_workspace)
         del user.workspace_role[user_role_update.workspace_id]
@@ -182,24 +244,45 @@ def delete_user_from_workspace(request: Request, user_role_update: UserRoleUpdat
 
 
 @router.post("/set_user_role")
-def set_user_role(request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)):
-    user_workspace_role = request.state.user_jwt_content['workspace_role'].get(user_role_update.workspace_id, None)
-    if user_workspace_role != 'teacher' and not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+def set_user_role(
+    request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)
+):
+    user_workspace_role = request.state.user_jwt_content["workspace_role"].get(
+        user_role_update.workspace_id, None
+    )
+    if (
+        user_workspace_role != "teacher"
+        and not request.state.user_jwt_content["system_admin"]
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
-        user = db.query(User).filter(User.user_id == user_role_update.user_id,
-                                     User.student_id == user_role_update.student_id).first()
+        user = (
+            db.query(User)
+            .filter(
+                User.user_id == user_role_update.user_id,
+                User.student_id == user_role_update.student_id,
+            )
+            .first()
+        )
         if not user:
             return response(False, status_code=404, message="User not found")
 
-        user_workspace = db.query(UserWorkspace).filter(
-            UserWorkspace.user_id == user.user_id,
-            UserWorkspace.student_id == user_role_update.student_id,
-            UserWorkspace.workspace_id == user_role_update.workspace_id
-        ).first()
+        user_workspace = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.user_id == user.user_id,
+                UserWorkspace.student_id == user_role_update.student_id,
+                UserWorkspace.workspace_id == user_role_update.workspace_id,
+            )
+            .first()
+        )
 
         if not user_workspace:
-            return response(False, status_code=404, message="User not in this workspace")
+            return response(
+                False, status_code=404, message="User not in this workspace"
+            )
 
         user_workspace.role = user_role_update.role
         user.workspace_role[user_role_update.workspace_id] = user_role_update.role
@@ -213,7 +296,9 @@ def set_user_role(request: Request, user_role_update: UserRoleUpdate, db: Sessio
 
 
 @router.post("/set_user_role_with_student_id")
-def set_user_role_with_student_id(request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)):
+def set_user_role_with_student_id(
+    request: Request, user_role_update: UserRoleUpdate, db: Session = Depends(get_db)
+):
     """
     This should be able to set any user to any role in any workspace, even if the user is not in that workspace
     :param request:
@@ -221,18 +306,28 @@ def set_user_role_with_student_id(request: Request, user_role_update: UserRoleUp
     :param db:
     :return:
     """
-    if not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+    if not request.state.user_jwt_content["system_admin"]:
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
-        user = db.query(User).filter(User.student_id == user_role_update.student_id).first()
+        user = (
+            db.query(User)
+            .filter(User.student_id == user_role_update.student_id)
+            .first()
+        )
         if not user:
             return response(False, status_code=404, message="User not found")
 
-        user_workspace = db.query(UserWorkspace).filter(
-            UserWorkspace.user_id == user.user_id,
-            UserWorkspace.student_id == user_role_update.student_id,
-            UserWorkspace.workspace_id == user_role_update.workspace_id
-        ).first()
+        user_workspace = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.user_id == user.user_id,
+                UserWorkspace.student_id == user_role_update.student_id,
+                UserWorkspace.workspace_id == user_role_update.workspace_id,
+            )
+            .first()
+        )
 
         if not user_workspace:
             # create a new user workspace record
@@ -240,7 +335,7 @@ def set_user_role_with_student_id(request: Request, user_role_update: UserRoleUp
                 user_id=user.user_id,
                 student_id=user.student_id,
                 workspace_id=user_role_update.workspace_id,
-                role=user_role_update.role
+                role=user_role_update.role,
             )
             db.add(new_user_workspace)
             db.commit()
@@ -260,15 +355,17 @@ def set_user_role_with_student_id(request: Request, user_role_update: UserRoleUp
 
 @router.get("/get_workspace_list")
 def get_workspace_list(request: Request, db: Session = Depends(get_db)):
-    if not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+    if not request.state.user_jwt_content["system_admin"]:
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
     try:
         workspaces = db.query(Workspace).all()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
                 "workspace_name": workspace.workspace_name,
-                "school_id": workspace.school_id
+                "school_id": workspace.school_id,
             }
             for workspace in workspaces
         ]

@@ -14,7 +14,9 @@ def fix_key(broken_key):
     """
     # Step 1: Find the header and footer
     header_start = broken_key.find("-----BEGIN")
-    header_end = broken_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
+    header_end = broken_key.find("-----", header_start + len("-----BEGIN")) + len(
+        "-----"
+    )
     header = broken_key[header_start:header_end]
 
     footer_start = broken_key.find("-----END")
@@ -28,9 +30,13 @@ def fix_key(broken_key):
 
     # Step 3: Remove 'n' every 64 characters in the body
     body = body[1:]  # remove the first 'n'
-    body_chunks = [body[i:i + 65] for i in range(0, len(body), 65)]  # split the body into 65-character chunks
-    body_chunks = [chunk[:-1] for chunk in body_chunks]  # remove the last 'n' in each chunk
-    formatted_body = '\n'.join(body_chunks)
+    body_chunks = [
+        body[i : i + 65] for i in range(0, len(body), 65)
+    ]  # split the body into 65-character chunks
+    body_chunks = [
+        chunk[:-1] for chunk in body_chunks
+    ]  # remove the last 'n' in each chunk
+    formatted_body = "\n".join(body_chunks)
 
     # Step 4: Assemble everything
     fixed_key = f"{header}\n{formatted_body}\n{footer}"
@@ -42,19 +48,26 @@ private_key = os.getenv("JWT_PRIVATE_KEY")
 # if the key starts with a lower case n after the header, it is broken
 header_start = private_key.find("-----BEGIN")
 header_end = private_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
-if private_key[header_end] == 'n':
+if private_key[header_end] == "n":
     private_key = fix_key(private_key)
 public_key = os.getenv("JWT_PUBLIC_KEY")
 # if the key starts with a lower case n after the header, it is broken
 header_start = public_key.find("-----BEGIN")
 header_end = public_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
-if public_key[header_end] == 'n':
+if public_key[header_end] == "n":
     public_key = fix_key(public_key)
 algorithm = "RS256"
 
 
-def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str, workspace_role: dict,
-                  system_admin: bool, email: str) -> str:
+def jwt_generator(
+    user_id: str,
+    first_name: str,
+    last_name: str,
+    student_id: str,
+    workspace_role: dict,
+    system_admin: bool,
+    email: str,
+) -> str:
     payload = {
         "user_id": user_id,
         "email": email,
@@ -72,17 +85,13 @@ def jwt_generator(user_id: str, first_name: str, last_name: str, student_id: str
 def parse_token(jwt_token: str) -> dict:
     if not jwt_token:
         logger.error("Token missing")
-        return {"success": False, "status_code": 401000,
-                "message": "Token missing"}
+        return {"success": False, "status_code": 401000, "message": "Token missing"}
     try:
         decoded = jwt.decode(jwt_token, public_key, algorithms=[algorithm])
-        return {"success": True, "status_code": 200, "message": "",
-                "data": decoded}
+        return {"success": True, "status_code": 200, "message": "", "data": decoded}
     except jwt.ExpiredSignatureError:
         logger.error(f"Token has expired")
-        return {"success": False, "status_code": 401001,
-                "message": "Token has expired"}
+        return {"success": False, "status_code": 401001, "message": "Token has expired"}
     except jwt.InvalidTokenError:
         logger.error(f"Invalid Token")
-        return {"success": False, "status_code": 401002,
-                "message": "Invalid token"}
+        return {"success": False, "status_code": 401002, "message": "Invalid token"}

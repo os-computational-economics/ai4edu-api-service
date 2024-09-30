@@ -45,14 +45,15 @@ services:
       # Remove this "db-data" volume to start with a fresh database every time.
       - db-data:/var/lib/postgresql/data:rw
       - ./db:/docker-entrypoint-initdb.d:ro
-    # If you want to use an external database viewer, uncomment the following "ports" section.
-    # NOTE: This will cause port conflicts if you have a local PostgreSQL server running.
-#    ports:
-#      - 5432:5432
+      # If you want to use an external database viewer, uncomment the following "ports" section.
+      # NOTE: This will cause port conflicts if you have a local PostgreSQL server running.
+    #    ports:
+    #      - 5432:5432
+
     expose:
       - 5432
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ["CMD", "pg_isready"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -86,15 +87,12 @@ services:
       - localnet
     depends_on:
       - ai4edu-api-server
-
 volumes:
   db-data:
   rds-data:
-
 networks:
   localnet:
     driver: bridge
-
 secrets:
   ai4edu-secret:
     file: .env

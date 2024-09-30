@@ -7,8 +7,20 @@
 @time: 3/16/24 23:48
 """
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, DateTime, String, Integer, func, MetaData, Boolean, UUID, ForeignKey, JSON, \
-    UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import (
+    Column,
+    DateTime,
+    String,
+    Integer,
+    func,
+    MetaData,
+    Boolean,
+    UUID,
+    ForeignKey,
+    JSON,
+    UniqueConstraint,
+    PrimaryKeyConstraint,
+)
 
 Base = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
@@ -24,7 +36,9 @@ class Agent(Base):
     creator = Column(String(16))
     updated_at = Column(DateTime, default=func.now(), nullable=False)
     voice = Column(Boolean, default=False, nullable=False)
-    status = Column(Integer, default=1, nullable=False)  # 1-active, 0-inactive, 2-deleted
+    status = Column(
+        Integer, default=1, nullable=False
+    )  # 1-active, 0-inactive, 2-deleted
     allow_model_choice = Column(Boolean, default=True, nullable=False)
     model = Column(String(16))
     agent_files = Column(JSON)  # {"file_id": "file_name"}
@@ -39,7 +53,9 @@ class Thread(Base):
     thread_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     student_id = Column(String(16))
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey('ai_agents.agent_id'), nullable=False)
+    agent_id = Column(
+        UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False
+    )
     user_id = Column(Integer, nullable=False)
     workspace_id = Column(String(16), nullable=False)
     agent_name = Column(String(255), nullable=False)
@@ -70,13 +86,13 @@ class RefreshToken(Base):
     __tablename__ = "ai_refresh_tokens"
 
     token_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    user_id = Column(Integer, ForeignKey('ai_users.user_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey("ai_users.user_id"), nullable=False)
     token = Column(UUID(as_uuid=True), nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     expire_at = Column(DateTime, nullable=False)
     issued_token_count = Column(Integer, default=0, nullable=False)
 
-    __table_args__ = (UniqueConstraint('token'),)
+    __table_args__ = (UniqueConstraint("token"),)
 
     def __repr__(self):
         return f"RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {self.token}"
@@ -99,7 +115,7 @@ class File(Base):
 
 
 class Workspace(Base):
-    __tablename__ = 'ai_workspaces'
+    __tablename__ = "ai_workspaces"
 
     workspace_id = Column(String(16), primary_key=True, nullable=False)
     workspace_name = Column(String(64), unique=True, nullable=False)
@@ -112,7 +128,7 @@ class Workspace(Base):
 
 
 class UserWorkspace(Base):
-    __tablename__ = 'ai_user_workspace'
+    __tablename__ = "ai_user_workspace"
 
     user_id = Column(Integer)
     workspace_id = Column(String(16), nullable=False)
@@ -122,7 +138,7 @@ class UserWorkspace(Base):
     student_id = Column(String(16), nullable=False)
 
     __table_args__ = (
-        PrimaryKeyConstraint('workspace_id', 'student_id', name='ai_user_workspace_pk'),
+        PrimaryKeyConstraint("workspace_id", "student_id", name="ai_user_workspace_pk"),
     )
 
     def __repr__(self):

@@ -50,7 +50,12 @@ class ChatStream:
     Using this class requires passing in the full messages history, and the provider (openai or anthropic).
     """
 
-    def __init__(self, requested_provider: str, openai_client: OpenAIClient, anthropic_client: AnthropicClient):
+    def __init__(
+        self,
+        requested_provider: str,
+        openai_client: OpenAIClient,
+        anthropic_client: AnthropicClient,
+    ):
         """
         Initialize ChatStream with necessary clients and parameters.
         :param requested_provider: The AI provider to use (openai or anthropic).
@@ -74,7 +79,7 @@ class ChatStream:
 
         self.requested_provider: str = requested_provider
         "The wanted AI provider to use (openai or anthropic)"
-        
+
         self.openai_client: OpenAIClient = openai_client
         "The OpenAI client for OpenAI API"
 
@@ -103,13 +108,18 @@ class ChatStream:
         self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
-        self.message_storage_handler.put_message(self.thread_id, self.user_id, "human",
-                                                 chat_stream_model.messages[len(chat_stream_model.messages) - 1][
-                                                     "content"])
+        self.message_storage_handler.put_message(
+            self.thread_id,
+            self.user_id,
+            "human",
+            chat_stream_model.messages[len(chat_stream_model.messages) - 1]["content"],
+        )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
-        return EventSourceResponse(self.__chat_generator(chat_stream_model.messages, agent_prompt))
+        return EventSourceResponse(
+            self.__chat_generator(chat_stream_model.messages, agent_prompt)
+        )
 
     def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt):
         """
@@ -118,9 +128,15 @@ class ChatStream:
         :return:
         """
         print(f"Using {self.requested_provider}")
-        stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
-                                            self.retrieval_namespace, system_prompt,
-                                            messages, self.requested_provider, self.requested_provider)
+        stream = chat_stream_with_retrieve(
+            self.thread_id,
+            messages[len(messages) - 1]["content"],
+            self.retrieval_namespace,
+            system_prompt,
+            messages,
+            self.requested_provider,
+            self.requested_provider,
+        )
         response_text = ""
         all_sources = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
@@ -130,33 +146,57 @@ class ChatStream:
             if text_chunk[0] == "answer":
                 new_text = text_chunk[1]
                 response_text += new_text
-                if len(chunk_buffer.split()) > 17 + (chunk_id * 12):  # dynamically adjust the chunk size
-                    for ender in sentence_ender:  # if the chunk contains a sentence ender
+                if len(chunk_buffer.split()) > 17 + (
+                    chunk_id * 12
+                ):  # dynamically adjust the chunk size
+                    for (
+                        ender
+                    ) in sentence_ender:  # if the chunk contains a sentence ender
                         if ender in new_text:
-                            chunk_buffer, chunk_id = self.__process_chunking(ender, new_text, chunk_buffer, chunk_id)
+                            chunk_buffer, chunk_id = self.__process_chunking(
+                                ender, new_text, chunk_buffer, chunk_id
+                            )
                             break
                     else:  # if the chunk does not contain a sentence ender
                         chunk_buffer += new_text
                 else:  # if the chunk is less than 21 words
                     chunk_buffer += new_text
                 yield json.dumps(
-                    {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id,
-                     "tts_max_chunk_id": chunk_id})
+                    {
+                        "response": response_text,
+                        "source": all_sources,
+                        "tts_session_id": self.tts_session_id,
+                        "tts_max_chunk_id": chunk_id,
+                    }
+                )
             elif text_chunk[0] == "source":
                 source_text = text_chunk[1]
                 all_sources.append(source_text)
                 yield json.dumps(
-                    {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id,
-                     "tts_max_chunk_id": chunk_id})
+                    {
+                        "response": response_text,
+                        "source": all_sources,
+                        "tts_session_id": self.tts_session_id,
+                        "tts_max_chunk_id": chunk_id,
+                    }
+                )
         # put the finished response into the database (AI message)
-        self.message_storage_handler.put_message(self.thread_id, self.user_id, self.requested_provider, response_text)
+        self.message_storage_handler.put_message(
+            self.thread_id, self.user_id, self.requested_provider, response_text
+        )
         # Process any remaining text in the chunk_buffer after the stream has finished
         if chunk_buffer:
             chunk_id += 1
             if self.tts_voice_enabled:
                 self.tts.stream_tts(chunk_buffer, str(chunk_id))
             yield json.dumps(
-                {"response": response_text, "source": all_sources, "tts_session_id": self.tts_session_id, "tts_max_chunk_id": chunk_id})
+                {
+                    "response": response_text,
+                    "source": all_sources,
+                    "tts_session_id": self.tts_session_id,
+                    "tts_max_chunk_id": chunk_id,
+                }
+            )
 
     def __openai_chat_generator(self, messages: List[dict[str, str]]):
         """
@@ -165,9 +205,9 @@ class ChatStream:
         :return:
         """
         with self.openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=messages,
-                stream=True,
+            model="gpt-4o",
+            messages=messages,
+            stream=True,
         ) as stream:
             for chunk in stream:
                 if chunk.choices[0].delta.content is not None:
@@ -185,16 +225,18 @@ class ChatStream:
             system_message = messages.pop(0)
             system_message_content = system_message["content"]
         with self.anthropic_client.messages.stream(
-                system=system_message_content,
-                max_tokens=2048,
-                messages=messages,
-                model="claude-3-sonnet-20240229",
+            system=system_message_content,
+            max_tokens=2048,
+            messages=messages,
+            model="claude-3-sonnet-20240229",
         ) as stream:
             for text in stream.text_stream:
                 if text is not None:
                     yield text
 
-    def __process_chunking(self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int):
+    def __process_chunking(
+        self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int
+    ):
         """
         Process the chunking.
         :param sentence_ender:
@@ -221,11 +263,14 @@ class ChatStream:
         agent_prompt_handler = AgentPromptHandler()
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         if agent_prompt:
-            messages_list = [{"role": "system",
-                              "content": agent_prompt}]
+            messages_list = [{"role": "system", "content": agent_prompt}]
         else:
-            messages_list = [{"role": "system",
-                              "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please."}]
+            messages_list = [
+                {
+                    "role": "system",
+                    "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please.",
+                }
+            ]
         for key in sorted(messages.keys()):
             messages_list.append(messages[key])
         return messages_list

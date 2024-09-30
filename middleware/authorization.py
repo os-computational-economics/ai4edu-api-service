@@ -12,19 +12,19 @@ logger = logging.getLogger(__name__)
 def extract_token(auth_header) -> dict:
     access_token = None
     refresh_token = None
-    if auth_header and auth_header.startswith('Bearer '):
+    if auth_header and auth_header.startswith("Bearer "):
         # Remove the 'Bearer ' prefix
         token_string = auth_header[7:]
         # Split the token string into key-value pairs
-        token_pairs = token_string.split('&')
+        token_pairs = token_string.split("&")
         # Extract tokens from key-value pairs
         for pair in token_pairs:
-            if '=' in pair:
-                key, value = pair.split('=')
-                if key == 'access':
-                    access_token = value if value != '' else None
-                elif key == 'refresh':
-                    refresh_token = value if value != '' else None
+            if "=" in pair:
+                key, value = pair.split("=")
+                if key == "access":
+                    access_token = value if value != "" else None
+                elif key == "refresh":
+                    refresh_token = value if value != "" else None
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 
@@ -48,7 +48,10 @@ def has_access(endpoint_access_map, user_access, current_path):
                 if len(pattern_parts) == len(path_parts):
                     # Check if all non-dynamic parts match
                     for i in range(len(pattern_parts)):
-                        if "{" not in pattern_parts[i] and pattern_parts[i] != path_parts[i]:
+                        if (
+                            "{" not in pattern_parts[i]
+                            and pattern_parts[i] != path_parts[i]
+                        ):
                             break
                     else:
                         # All non-dynamic parts matched, check user access
@@ -81,11 +84,11 @@ def extract_role(access_token_load) -> dict:
     :return: a dictionary mapping roles to whether the user has that role
     """
     default_role = {"admin": False, "teacher": False, "student": True}
-    if access_token_load['system_admin']:
-        default_role['admin'] = True
-    for workspace, role in access_token_load['workspace_role'].items():
-        if role == 'teacher':
-            default_role['teacher'] = True
+    if access_token_load["system_admin"]:
+        default_role["admin"] = True
+    for workspace, role in access_token_load["workspace_role"].items():
+        if role == "teacher":
+            default_role["teacher"] = True
             break
     return default_role
 
@@ -93,19 +96,28 @@ def extract_role(access_token_load) -> dict:
 class AuthorizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = extract_actual_path(request.url.path)
-        print('path', path)
+        print("path", path)
         if path in whitelist:
             return await call_next(request)
 
-        tokens = extract_token(request.headers.get('Authorization', ''))
-        if tokens['access_token'] is not None:
-            parse_result = parse_token(tokens['access_token'])
-            if parse_result['success']:
-                user_access = extract_role(parse_result['data'])
+        tokens = extract_token(request.headers.get("Authorization", ""))
+        if tokens["access_token"] is not None:
+            parse_result = parse_token(tokens["access_token"])
+            if parse_result["success"]:
+                user_access = extract_role(parse_result["data"])
                 if has_access(endpoint_access_map, user_access, path):
-                    request.state.user_jwt_content = parse_result['data']
+                    request.state.user_jwt_content = parse_result["data"]
                     return await call_next(request)
             else:
-                return JSONResponse(content={"success": False, "message": parse_result['message'],
-                                             "status_code": parse_result['status_code']}, status_code=401)
-        return JSONResponse(content={"success": False, "message": "unauthorized", "status_code": 401}, status_code=401)
+                return JSONResponse(
+                    content={
+                        "success": False,
+                        "message": parse_result["message"],
+                        "status_code": parse_result["status_code"],
+                    },
+                    status_code=401,
+                )
+        return JSONResponse(
+            content={"success": False, "message": "unauthorized", "status_code": 401},
+            status_code=401,
+        )
