@@ -20,7 +20,103 @@
             docker
             podman-compose
             podman
-            python3
+            (python3.withPackages ( python-pkgs: with python-pkgs; [
+              aiohttp
+              aiosignal
+              alembic
+              annotated-types
+              anthropic
+              anyio
+              async-timeout
+              attrs
+              boto3
+              botocore
+              certifi
+              cffi
+              chardet
+              charset-normalizer
+              click
+              cryptography
+              dataclasses-json
+              defusedxml
+              distro
+              dnspython
+              email_validator
+              fastapi
+              fastapi-cli
+              filelock
+              frozenlist
+              fsspec
+              h11
+              hiredis
+              httpcore
+              httptools
+              httpx
+              huggingface-hub
+              idna
+              jinja2
+              jiter
+              jmespath
+              jsonpatch
+              jsonpointer
+              langchain
+              # langchain-anthropic
+              langchain-community
+              langchain-core
+              langchain-openai
+              # langchain-pinecone
+              langchain-text-splitters
+              langsmith
+              Mako
+              markdown-it-py
+              markupsafe
+              marshmallow
+              mdurl
+              multidict
+              mypy-extensions
+              numpy
+              openai
+              orjson
+              packaging
+              # pinecone-client
+              psycopg
+              # psycopg-binary
+              pycparser
+              pydantic
+              pydantic-core
+              pygments
+              pyjwt
+              pypdf
+              python-dateutil
+              python-dotenv
+              python-multipart
+              pyyaml
+              redis
+              regex
+              requests
+              rich
+              s3transfer
+              shellingham
+              six
+              sniffio
+              sqlalchemy
+              sse-starlette
+              starlette
+              tenacity
+              tiktoken
+              tokenizers
+              tqdm
+              typer
+              typing-inspect
+              typing-extensions
+              ujson
+              urllib3
+              uvicorn
+              uvloop
+              watchfiles
+              websockets
+              yarl
+            ]))
             openssl
             postman
             dig

@@ -106,16 +106,12 @@ def chat_stream_with_retrieve(thread_id: str,
 
     if history_from_request is None:
         history_from_request = {}
-    if llm_for_question_consolidation == "anthropic":
-        history_aware_retriever_anthropic = create_history_aware_retriever(
-            llm2, retriever, contextualize_q_prompt
-        )
-        history_aware_retriever = history_aware_retriever_anthropic
-    else:
-        history_aware_retriever_openai = create_history_aware_retriever(
-            llm, retriever, contextualize_q_prompt
-        )
-        history_aware_retriever = history_aware_retriever_openai
+
+    history_aware_retriever = create_history_aware_retriever(
+        llm2 if llm_for_question_consolidation == "anthropic" else llm,
+        retriever,
+        contextualize_q_prompt
+    )
 
     qa_system_prompt = """You are a personalized assistant. \
     Use the following pieces of retrieved context to answer the question. \
@@ -137,10 +133,10 @@ def chat_stream_with_retrieve(thread_id: str,
         ]
     )
 
-    if llm_for_answer == "anthropic":
-        question_answer_chain = create_stuff_documents_chain(llm2, qa_prompt)
-    else:
-        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+    question_answer_chain = create_stuff_documents_chain(
+        llm2 if llm_for_answer == "anthropic" else llm,
+        qa_prompt
+    )
 
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 

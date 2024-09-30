@@ -14,6 +14,8 @@ from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AgentPromptHandler import AgentPromptHandler
 import uuid
+from openai._client import OpenAI as OpenAIClient
+from anthropic._client import Anthropic as AnthropicClient
 from user.LangChainHelper import chat_stream_with_retrieve
 
 
@@ -45,27 +47,54 @@ class ChatStreamResponse(BaseModel):
 class ChatStream:
     """
     ChatStream: AI chat with OpenAI/Anthropic, streams the output via server-sent events.
-    Using this class need to pass in the full messages history, and the provider (openai or anthropic).
+    Using this class requires passing in the full messages history, and the provider (openai or anthropic).
     """
 
-    def __init__(self, requested_provider, openai_client, anthropic_client):
-        self.retrieval_namespace = None
-        self.tts_voice_enabled = None
-        self.user_id = None
-        self.thread_id = None
-        self.agent_id = None
-        self.requested_provider = requested_provider
-        self.openai_client = openai_client
-        self.anthropic_client = anthropic_client
+    def __init__(self, requested_provider: str, openai_client: OpenAIClient, anthropic_client: AnthropicClient):
+        """
+        Initialize ChatStream with necessary clients and parameters.
+        :param requested_provider: The AI provider to use (openai or anthropic).
+        :param openai_client: OpenAI client for OpenAI API.
+        :param anthropic_client: Anthropic client for Anthropic API.
+        """
+        self.retrieval_namespace: str = ""
+        "The Pinecone index retrieval namespace"
+
+        self.tts_voice_enabled: bool = False
+        "Enables Text to Speech for this chat"
+
+        self.user_id: str = ""
+        "The user associated with this chat"
+
+        self.thread_id: str = ""
+        "The thread id for this chat"
+
+        self.agent_id: str = ""
+        "The LLM agent id for this chat"
+
+        self.requested_provider: str = requested_provider
+        "The wanted AI provider to use (openai or anthropic)"
+        
+        self.openai_client: OpenAIClient = openai_client
+        "The OpenAI client for OpenAI API"
+
+        self.anthropic_client: AnthropicClient = anthropic_client
+        "The Anthropic client for Anthropic API"
+
         # generate a TtsStream session id (uuid4)
-        self.tts_session_id = str(uuid.uuid4())
-        self.tts = TtsStream(self.tts_session_id)
-        self.message_storage_handler = MessageStorageHandler()
+        self.tts_session_id: str = str(uuid.uuid4())
+        "The session id for Deepgram Text to Speech"
+
+        self.tts: TtsStream = TtsStream(self.tts_session_id)
+        "The TTS stream for Deepgram Text to Speech"
+
+        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler()
+        "The message storage handler for storing messages for this chat"
 
     def stream_chat(self, chat_stream_model: ChatStreamModel):
         """
         Stream chat messages from OpenAI API.
-        :return:
+        :return: A custom Server-Sent event with chat information
         """
         self.thread_id = chat_stream_model.thread_id
         self.user_id = chat_stream_model.user_id
@@ -85,19 +114,13 @@ class ChatStream:
     def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt):
         """
         Chat generator.
-        :param messages:
+        :param messages: All previous messages
         :return:
         """
-        if self.requested_provider == "anthropic":
-            print("Using Anthropic")
-            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
-                                               self.retrieval_namespace, system_prompt,
-                                               messages, "anthropic", "anthropic")
-        else:
-            print("Using OpenAI")
-            stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
-                                               self.retrieval_namespace, system_prompt,
-                                               messages, "openai", "openai")
+        print(f"Using {self.requested_provider}")
+        stream = chat_stream_with_retrieve(self.thread_id, messages[len(messages) - 1]["content"],
+                                            self.retrieval_namespace, system_prompt,
+                                            messages, self.requested_provider, self.requested_provider)
         response_text = ""
         all_sources = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
@@ -108,15 +131,10 @@ class ChatStream:
                 new_text = text_chunk[1]
                 response_text += new_text
                 if len(chunk_buffer.split()) > 17 + (chunk_id * 12):  # dynamically adjust the chunk size
-                    if sentence_ender[0] in new_text:  # if the chunk contains a sentence ender .
-                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[0], new_text, chunk_buffer,
-                                                                         chunk_id)
-                    elif sentence_ender[1] in new_text:  # if the chunk contains a sentence ender ?
-                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[1], new_text, chunk_buffer,
-                                                                         chunk_id)
-                    elif sentence_ender[2] in new_text:  # if the chunk contains a sentence ender !
-                        chunk_buffer, chunk_id = self.__process_chunking(sentence_ender[2], new_text, chunk_buffer,
-                                                                         chunk_id)
+                    for ender in sentence_ender:  # if the chunk contains a sentence ender
+                        if ender in new_text:
+                            chunk_buffer, chunk_id = self.__process_chunking(ender, new_text, chunk_buffer, chunk_id)
+                            break
                     else:  # if the chunk does not contain a sentence ender
                         chunk_buffer += new_text
                 else:  # if the chunk is less than 21 words
