@@ -23,8 +23,7 @@ message_handler = MessageStorageHandler()
 
 class ThreadListQuery(BaseModel):
     user_id: Optional[str] = None
-    start_date: Optional[
-        str] = None
+    start_date: Optional[str] = None
     end_date: Optional[str] = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
@@ -51,8 +50,9 @@ def get_thread_by_id(thread_id: UUID):
 
         # Sort the messages by 'created_at' time in descending order
         sorted_messages = sorted(thread_messages, key=lambda x: x.created_at)
-        return response(True, data={"thread_id": thread_id,
-                                    "messages": sorted_messages})
+        return response(
+            True, data={"thread_id": thread_id, "messages": sorted_messages}
+        )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
         response(False, status_code=500, message=str(e))
@@ -60,25 +60,40 @@ def get_thread_by_id(thread_id: UUID):
 
 @router.get("/get_thread_list")
 def get_thread_list(
-        workspace_id: str,
-        request: Request,
-        db: Session = Depends(get_db),
-        page: int = 1,
-        page_size: int = 10,
-        student_id: Optional[str] = None,
-        agent_name: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None
+    workspace_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 10,
+    student_id: Optional[str] = None,
+    agent_name: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
 ):
     """
     List threads with pagination, filtered by agent creator.
-   """
-    user_workspace_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
-    if user_workspace_role != 'teacher' and request.state.user_jwt_content['student_id'] != student_id:
-        return response(False, status_code=403, message="You do not have access to this resource")
-    query = (db.query(Thread.thread_id, Thread.user_id, Thread.created_at, Thread.agent_id, Thread.agent_name,
-                      Thread.workspace_id, Thread.student_id).
-             filter(Thread.workspace_id == workspace_id))  # even the agent is deleted, the thread still exists
+    """
+    user_workspace_role = request.state.user_jwt_content["workspace_role"].get(
+        workspace_id, None
+    )
+    if (
+        user_workspace_role != "teacher"
+        and request.state.user_jwt_content["student_id"] != student_id
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
+    query = db.query(
+        Thread.thread_id,
+        Thread.user_id,
+        Thread.created_at,
+        Thread.agent_id,
+        Thread.agent_name,
+        Thread.workspace_id,
+        Thread.student_id,
+    ).filter(
+        Thread.workspace_id == workspace_id
+    )  # even the agent is deleted, the thread still exists
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
@@ -90,26 +105,39 @@ def get_thread_list(
             start_datetime = datetime.fromisoformat(start_date)
             query = query.filter(Thread.created_at >= start_datetime)
         except ValueError:
-            raise response(False, status_code=400,
-                           message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+            raise response(
+                False,
+                status_code=400,
+                message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
+            )
     if end_date:
         try:
             end_datetime = datetime.fromisoformat(end_date)
             query = query.filter(Thread.created_at <= end_datetime)
         except ValueError:
-            raise response(False, status_code=400,
-                           message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+            raise response(
+                False,
+                status_code=400,
+                message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
+            )
 
     total = query.count()
-    threads = (query.order_by(Thread.created_at.desc()).
-               offset((page - 1) * page_size).
-               limit(page_size).all())
-    results = [{"thread_id": str(t.thread_id),
-                "user_id": t.user_id,
-                "student_id": t.student_id,
-                "created_at": str(t.created_at),
-                "agent_id": str(t.agent_id),
-                "agent_name": str(t.agent_name),
-                "workspace_id": workspace_id,
-                } for t in threads]
+    threads = (
+        query.order_by(Thread.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    results = [
+        {
+            "thread_id": str(t.thread_id),
+            "user_id": t.user_id,
+            "student_id": t.student_id,
+            "created_at": str(t.created_at),
+            "agent_id": str(t.agent_id),
+            "agent_name": str(t.agent_name),
+            "workspace_id": workspace_id,
+        }
+        for t in threads
+    ]
     return response(True, data={"threads": results, "total": total})

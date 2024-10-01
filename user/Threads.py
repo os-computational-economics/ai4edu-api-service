@@ -20,9 +20,11 @@ logger = logging.getLogger(__name__)
 
 def new_thread(request: Request, agent_id: str, workspace_id: str):
     for db in get_db():
-        user_id = request.state.user_jwt_content['user_id']
-        student_id = request.state.user_jwt_content['student_id']
-        is_user_in_workspace = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
+        user_id = request.state.user_jwt_content["user_id"]
+        student_id = request.state.user_jwt_content["student_id"]
+        is_user_in_workspace = request.state.user_jwt_content["workspace_role"].get(
+            workspace_id, None
+        )
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")
@@ -31,8 +33,14 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
         if not agent:
             logger.error(f"Agent not found: {agent_id}")
             return response(False, {}, "Agent not found")
-        thread = Thread(thread_id=thread_id, user_id=user_id, agent_id=agent_id, student_id=student_id,
-                        workspace_id=workspace_id, agent_name=agent.agent_name)
+        thread = Thread(
+            thread_id=thread_id,
+            user_id=user_id,
+            agent_id=agent_id,
+            student_id=student_id,
+            workspace_id=workspace_id,
+            agent_name=agent.agent_name,
+        )
         db.add(thread)
 
         try:

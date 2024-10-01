@@ -1,40 +1,43 @@
 # AI 4 EDU Backend API containers
 
 ## Quick Start Guide (without using nix)
+
 ### Please follow the steps below to get the backend API up and running on your local machine.
+
 1. Clone the repository to your local machine.
-2. Install Docker on your local machine. (https://docs.docker.com/get-docker/)
+1. Install Docker on your local machine. (https://docs.docker.com/get-docker/)
    1. It is recommended to install **Docker Desktop** for Windows or Mac. Especially if you are new to Docker.
-3. Run the following command in the root directory of the repository to generate the SSL certificates:
-    ```
-    mkdir -p ssl && cd ssl && openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=." && cd ..
-    ```
-4. Run the following command in the root directory of the repository to generate the JWT keys:
-    ```
-    mkdir -p jwt_keys && openssl genrsa 2048 > jwt_keys/privateKey.pem && openssl rsa -in jwt_keys/privateKey.pem -pubout > jwt_keys/publicKey.pem
-    ```
-5. Create a new file named `.env` in the root directory of the repository and copy the contents of the `.env.template` file into the `.env` file.
-6. Fill in the values in the `.env` file with the appropriate values.
+1. Run the following command in the root directory of the repository to generate the SSL certificates:
+   ```
+   mkdir -p ssl && cd ssl && openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=." && cd ..
+   ```
+1. Run the following command in the root directory of the repository to generate the JWT keys:
+   ```
+   mkdir -p jwt_keys && openssl genrsa 2048 > jwt_keys/privateKey.pem && openssl rsa -in jwt_keys/privateKey.pem -pubout > jwt_keys/publicKey.pem
+   ```
+1. Create a new file named `.env` in the root directory of the repository and copy the contents of the `.env.template` file into the `.env` file.
+1. Fill in the values in the `.env` file with the appropriate values.
    1. Ask a team member for the values in the `API keys` section.
-   2. Do not change anything in the `Domain and server names` and `Redis and Postgres database` sections.
-   3. Copy the `publicKey.pem` and `privateKey.pem` file contents generated in Step 4 (Under the `jwt_keys` folder) to the `JWT keys` section. Keep the key header and footer lines. Keep the double quotes wrapping the key including the header and footer lines.
-7. Run the following command in the root directory of the repository to grant execute permission to the custom entrypoint script:
-    ```
-    chmod +x db/pgadmin/custom_entrypoint.sh
-    ```
-8. Run the following command in the root directory of the repository to start the backend API:
-    ```
-    docker-compose -f compose.yaml -p ai4edu-api-service up -d --build
-    ```
+   1. Do not change anything in the `Domain and server names` and `Redis and Postgres database` sections.
+   1. Copy the `publicKey.pem` and `privateKey.pem` file contents generated in Step 4 (Under the `jwt_keys` folder) to the `JWT keys` section. Keep the key header and footer lines. Keep the double quotes wrapping the key including the header and footer lines.
+1. Run the following command in the root directory of the repository to grant execute permission to the custom entrypoint script:
+   ```
+   chmod +x db/pgadmin/custom_entrypoint.sh
+   ```
+1. Run the following command in the root directory of the repository to start the backend API:
+   ```
+   docker-compose -f compose.yaml -p ai4edu-api-service up -d --build
+   ```
    1. This command will start a stack of containers that include the backend API, the database, and the Redis cache.
-   2. You can manage (stop, remove, inspect, etc.) the containers using the Docker Desktop application (installed in Step 2) or the docker command line interface.
-9. In your local **frontend** code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
+   1. You can manage (stop, remove, inspect, etc.) the containers using the Docker Desktop application (installed in Step 2) or the docker command line interface.
+1. In your local **frontend** code, make sure to update the `NEXT_PUBLIC_LOCAL_BACKEND` in the `.env` file to `TRUE` to point to the local backend API. This is the only change needed on the frontend side to point the frontend to the local backend API.
    1. Do not push this change to the repository as it is only for local development.
-10. Tools to help you develop:
-     - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
-     - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
+1. Tools to help you develop:
+   - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
+   - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
 
 ## This is the repo for the AI4EDU experimental project.
+
 - The main entry point is main.py. This is the fastapi app that serves the API.
 - To run a local instance of the app, run "run_server_local.py"
 - In the cloud deployment environment, the app is run as a docker container. The docker image is built using the Dockerfile in the root directory of this repo. The docker image is then pushed to the GitHub container registry (https://ghcr.io). The docker image is then pulled from the registry and run as a container in the cloud deployment environment.
@@ -43,18 +46,22 @@
 - The "common" folder contains common classes.
 
 ## Config files
+
 There are two config files maintained in this repo:
+
 - the docker_compose_cloud folder contains the docker compose file for the cloud deployment environment
 - the nginx_conf folder contains the nginx configuration file for the cloud deployment environment. In the cloud deployment environment, the nginx server (running as a docker container) is used as a reverse proxy server to the fastapi app.
 
 ## Database connection and migration
+
 The database connection and migration is handled by 3 packages:
+
 - alembic: database migration
 - sqlalchemy: ORM (Object Relational Mapping)
 - psycopg: database connection
-The alembic configuration file is maintained in the root directory of this repo. The database migration scripts are maintained in the "migrations" folder in the root directory of this repo.
-Alembic is used to generate the migration scripts. The migration scripts are then run in the cloud deployment environment to update the database schema.
-All database models are maintained in the "models.py" file in the "migration" folder.
+  The alembic configuration file is maintained in the root directory of this repo. The database migration scripts are maintained in the "migrations" folder in the root directory of this repo.
+  Alembic is used to generate the migration scripts. The migration scripts are then run in the cloud deployment environment to update the database schema.
+  All database models are maintained in the "models.py" file in the "migration" folder.
 
 ## Setup
 
@@ -106,6 +113,7 @@ JWT keys may be generated with the example commands provided in the template. Mu
 Local SSL certificates should be placed into a folder called `ssl`, which should be ignored by git. The following command should generate self-signed certificates which are satisfactory for local testing and to satisfy Case SSO.
 
 Run this command within a folder called `ssl`:
+
 > `openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=."`
 
 ## Run the backend

@@ -16,10 +16,7 @@ router = APIRouter()
 
 
 @router.get("/get/{agent_id}")
-def get_agent_by_id(
-        agent_id: str,
-        db: Session = Depends(get_db)
-):
+def get_agent_by_id(agent_id: str, db: Session = Depends(get_db)):
     """
     This function gets the settings of an agent by its ID
     :param agent_id: The ID of the agent
@@ -29,7 +26,9 @@ def get_agent_by_id(
     if not check_uuid_format(agent_id):
         return response(False, status_code=400, message="Invalid UUID format")
     conn = db.connection()
-    result = conn.execute(text("select * from ai_agents where agent_id = '" + str(agent_id) + "'"))
+    result = conn.execute(
+        text("select * from ai_agents where agent_id = '" + str(agent_id) + "'")
+    )
     row = result.first()
     logging.info(f"User requested agent settings: {row}")
 
@@ -38,13 +37,16 @@ def get_agent_by_id(
     elif row[7] != 1:  # the row[7] -= 1 checks if the model is not active
         return response(False, status_code=404, message="Agent is inactive")
     else:
-        return response(True, data={
-            "agent_name": row[2],
-            "course_id": row[3],
-            "voice": row[6],
-            "model_choice": row[8],
-            "model": row[9],
-        })
+        return response(
+            True,
+            data={
+                "agent_name": row[2],
+                "course_id": row[3],
+                "voice": row[6],
+                "model_choice": row[8],
+                "model": row[9],
+            },
+        )
 
 
 def check_uuid_format(agent_id):

@@ -26,6 +26,7 @@ class Message(BaseModel):
     role: The role of message sender, openai or anthropic or human
     content: The content of the message
     """
+
     thread_id: str  # The ID of the thread, UUID. Partition key of the table
     created_at: str  # The time when the message is created, unix timestamp in milliseconds. Sort key of the table
     msg_id: str  # The ID of the message, first 8 characters of the thread_id + # +created_at
@@ -38,12 +39,17 @@ class MessageStorageHandler:
     DYNAMODB_TABLE_NAME = "ai4edu_chat_msg"
 
     def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb', region_name='us-east-2',
-                                       aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
-                                       aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"))
+        self.dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-east-2",
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
+        )
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
-    def put_message(self, thread_id: str, user_id: str, role: str, content: str) -> str | None:
+    def put_message(
+        self, thread_id: str, user_id: str, role: str, content: str
+    ) -> str | None:
         """
         Put the message into the database. This function will generate the created_at field.
         :param thread_id: The ID of the thread.
@@ -54,15 +60,15 @@ class MessageStorageHandler:
         """
         try:
             created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
-            msg_id = thread_id[:8] + '#' + created_at
+            msg_id = thread_id[:8] + "#" + created_at
             self.table.put_item(
                 Item={
-                    'thread_id': thread_id,
-                    'created_at': created_at,
-                    'msg_id': msg_id,
-                    'user_id': user_id,
-                    'role': role,
-                    'content': content
+                    "thread_id": thread_id,
+                    "created_at": created_at,
+                    "msg_id": msg_id,
+                    "user_id": user_id,
+                    "role": role,
+                    "content": content,
                 }
             )
             return created_at
@@ -79,12 +85,9 @@ class MessageStorageHandler:
         """
         try:
             response = self.table.get_item(
-                Key={
-                    'thread_id': thread_id,
-                    'created_at': created_at
-                }
+                Key={"thread_id": thread_id, "created_at": created_at}
             )
-            item = response['Item']
+            item = response["Item"]
             return Message(**item)
         except Exception as e:
             print(f"Error getting the message from the database: {e}")
@@ -98,9 +101,9 @@ class MessageStorageHandler:
         """
         try:
             response = self.table.query(
-                KeyConditionExpression=Key('thread_id').eq(thread_id)
+                KeyConditionExpression=Key("thread_id").eq(thread_id)
             )
-            items = response['Items']
+            items = response["Items"]
             return [Message(**item) for item in items]
         except Exception as e:
             print(f"Error getting the thread from the database: {e}")

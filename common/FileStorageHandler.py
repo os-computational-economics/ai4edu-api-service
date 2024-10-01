@@ -31,15 +31,15 @@ class FileStorageHandler:
 
     def __init__(self):
         load_dotenv()
-        self.s3_client = boto3.client('s3',
-                                      region_name='us-east-2',
-                                      config=Config(signature_version='s3v4'))
+        self.s3_client = boto3.client(
+            "s3", region_name="us-east-2", config=Config(signature_version="s3v4")
+        )
         self.db: Optional[Session] = None
         self.redis_client = redis.Redis(
             host=os.getenv("REDIS_ADDRESS"),
             port=6379,
             protocol=3,
-            decode_responses=True
+            decode_responses=True,
         )
 
     def _get_db(self) -> Session:
@@ -51,7 +51,7 @@ class FileStorageHandler:
     def _ensure_directory_exists(path: str) -> None:
         """Ensure the directory of the given path exists."""
         # if the path is a directory (ends with '/'), remove the last character
-        if path.endswith('/'):
+        if path.endswith("/"):
             directory = path[:-1]
         else:
             directory = os.path.dirname(path)
@@ -72,9 +72,11 @@ class FileStorageHandler:
             "file_ext": file_obj.file_ext,
             "file_status": file_obj.file_status,
             "chunking_separator": file_obj.chunking_separator,
-            "created_at": file_obj.created_at.isoformat()
+            "created_at": file_obj.created_at.isoformat(),
         }
-        self.redis_client.setex(cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data))
+        self.redis_client.setex(
+            cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data)
+        )
 
     def _get_cached_file_info(self, file_id: str) -> Optional[dict]:
         """Retrieve cached file information from Redis."""
@@ -93,14 +95,16 @@ class FileStorageHandler:
             file_info = self._get_cached_file_info(file_id)
             if not file_info:
                 # If not in cache, query database
-                file_obj = self._get_db().query(File).filter(File.file_id == file_id).first()
+                file_obj = (
+                    self._get_db().query(File).filter(File.file_id == file_id).first()
+                )
                 if not file_obj:
                     return None
                 # Cache the file info
                 self._cache_file_info(file_obj)
                 file_info = {
                     "file_name": file_obj.file_name,
-                    "file_ext": file_obj.file_ext
+                    "file_ext": file_obj.file_ext,
                 }
 
             file_name, file_ext = file_info["file_name"], file_info["file_ext"]
@@ -119,8 +123,14 @@ class FileStorageHandler:
             logger.error(f"Error retrieving file: {str(e)}")
             return None
 
-    def put_file(self, file_obj: bytes, file_name: str, file_desc: str, file_type: str, chunking_separator: str) -> \
-            Optional[str]:
+    def put_file(
+        self,
+        file_obj: bytes,
+        file_name: str,
+        file_desc: str,
+        file_type: str,
+        chunking_separator: str,
+    ) -> Optional[str]:
         """
         Store a file locally and upload it to the S3 bucket.
         :param file_obj: A file-like object containing the file data.
@@ -138,7 +148,7 @@ class FileStorageHandler:
             self._ensure_directory_exists(local_folder + "/")
             local_path = os.path.join(local_folder, file_name)
 
-            with open(local_path, 'wb') as local_file:
+            with open(local_path, "wb") as local_file:
                 local_file.write(file_obj)
         except Exception as e:
             logger.error(f"Error saving file locally: {str(e)}")
@@ -146,7 +156,9 @@ class FileStorageHandler:
 
         # Upload to S3
         s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
-        upload_status = self.__upload_file(self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type)
+        upload_status = self.__upload_file(
+            self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type
+        )
 
         if upload_status:
             try:
@@ -158,7 +170,7 @@ class FileStorageHandler:
                     file_type=file_type,
                     file_ext=file_ext,
                     file_status=1,  # Using the default status
-                    chunking_separator=chunking_separator
+                    chunking_separator=chunking_separator,
                 )
                 self._get_db().add(new_file)
                 self._get_db().commit()
@@ -185,31 +197,40 @@ class FileStorageHandler:
         try:
             file_info = self._get_cached_file_info(file_id)
             if not file_info:
-                file_obj = self._get_db().query(File).filter(File.file_id == file_id).first()
+                file_obj = (
+                    self._get_db().query(File).filter(File.file_id == file_id).first()
+                )
                 if not file_obj:
                     return None
                 self._cache_file_info(file_obj)
                 file_info = {
                     "file_name": file_obj.file_name,
-                    "file_ext": file_obj.file_ext
+                    "file_ext": file_obj.file_ext,
                 }
 
             file_name, file_ext = file_info["file_name"], file_info["file_ext"]
             s3_object_name = self._get_s3_object_name(file_id, file_ext)
             url = self.s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': self.BUCKET_NAME, 'Key': s3_object_name},
-                ExpiresIn=expiration
+                "get_object",
+                Params={"Bucket": self.BUCKET_NAME, "Key": s3_object_name},
+                ExpiresIn=expiration,
             )
             return url
         except Exception as e:
             logger.error(f"Error generating presigned URL: {str(e)}")
             return None
 
-    def __upload_file(self, bucket: str, local_path: str, object_name: str, content_type: str = None) -> bool:
+    def __upload_file(
+        self, bucket: str, local_path: str, object_name: str, content_type: str = None
+    ) -> bool:
         try:
             if content_type:
-                self.s3_client.upload_file(local_path, bucket, object_name, ExtraArgs={'ContentType': content_type})
+                self.s3_client.upload_file(
+                    local_path,
+                    bucket,
+                    object_name,
+                    ExtraArgs={"ContentType": content_type},
+                )
             else:
                 self.s3_client.upload_file(local_path, bucket, object_name)
         except ClientError as e:
@@ -217,7 +238,9 @@ class FileStorageHandler:
             return False
         return True
 
-    def __download_file(self, bucket_name: str, object_name: str, local_path: str) -> bool:
+    def __download_file(
+        self, bucket_name: str, object_name: str, local_path: str
+    ) -> bool:
         self._ensure_directory_exists(local_path)
         try:
             self.s3_client.download_file(bucket_name, object_name, local_path)

@@ -20,14 +20,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pc = Pinecone(api_key=PINECONE_API_KEY)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
 
-def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, file_name: str, file_type: str, agent_id: str = "NA",
-               workspace_id: str = "NA") -> bool:
+def embed_file(
+    index_name: str,
+    namespace: str,
+    file_path: str,
+    file_id: str,
+    file_name: str,
+    file_type: str,
+    agent_id: str = "NA",
+    workspace_id: str = "NA",
+) -> bool:
     """
     Embed the file and put the embeddings into the Pinecone index.
     :param index_name: The name of the Pinecone index.
@@ -44,13 +52,21 @@ def embed_file(index_name: str, namespace: str, file_path: str, file_id: str, fi
         pages = pdf_loader(file_path)
         # add metadata to the pages
         for page in pages:
-            if not hasattr(page, 'metadata') or page.metadata is None:
+            if not hasattr(page, "metadata") or page.metadata is None:
                 page.metadata = {}
             page.metadata.update(
-                {"file_id": file_id, "file_type": file_type, "file_path": file_path, "agent_id": agent_id,
-                 "workspace_id": workspace_id, "file_name": file_name})
-        PineconeVectorStore.from_documents(pages, embeddings, index_name=index_name,
-                                           namespace=namespace)
+                {
+                    "file_id": file_id,
+                    "file_type": file_type,
+                    "file_path": file_path,
+                    "agent_id": agent_id,
+                    "workspace_id": workspace_id,
+                    "file_name": file_name,
+                }
+            )
+        PineconeVectorStore.from_documents(
+            pages, embeddings, index_name=index_name, namespace=namespace
+        )
         return True
     else:
         print("Unsupported file type")

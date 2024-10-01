@@ -14,11 +14,11 @@ router = APIRouter()
 
 @router.get("/get_user_list")
 def get_user_list(
-        request: Request,
-        db: Session = Depends(get_db),
-        page: int = 1,
-        page_size: int = 10,
-        workspace_id: str = "all"
+    request: Request,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    page_size: int = 10,
+    workspace_id: str = "all",
 ):
     """
     Get a list of all users with pagination.
@@ -28,22 +28,36 @@ def get_user_list(
     :param page_size: Number of users per page.
     :param workspace_id: Workspace ID, "all" for all workspaces
     """
-    if workspace_id == "all" and request.state.user_jwt_content['system_admin'] is not True:
-        return response(False, status_code=403, message="You do not have access to this resource")
-    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None and \
-            not request.state.user_jwt_content['system_admin']:
-        return response(False, status_code=403, message="You do not have access to this resource")
+    if (
+        workspace_id == "all"
+        and request.state.user_jwt_content["system_admin"] is not True
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
+    if (
+        request.state.user_jwt_content["workspace_role"].get(workspace_id, None) is None
+        and not request.state.user_jwt_content["system_admin"]
+    ):
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
 
     is_teacher_or_admin = False
-    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) == 'teacher' or \
-            request.state.user_jwt_content['system_admin']:
+    if (
+        request.state.user_jwt_content["workspace_role"].get(workspace_id, None)
+        == "teacher"
+        or request.state.user_jwt_content["system_admin"]
+    ):
         is_teacher_or_admin = True
     try:
         if workspace_id == "all":
             query = db.query(User)
         else:
-            query = db.query(User).join(UserWorkspace, User.user_id == UserWorkspace.user_id).filter(
-                UserWorkspace.workspace_id == workspace_id
+            query = (
+                db.query(User)
+                .join(UserWorkspace, User.user_id == UserWorkspace.user_id)
+                .filter(UserWorkspace.workspace_id == workspace_id)
             )
         total = query.count()
         query = query.order_by(User.user_id)
