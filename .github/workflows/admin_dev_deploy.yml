@@ -18,7 +18,6 @@ jobs:
   publish:
     name: publish image admin dev
     runs-on: ubuntu-latest
-
     steps:
       - id: string
         uses: ASzc/change-string-case-action@v5
@@ -34,14 +33,12 @@ jobs:
         run: |
           docker build . --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
   deploy:
     needs: publish
     name: deploy image admin dev
     runs-on: ubuntu-latest
     permissions:
       checks: read
-
     steps:
       - name: Wait for user dev to deploy
         uses: lewagon/wait-on-check-action@v1.3.3
