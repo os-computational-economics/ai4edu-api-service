@@ -214,7 +214,8 @@ def list_agents(
     """
     List agents with pagination.
     """
-    if request.state.user_jwt_content['workspace_role'].get(workspace_id, None) is None:
+    user_role = request.state.user_jwt_content['workspace_role'].get(workspace_id, None)
+    if user_role is None:
         return response(False, status_code=403, message="You do not have access to this resource")
     query = db.query(Agent).filter(Agent.workspace_id == workspace_id, Agent.status != 2)  # exclude deleted agents
     total = query.count()
@@ -222,8 +223,12 @@ def list_agents(
     skip = (page - 1) * page_size
     agents = query.offset(skip).limit(page_size).all()
     # get the prompt for each agent
-    for agent in agents:
-        agent.system_prompt = agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
+    if user_role == 'teacher':
+        for agent in agents:
+            agent.system_prompt = agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
+    else:
+        for agent in agents:
+            agent.agent_files = None
     return response(True, data={"agents": agents, "total": total})
 
 
@@ -240,7 +245,9 @@ def get_agent_by_id(
     if agent is None:
         response(False, status_code=404, message="Agent not found")
     agent_workspace = agent.workspace_id
-    if request.state.user_jwt_content['workspace_role'].get(agent_workspace, None) != 'teacher' and \
-            not request.state.user_jwt_content['system_admin']:
+    user_role = request.state.user_jwt_content['workspace_role'].get(agent_workspace, None)
+    if user_role is None:
         return response(False, status_code=403, message="You do not have access to this resource")
+    if user_role != 'teacher':
+        agent.agent_files = None
     return response(True, data=agent)
