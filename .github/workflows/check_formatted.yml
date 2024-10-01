@@ -12,7 +12,5 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run the formatter
-        run: |
-          result=`nix fmt` \
-          echo $result \
-          echo $result | grep -q "formatted 0" \
+        run: |-
+          nix fmt | grep -q "0 changed"; \
