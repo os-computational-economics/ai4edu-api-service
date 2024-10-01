@@ -11,4 +11,8 @@ jobs:
       - uses: cachix/install-nix-action@v27
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - run: nix fmt | grep -q "formatted 0"
+      - name: Run the formatter
+        run: |
+          result=`nix fmt` \
+          echo $result \
+          echo $result | grep -q "formatted 0" \
