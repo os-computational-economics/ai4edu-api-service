@@ -1,4 +1,4 @@
-name: Check if all files are formatted
+name: Format code with formatter
 on:
   workflow_dispatch:
 jobs:
