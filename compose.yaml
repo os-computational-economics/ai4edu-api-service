@@ -77,7 +77,7 @@ services:
   nginx:
     image: nginx:latest
     env_file: ./.env
-    environment: 
+    environment:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: true
     ports:
       - 80:80

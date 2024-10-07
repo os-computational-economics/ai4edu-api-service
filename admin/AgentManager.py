@@ -35,6 +35,7 @@ class AgentCreate(BaseModel):
 
 class AgentDelete(BaseModel):
     agent_id: UUID
+    workspace_id: Optional[str] = None
 
 
 class AgentUpdate(BaseModel):
@@ -140,11 +141,15 @@ def delete_agent(
     Delete an existing agent record in the database by marking it as status=2.
     Will not actually delete the record or prompt from the database..
     """
+    wsID = (
+        delete_data.workspace_id
+        or db.query(Agent)
+        .filter(Agent.agent_id == delete_data.agent_id)
+        .first()
+        .workspace_id
+    )
     if (
-        request.state.user_jwt_content["workspace_role"].get(
-            delete_data.workspace_id, None
-        )
-        != "teacher"
+        request.state.user_jwt_content["workspace_role"].get(wsID, None) != "teacher"
         and not request.state.user_jwt_content["system_admin"]
     ):
         return response(
