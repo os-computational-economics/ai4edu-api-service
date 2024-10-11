@@ -293,7 +293,7 @@ def get_agent_by_id(request: Request, agent_id: UUID, db: Session = Depends(get_
         db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()
     )  # exclude deleted agents
     if agent is None:
-        response(False, status_code=404, message="Agent not found")
+        return response(False, status_code=404, message="Agent not found")
     agent_workspace = agent.workspace_id
     user_role = request.state.user_jwt_content["workspace_role"].get(
         agent_workspace, None
