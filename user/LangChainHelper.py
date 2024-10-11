@@ -193,7 +193,7 @@ def chat_stream_with_retrieve(
         if context:
             sources = chunk.get("context")
             for doc in sources:
-                yield "source", str(doc.metadata)
+                yield "source", doc.metadata
 
 
 # Example usage:

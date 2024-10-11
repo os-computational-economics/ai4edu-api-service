@@ -177,7 +177,7 @@
               ${pkgs.docker-compose}/bin/docker-compose up --build
             ''}/bin/start-compose.sh";
           };
-          default = pgadmin;
+          default = compose;
         };
       }
     );

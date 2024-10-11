@@ -120,4 +120,4 @@ Run this command within a folder called `ssl`:
 
 In order to start the backend make sure you have Docker running and use the command `docker-compose up --build`
 
-Alternatively if you want to run the backend outside of docker you can use `python run_server_local.py` or `python3 run_server_local.py` (the command depends on how python is setup on your machine). Note that if you run it outside of Docker you need to change the DB_URI in the .env file to `postgresql+psycopg://postgres:your_postgresql_password@localhost:5432/ai4edu_local`
+Alternatively if you want to run the backend outside of docker you can use `python run_server_local.py` or `python3 run_server_local.py` (the command depends on how python is setup on your machine). Note that if you run it outside of Docker you need to change the DB_URI in the .env file to `postgresql+psycopg://postgres:your_postgresql_password@localhost:5432/ai4edu_local`.
