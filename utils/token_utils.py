@@ -1,3 +1,4 @@
+from typing import Any
 import jwt
 import os
 import logging
@@ -6,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 logger = logging.getLogger(__name__)
 
 
-def fix_key(broken_key):
+def fix_key(broken_key: str):
     """
     Fix the broken key by removing 'n' every 64 characters, and reformatting the key
     :param broken_key:
@@ -44,13 +45,13 @@ def fix_key(broken_key):
     return fixed_key
 
 
-private_key = os.getenv("JWT_PRIVATE_KEY")
+private_key = os.getenv("JWT_PRIVATE_KEY") or ""
 # if the key starts with a lower case n after the header, it is broken
 header_start = private_key.find("-----BEGIN")
 header_end = private_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
 if private_key[header_end] == "n":
     private_key = fix_key(private_key)
-public_key = os.getenv("JWT_PUBLIC_KEY")
+public_key = os.getenv("JWT_PUBLIC_KEY") or ""
 # if the key starts with a lower case n after the header, it is broken
 header_start = public_key.find("-----BEGIN")
 header_end = public_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
@@ -64,7 +65,7 @@ def jwt_generator(
     first_name: str,
     last_name: str,
     student_id: str,
-    workspace_role: dict,
+    workspace_role: dict[str, Any],
     system_admin: bool,
     email: str,
 ) -> str:
@@ -82,12 +83,14 @@ def jwt_generator(
     return jwt.encode(payload, private_key, algorithm=algorithm)
 
 
-def parse_token(jwt_token: str) -> dict:
+def parse_token(jwt_token: str) -> dict[str, Any]:
     if not jwt_token:
         logger.error("Token missing")
         return {"success": False, "status_code": 401000, "message": "Token missing"}
     try:
-        decoded = jwt.decode(jwt_token, public_key, algorithms=[algorithm])
+        decoded: dict[str, Any] = jwt.decode(
+            jwt_token, public_key, algorithms=[algorithm]
+        )
         return {"success": True, "status_code": 200, "message": "", "data": decoded}
     except jwt.ExpiredSignatureError:
         logger.error(f"Token has expired")

@@ -84,7 +84,7 @@ class FileStorageHandler:
         cached_data = self.redis_client.get(cache_key)
         return json.loads(str(cached_data)) if cached_data else None
 
-    def get_file(self, file_id: str) -> Any:
+    def get_file(self, file_id: str) -> str | None:
         """
         Get the content of a file from the local cache or S3 bucket.
         :param file_id: The ID of the file.

@@ -6,6 +6,7 @@
 @email: rxy216@case.edu
 @time: 4/16/24 12:14
 """
+from typing import Any
 import uuid
 import logging
 
@@ -19,10 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 def new_thread(request: Request, agent_id: str, workspace_id: str):
+
+    user_jwt_content: dict[str, Any] = (
+        request.state.user_jwt_content
+    )  # pyright: ignore[reportAny]
+
     for db in get_db():
-        user_id = request.state.user_jwt_content["user_id"]
-        student_id = request.state.user_jwt_content["student_id"]
-        is_user_in_workspace = request.state.user_jwt_content["workspace_role"].get(
+        user_id: str = user_jwt_content["user_id"]
+        student_id: str = user_jwt_content["student_id"]
+        is_user_in_workspace: bool = user_jwt_content["workspace_role"].get(
             workspace_id, None
         )
         if not is_user_in_workspace:

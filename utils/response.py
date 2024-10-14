@@ -1,10 +1,10 @@
-from fastapi import HTTPException
+from typing import Any
 from starlette.responses import JSONResponse
 
 
 def response(
     success: bool,
-    data: None | dict = None,
+    data: None | dict[str, Any] = None,
     message: str = "Success",
     status_code: int = 400,
 ):

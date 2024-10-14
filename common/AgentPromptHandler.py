@@ -26,12 +26,12 @@ class AgentPromptHandler:
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
         )
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
-        self.redis_client = redis.Redis(
+        self.redis_client: redis.Redis = redis.Redis(
             host=os.getenv("REDIS_ADDRESS"),
             port=6379,
             protocol=3,
             decode_responses=True,
-        )
+        )  # pyright: ignore[reportCallIssue]
 
     def put_agent_prompt(self, agent_id: str, prompt: str) -> bool:
         """

@@ -7,6 +7,7 @@
 @time: 3/22/24 00:29
 """
 import os
+from typing import Any
 
 import requests
 from pydantic import BaseModel
@@ -51,8 +52,13 @@ class SttApiKey:
         response = requests.post(url, json=payload, headers=headers)
 
         # load the response content as a dictionary
-        response_dict = response.json()
+        response_dict: dict[str, Any] = response.json()
+
         # extract the API key from the dictionary
-        api_key = response_dict.get("key")
-        api_key_id = response_dict.get("api_key_id")
+        api_key: str = response_dict.get("key") or ""
+        api_key_id: str = response_dict.get("api_key_id") or ""
+
+        if not api_key or not api_key_id:
+            raise ValueError("Failed to generate API key.")
+
         return api_key, api_key_id

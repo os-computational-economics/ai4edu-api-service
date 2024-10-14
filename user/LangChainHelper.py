@@ -7,7 +7,8 @@
 @time: 6/24/24 23:34
 """
 import os
-from typing import Iterable
+from collections.abc import Iterable
+from typing import Any
 from dotenv import load_dotenv
 
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -23,11 +24,11 @@ from langchain.retrievers import MergerRetriever
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 
-load_dotenv()
+_ = load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or ""
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY") or ""
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or ""
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -41,6 +42,7 @@ if index_name not in pc.list_indexes().names():
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
 
+# TODO: Look at this later, the argument is of the wrong name (?)
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 llm = ChatOpenAI(
     temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4o", streaming=True
@@ -82,7 +84,7 @@ def chat_stream_with_retrieve(
     question: str,
     retrieval_namespace: str,
     system_prompt: str = "You are a personalized assistant.",
-    history_from_request: dict = None,
+    history_from_request: dict[str, Any] | None = None,
     llm_for_question_consolidation: str = "openai",
     llm_for_answer: str = "openai",
 ) -> Iterable[str]:
@@ -125,15 +127,15 @@ def chat_stream_with_retrieve(
         contextualize_q_prompt,
     )
 
-    qa_system_prompt = """You are a personalized assistant. \
+    qa_system_prompt: str = (
+        """You are a personalized assistant. \
     Use the following pieces of retrieved context to answer the question. \
     If you don't know the answer, just say that you don't know. \
     Keep the answer concise.\
     {additional_system_prompt}\
-    {context}"""
-
-    qa_system_prompt = qa_system_prompt.format(
-        additional_system_prompt=system_prompt, context="{context}"
+    {context}""".format(
+            additional_system_prompt=system_prompt, context="{context}"
+        )
     )
 
     qa_prompt = ChatPromptTemplate.from_messages(

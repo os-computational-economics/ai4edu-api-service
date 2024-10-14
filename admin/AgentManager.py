@@ -1,9 +1,11 @@
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from pydantic.v1 import NoneIsAllowedError
+from pydantic.v1.types import NoneBytes
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from typing import Optional
 from uuid import UUID, uuid4
 from datetime import datetime
 
@@ -24,42 +26,42 @@ agent_prompt_handler = AgentPromptHandler()
 class AgentCreate(BaseModel):
     agent_name: str
     workspace_id: str
-    creator: Optional[str] = None
+    creator: str | None = None
     voice: bool = Field(default=False)
     status: int = Field(default=1, description="1-active, 0-inactive, 2-deleted")
     allow_model_choice: bool = Field(default=True)
-    model: Optional[str] = None
+    model: str | None = None
     system_prompt: str
-    agent_files: Optional[dict] = {}
+    agent_files: dict[str, Any] | None = {}
 
 
 class AgentDelete(BaseModel):
     agent_id: UUID
-    workspace_id: Optional[str] = None
+    workspace_id: str | None = None
 
 
 class AgentUpdate(BaseModel):
     agent_id: UUID
-    workspace_id: Optional[str] = None
-    agent_name: Optional[str] = None
-    creator: Optional[str] = None
-    voice: Optional[bool] = None
-    status: Optional[int] = None
-    allow_model_choice: Optional[bool] = None
-    model: Optional[str] = None
+    workspace_id: str | None = None
+    agent_name: str | None = None
+    creator: str | None = None
+    voice: bool | None = None
+    status: int | None = None
+    allow_model_choice: bool | None = None
+    model: str | None = None
     system_prompt: str
-    agent_files: Optional[dict] = {}
+    agent_files: dict[str, Any] | None = {}
 
 
 class AgentResponse(BaseModel):
     agent_id: UUID
     agent_name: str
     workspace_id: str
-    creator: Optional[str] = None
+    creator: str | None = None
     voice: bool
     status: int
     allow_model_choice: bool
-    model: Optional[str] = None
+    model: str | None = None
     created_at: datetime
     updated_at: datetime
     system_prompt: str
@@ -67,17 +69,24 @@ class AgentResponse(BaseModel):
 
 @router.post("/add_agent")
 def create_agent(
-    request: Request, agent_data: AgentCreate, db: Session = Depends(get_db)
+    request: Request,
+    agent_data: AgentCreate,
+    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
 ):
     """
     Create a new agent record in the database.
     """
+    if db is None:
+        db: Session = Depends(get_db)
+
+    user_jwt_content: dict[str, Any] = (
+        request.state.user_jwt_content
+    )  # pyright: ignore[reportAny]
+
     if (
-        request.state.user_jwt_content["workspace_role"].get(
-            agent_data.workspace_id, None
-        )
+        user_jwt_content["workspace_role"].get(agent_data.workspace_id, None)
         != "teacher"
-        and not request.state.user_jwt_content["system_admin"]
+        and not user_jwt_content["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -97,7 +106,7 @@ def create_agent(
         agent_files=agent_data.agent_files,
     )
     db.add(new_agent)
-    agent_prompt_handler.put_agent_prompt(
+    _ = agent_prompt_handler.put_agent_prompt(
         str(new_agent.agent_id), agent_data.system_prompt
     )
 
