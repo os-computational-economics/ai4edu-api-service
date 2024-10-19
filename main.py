@@ -189,7 +189,7 @@ def delete_file_after_delay(file_path: str, delay: float):
 @app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
 async def get_tts_file(
-    tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
+        tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
 ):
     """
     ENDPOINT: /user/get_tts_file
@@ -246,9 +246,9 @@ def get_new_thread(request: Request, agent_id: str, workspace_id: str):
 @app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
 @app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
 async def upload_file(
-    file: UploadFile,
-    file_desc: Optional[str] = None,
-    chunking_separator: Optional[str] = None,
+        file: UploadFile,
+        file_desc: Optional[str] = None,
+        chunking_separator: Optional[str] = None,
 ):
     """
     ENDPOINT: /upload_file
@@ -297,6 +297,8 @@ async def get_presigned_url_for_file(file_id: str):
     :param file_id:
     :return:
     """
+    if file_id is None or file_id == "":
+        return response(success=False, message="No file ID provided", status_code=400)
     url = file_storage.get_presigned_url(file_id)
     if url is None:
         return response(
