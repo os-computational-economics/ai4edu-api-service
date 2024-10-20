@@ -62,10 +62,12 @@
                   jsonpatch
                   jsonpointer
                   langchain
+                  (pkgs.callPackage ./langchain-anthropic.nix python312Packages)
                   # langchain-anthropic
                   langchain-community
                   langchain-core
                   langchain-openai
+                  # to package
                   # langchain-pinecone
                   langchain-text-splitters
                   langsmith
@@ -80,6 +82,7 @@
                   openai
                   orjson
                   packaging
+                  # to package
                   # pinecone-client
                   psycopg
                   # psycopg-binary
@@ -122,7 +125,7 @@
               openssl
               postman
               dig
-              pgadmin4-desktopmode
+              # pgadmin4-desktopmode
             ];
           };
           default = docker-python;
