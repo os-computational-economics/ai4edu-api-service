@@ -9,9 +9,6 @@
 import requests
 import os
 
-import time
-from dotenv import load_dotenv
-
 
 class TtsStream:
     """
@@ -51,7 +48,7 @@ class TtsStream:
                 f"./{self.TTS_AUDIO_CACHE_FOLDER}/{self.tts_session_id}_{chunk_id}.mp3",
                 "wb",
             ) as f:
-                f.write(response.content)
+                _ = f.write(response.content)
             print("TTS file saved successfully.")
         else:
             print(f"Error: {response.status_code} - {response.text}")

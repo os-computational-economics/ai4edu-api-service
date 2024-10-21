@@ -2,7 +2,6 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
-from typing import List, Optional
 from uuid import UUID
 
 from utils.response import response
@@ -12,7 +11,7 @@ from migrations.session import get_db
 
 from sqlalchemy.orm import Session
 
-from migrations.models import Thread, Agent
+from migrations.models import Thread, Agent, ThreadValue
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,13 +21,13 @@ message_handler = MessageStorageHandler()
 
 
 class ThreadListQuery(BaseModel):
-    user_id: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    user_id: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
-    agent_name: Optional[str] = None
-    course_id: Optional[str] = None
+    agent_name: str | None = None
+    course_id: str | None = None
 
 
 class ThreadContent(BaseModel):
@@ -55,30 +54,32 @@ def get_thread_by_id(thread_id: UUID):
         )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
-        response(False, status_code=500, message=str(e))
+        return response(False, status_code=500, message=str(e))
 
 
 @router.get("/get_thread_list")
 def get_thread_list(
     workspace_id: str,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
     page: int = 1,
     page_size: int = 10,
-    student_id: Optional[str] = None,
-    agent_name: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    student_id: str | None = None,
+    agent_name: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
     """
     List threads with pagination, filtered by agent creator.
     """
-    user_workspace_role = request.state.user_jwt_content["workspace_role"].get(
-        workspace_id, None
-    )
+    if db is None:
+        db: Session = Depends(get_db)
+    user_workspace_role = request.state.__getattr__("user_jwt_content")[
+        "workspace_role"
+    ].get(workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and request.state.user_jwt_content["student_id"] != student_id
+        and request.state.__getattr__("user_jwt_content")["student_id"] != student_id
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -122,12 +123,12 @@ def get_thread_list(
             )
 
     total = query.count()
-    threads = (
+    threads: list[ThreadValue] = (
         query.order_by(Thread.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
-    )
+    )  # pyright: ignore[reportAssignmentType]
     results = [
         {
             "thread_id": str(t.thread_id),

@@ -84,7 +84,7 @@ def chat_stream_with_retrieve(
     question: str,
     retrieval_namespace: str,
     system_prompt: str = "You are a personalized assistant.",
-    history_from_request: dict[str, Any] | None = None,
+    history_from_request: dict[int, dict[str, str]] | None = None,
     llm_for_question_consolidation: str = "openai",
     llm_for_answer: str = "openai",
 ) -> Iterable[str]:

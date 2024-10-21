@@ -9,16 +9,14 @@
 import os
 
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.chains import RetrievalQA, ConversationalRetrievalChain
-from langchain.retrievers import MergerRetriever
+from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader
-from pinecone import Pinecone, ServerlessSpec
+from langchain.document_loaders import PyPDFLoader
+from pinecone import Pinecone
 
 from dotenv import load_dotenv
 
-load_dotenv()
+_ = load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")

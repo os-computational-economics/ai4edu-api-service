@@ -6,6 +6,8 @@
 @email: rxy216@case.edu
 @time: 3/16/24 23:48
 """
+from datetime import datetime
+from typing import Any, Callable, override
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Column,
@@ -22,7 +24,15 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
 )
 
-Base = declarative_base(metadata=MetaData(schema="public"))
+
+class BaseType:
+    def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny]
+        return super().__init__(**kwargs)
+
+    metadata = MetaData
+
+
+Base: type[BaseType] = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
 
 
@@ -43,8 +53,23 @@ class Agent(Base):
     model = Column(String(16))
     agent_files = Column(JSON)  # {"file_id": "file_name"}
 
+    @override
     def __repr__(self):
-        return f"Agent id: {self.agent_id}, name: {self.agent_name}, course_id: {self.course_id}, creator: {self.creator}, status: {self.status}, model: {self.model}"
+        return f"Agent id: {self.agent_id}, name: {self.agent_name}, creator: {self.creator}, status: {self.status}, model: {self.model}"
+
+
+class AgentValue:
+    agent_id: str = ""
+    created_at: datetime = datetime.now()
+    agent_name: str = ""
+    workspace_id: str = ""
+    creator: str = ""
+    updated_at: datetime = datetime.now()
+    voice: bool = False
+    status: int = 1
+    allow_model_choice: bool = True
+    model: str = ""
+    agent_files: dict[str, Any] = {}
 
 
 class Thread(Base):
@@ -60,8 +85,19 @@ class Thread(Base):
     workspace_id = Column(String(16), nullable=False)
     agent_name = Column(String(255), nullable=False)
 
+    @override
     def __repr__(self):
         return f"Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {self.created_at}, agent_id: {self.agent_id}"
+
+
+class ThreadValue:
+    thread_id: str = ""
+    student_id: str = ""
+    created_at: datetime = datetime.now()
+    agent_id: str = ""
+    user_id: int = 0
+    workspace_id: str = ""
+    agent_name: str = ""
 
 
 class User(Base):
@@ -78,8 +114,22 @@ class User(Base):
     last_login = Column(DateTime)
     create_at = Column(DateTime)
 
+    @override
     def __repr__(self):
         return f"User id: {self.user_id}, email: {self.email}"
+
+
+class UserValue:
+    user_id: int = 0
+    first_name: str = ""
+    last_name: str = ""
+    email: str = ""
+    student_id: str = ""
+    workspace_role: dict[str, Any] = {}
+    system_admin: bool = False
+    school_id: int = 0
+    last_login: datetime = datetime.now()
+    create_at: datetime = datetime.now()
 
 
 class RefreshToken(Base):
@@ -94,8 +144,18 @@ class RefreshToken(Base):
 
     __table_args__ = (UniqueConstraint("token"),)
 
+    @override
     def __repr__(self):
         return f"RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {self.token}"
+
+
+class RefreshTokenValue:
+    token_id: str = ""
+    user_id: int = 0
+    token: str = ""
+    created_at: datetime = datetime.now()
+    expire_at: datetime = datetime.now()
+    issued_token_count: int = 0
 
 
 class File(Base):
@@ -110,8 +170,20 @@ class File(Base):
     chunking_separator = Column(String(15))
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
+    @override
     def __repr__(self):
         return f"Files id: {self.file_id}, name: {self.file_name}, type: {self.file_type}, status: {self.file_status}"
+
+
+class FileValue:
+    file_id: str = ""
+    file_name: str = ""
+    file_desc: str = ""
+    file_type: str = ""
+    file_ext: str = ""
+    file_status: int = 0
+    chunking_separator: str = ""
+    created_at: datetime = datetime.now()
 
 
 class Workspace(Base):
@@ -123,8 +195,17 @@ class Workspace(Base):
     school_id = Column(Integer, default=0, nullable=False)
     workspace_password = Column(String(128), nullable=False)
 
+    @override
     def __repr__(self):
         return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, active: {self.workspace_active}, school_id: {self.school_id}"
+
+
+class WorkspaceValue:
+    workspace_id: str = ""
+    workspace_name: str = ""
+    workspace_active: bool = False
+    school_id: int = 0
+    workspace_password: str = ""
 
 
 class UserWorkspace(Base):
@@ -141,5 +222,15 @@ class UserWorkspace(Base):
         PrimaryKeyConstraint("workspace_id", "student_id", name="ai_user_workspace_pk"),
     )
 
+    @override
     def __repr__(self):
         return f"AIUserWorkspace user_id: {self.user_id}, workspace_id: {self.workspace_id}, role: {self.role}"
+
+
+class UserWorkspaceValue:
+    user_id: int = 0
+    workspace_id: str = ""
+    role: str = ""
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
+    student_id: str = ""

@@ -2,16 +2,13 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
-
   # build-system
   poetry-core,
-
   # dependencies
   langchain-core,
   anthropic,
   tiktoken,
   defusedxml,
-
   # tests
   freezegun,
   langchain-standard-tests,
@@ -27,7 +24,6 @@
   toml,
   ...
 }:
-
 buildPythonPackage rec {
   pname = "langchain-anthropic";
   version = "0.2.1";
@@ -47,7 +43,7 @@ buildPythonPackage rec {
       --replace-fail "^0.7.1" "^0.8.0rc2"
   '';
 
-  build-system = [ poetry-core ];
+  build-system = [poetry-core];
 
   dependencies = [
     langchain-core
@@ -71,7 +67,7 @@ buildPythonPackage rec {
     toml
   ];
 
-  pytestFlagsArray = [ "tests/unit_tests" ];
+  pytestFlagsArray = ["tests/unit_tests"];
 
   disabledTests = [
     # These tests require network access
@@ -88,7 +84,7 @@ buildPythonPackage rec {
     "test_chat_openai_get_num_tokens"
   ];
 
-  pythonImportsCheck = [ "langchain_anthropic" ];
+  pythonImportsCheck = ["langchain_anthropic"];
 
   passthru = {
     inherit (langchain-core) updateScript;

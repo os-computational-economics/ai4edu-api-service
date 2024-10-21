@@ -16,13 +16,17 @@ router = APIRouter()
 
 
 @router.get("/get/{agent_id}")
-def get_agent_by_id(agent_id: str, db: Session = Depends(get_db)):
+def get_agent_by_id(
+    agent_id: str, db: Session | None = None
+):  # pyright: ignore[reportRedeclaration]
     """
     This function gets the settings of an agent by its ID
     :param agent_id: The ID of the agent
     :param db: The database session
     :return: The settings of the agent
     """
+    if db is None:
+        db: Session = Depends(get_db)
     if not check_uuid_format(agent_id):
         return response(False, status_code=400, message="Invalid UUID format")
     conn = db.connection()
@@ -49,14 +53,14 @@ def get_agent_by_id(agent_id: str, db: Session = Depends(get_db)):
         )
 
 
-def check_uuid_format(agent_id):
+def check_uuid_format(agent_id: str):
     """
     This function checks if the UUID is in the correct format
     :param agent_id: The UUID to check
     :return: True if the UUID is in the correct format, False otherwise
     """
     try:
-        UUID(agent_id)
+        _ = UUID(agent_id)
     except ValueError:
         return False
     return True

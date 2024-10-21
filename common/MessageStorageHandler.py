@@ -39,7 +39,7 @@ class MessageStorageHandler:
     DYNAMODB_TABLE_NAME = "ai4edu_chat_msg"
 
     def __init__(self):
-        self.dynamodb = boto3.resource(
+        self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
             "dynamodb",
             region_name="us-east-2",
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
@@ -61,7 +61,7 @@ class MessageStorageHandler:
         try:
             created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
             msg_id = thread_id[:8] + "#" + created_at
-            self.table.put_item(
+            _ = self.table.put_item(
                 Item={
                     "thread_id": thread_id,
                     "created_at": created_at,

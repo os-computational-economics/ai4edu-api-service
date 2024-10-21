@@ -28,9 +28,8 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
     for db in get_db():
         user_id: str = user_jwt_content["user_id"]
         student_id: str = user_jwt_content["student_id"]
-        is_user_in_workspace: bool = user_jwt_content["workspace_role"].get(
-            workspace_id, None
-        )
+        workspace_role: dict[str, bool] = user_jwt_content["workspace_role"]
+        is_user_in_workspace: bool = workspace_role.get(workspace_id, False)
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")

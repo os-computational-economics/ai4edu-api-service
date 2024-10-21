@@ -32,6 +32,9 @@
                   async-timeout
                   attrs
                   boto3
+                  boto3-stubs
+                  mypy-boto3-dynamodb
+                  mypy-boto3-s3
                   botocore
                   certifi
                   cffi
@@ -63,11 +66,10 @@
                   jsonpointer
                   langchain
                   (pkgs.callPackage ./langchain-anthropic.nix python312Packages)
-                  # langchain-anthropic
                   langchain-community
                   langchain-core
                   langchain-openai
-                  # to package
+                  # TODO: needs pinecone-client to work
                   # langchain-pinecone
                   langchain-text-splitters
                   langsmith
@@ -82,7 +84,7 @@
                   openai
                   orjson
                   packaging
-                  # to package
+                  # TODO: fix this package
                   # pinecone-client
                   psycopg
                   # psycopg-binary
@@ -96,6 +98,7 @@
                   python-dotenv
                   python-multipart
                   pyyaml
+                  types-redis
                   redis
                   regex
                   requests

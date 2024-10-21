@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 
 from migrations.session import get_db
-from migrations.models import Agent
+from migrations.models import Agent, AgentValue
 
 from utils.response import response
 from common.AgentPromptHandler import AgentPromptHandler
@@ -32,7 +32,7 @@ class AgentCreate(BaseModel):
     allow_model_choice: bool = Field(default=True)
     model: str | None = None
     system_prompt: str
-    agent_files: dict[str, Any] | None = {}
+    agent_files: dict[str, str] | None = {}
 
 
 class AgentDelete(BaseModel):
@@ -49,8 +49,8 @@ class AgentUpdate(BaseModel):
     status: int | None = None
     allow_model_choice: bool | None = None
     model: str | None = None
-    system_prompt: str
-    agent_files: dict[str, Any] | None = {}
+    system_prompt: str | None = None
+    agent_files: dict[str, str] | None = {}
 
 
 class AgentResponse(BaseModel):
@@ -116,7 +116,7 @@ def create_agent(
         for file_id, file_name in agent_data.agent_files.items():
             file_path = fsh.get_file(file_id)
             if file_path:
-                embed_file(
+                _ = embed_file(
                     "namespace-test",
                     f"{agent_data.workspace_id}-{new_agent_id}",
                     file_path,
@@ -139,37 +139,41 @@ def create_agent(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to insert new agent: {e}")
-        response(False, message=str(e))
+        return response(False, message=str(e))
 
 
 @router.post("/delete_agent")
 def delete_agent(
-    request: Request, delete_data: AgentDelete, db: Session = Depends(get_db)
+    request: Request,
+    delete_data: AgentDelete,
+    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
 ):
     """
     Delete an existing agent record in the database by marking it as status=2.
     Will not actually delete the record or prompt from the database..
     """
-    wsID = (
-        delete_data.workspace_id
-        or db.query(Agent)
-        .filter(Agent.agent_id == delete_data.agent_id)
-        .first()
-        .workspace_id
-    )
+    if db is None:
+        db: Session = Depends(get_db)
+
+    agent_workspace: AgentValue = (
+        db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
+    )  # pyright: ignore[reportAssignmentType]
+
+    wsID = delete_data.workspace_id or agent_workspace.workspace_id
     if (
-        request.state.user_jwt_content["workspace_role"].get(wsID, None) != "teacher"
-        and not request.state.user_jwt_content["system_admin"]
+        request.state.__getattr__("user_jwt_content")["workspace_role"].get(wsID, None)
+        != "teacher"
+        and not request.state.__getattr__("user_jwt_content")["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
-    agent_to_delete = (
+    agent_to_delete: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
-    )
+    )  # pyright: ignore[reportAssignmentType]
     if not agent_to_delete:
         logger.error(f"Agent not found: {delete_data.agent_id}")
-        response(False, status_code=404, message="Agent not found")
+        return response(False, status_code=404, message="Agent not found")
     try:
         # mark the agent as deleted by setting the status to 2
         agent_to_delete.status = 2
@@ -179,32 +183,37 @@ def delete_agent(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete agent: {e}")
-        response(False, message=str(e))
+        return response(False, message=str(e))
 
 
 @router.post("/update_agent")
 def edit_agent(
-    request: Request, update_data: AgentUpdate, db: Session = Depends(get_db)
+    request: Request,
+    update_data: AgentUpdate,
+    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
 ):
     """
     Update an existing agent record in the database.
     """
+    if db is None:
+        db: Session = Depends(get_db)
+
     if (
-        request.state.user_jwt_content["workspace_role"].get(
+        request.state.__getattr__("user_jwt_content")["workspace_role"].get(
             update_data.workspace_id, None
         )
         != "teacher"
-        and not request.state.user_jwt_content["system_admin"]
+        and not request.state.__getattr__("user_jwt_content")["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
-    agent_to_update = (
+    agent_to_update: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
-    )
+    )  # pyright: ignore[reportAssignmentType]
     if not agent_to_update:
         logger.error(f"Agent not found: {update_data.agent_id}")
-        response(False, status_code=404, message="Agent not found")
+        return response(False, status_code=404, message="Agent not found")
 
     # Update the agent fields if provided
     if update_data.agent_name is not None:
@@ -228,7 +237,7 @@ def edit_agent(
         for file_id, file_name in update_data.agent_files.items():
             file_path = fsh.get_file(file_id)
             if file_path:
-                embed_file(
+                _ = embed_file(
                     "namespace-test",
                     f"{update_data.workspace_id}-{update_data.agent_id}",
                     file_path,
@@ -236,14 +245,14 @@ def edit_agent(
                     file_name,
                     "pdf",
                     str(update_data.agent_id),
-                    update_data.workspace_id,
+                    update_data.workspace_id or "",
                 )
             else:
                 logger.error(f"Failed to embed file: {file_id}")
     agent_to_update.updated_at = datetime.now()
 
     if update_data.system_prompt is not None:
-        agent_prompt_handler.put_agent_prompt(
+        _ = agent_prompt_handler.put_agent_prompt(
             str(agent_to_update.agent_id), update_data.system_prompt
         )
 
@@ -255,21 +264,26 @@ def edit_agent(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update agent: {e}")
-        response(False, message=str(e))
+        return response(False, message=str(e))
 
 
 @router.get("/agents")
 def list_agents(
     request: Request,
     workspace_id: str,
-    db: Session = Depends(get_db),
+    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
     page: int = 1,
     page_size: int = 10,
 ):
     """
     List agents with pagination.
     """
-    user_role = request.state.user_jwt_content["workspace_role"].get(workspace_id, None)
+    if db is None:
+        db: Session = Depends(get_db)
+
+    user_role = request.state.__getattr__("user_jwt_content")["workspace_role"].get(
+        workspace_id, None
+    )
     if user_role is None:
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -280,7 +294,9 @@ def list_agents(
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
-    agents = query.offset(skip).limit(page_size).all()
+    agents: list[AgentValue] = (
+        query.offset(skip).limit(page_size).all()
+    )  # pyright: ignore[reportAssignmentType]
     # get the prompt for each agent
     if user_role == "teacher":
         for agent in agents:
@@ -294,17 +310,21 @@ def list_agents(
 
 
 @router.get("/agent/{agent_id}")
-def get_agent_by_id(request: Request, agent_id: UUID, db: Session = Depends(get_db)):
+def get_agent_by_id(
+    request: Request, agent_id: UUID, db: Session | None = None
+):  # pyright: ignore[reportRedeclaration]
     """
     Fetch an agent by its UUID.
     """
-    agent = (
+    if db is None:
+        db: Session = Depends(get_db)
+    agent: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == agent_id, Agent.status != 2).first()
-    )  # exclude deleted agents
+    )  # pyright: ignore[reportAssignmentType] exclude deleted agents
     if agent is None:
         return response(False, status_code=404, message="Agent not found")
     agent_workspace = agent.workspace_id
-    user_role = request.state.user_jwt_content["workspace_role"].get(
+    user_role = request.state.__getattr__("user_jwt_content")["workspace_role"].get(
         agent_workspace, None
     )
     if user_role is None:

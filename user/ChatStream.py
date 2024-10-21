@@ -6,7 +6,6 @@
 @email: rxy216@case.edu
 @time: 2/29/24 15:14
 """
-from typing import List
 import json
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
@@ -33,14 +32,14 @@ class ChatStreamModel(BaseModel):
 class ChatSingleCallResponse(BaseModel):
     status: str  # "success" or "fail"
     error_message: str | None = None
-    messages: List[str]
+    messages: list[str]
     thread_id: str
 
 
 class ChatStreamResponse(BaseModel):
     status: str  # "success" or "fail"
     error_message: str | None = None
-    messages: List[str]
+    messages: list[str]
     thread_id: str
 
 
@@ -101,14 +100,14 @@ class ChatStream:
         Stream chat messages from OpenAI API.
         :return: A custom Server-Sent event with chat information
         """
-        self.thread_id = chat_stream_model.thread_id
+        self.thread_id = chat_stream_model.thread_id or ""
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
         self.tts_voice_enabled = chat_stream_model.voice
         self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
-        self.message_storage_handler.put_message(
+        _ = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
             "human",
@@ -121,7 +120,7 @@ class ChatStream:
             self.__chat_generator(chat_stream_model.messages, agent_prompt)
         )
 
-    def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt):
+    def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt: str):
         """
         Chat generator.
         :param messages: All previous messages

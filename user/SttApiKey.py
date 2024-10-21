@@ -55,8 +55,8 @@ class SttApiKey:
         response_dict: dict[str, Any] = response.json()
 
         # extract the API key from the dictionary
-        api_key: str = response_dict.get("key") or ""
-        api_key_id: str = response_dict.get("api_key_id") or ""
+        api_key: str = response_dict.get("key", "")
+        api_key_id: str = response_dict.get("api_key_id", "")
 
         if not api_key or not api_key_id:
             raise ValueError("Failed to generate API key.")
