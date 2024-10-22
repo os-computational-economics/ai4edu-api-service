@@ -17,10 +17,7 @@ router = APIRouter()
 
 
 @router.get("/get/{agent_id}")
-def get_agent_by_id(
-    agent_id: str,
-    db: Annotated[Session, Depends(get_db)]
-):
+def get_agent_by_id(agent_id: str, db: Annotated[Session, Depends(get_db)]):
     """
     This function gets the settings of an agent by its ID
     :param agent_id: The ID of the agent

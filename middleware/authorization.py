@@ -120,7 +120,9 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         if tokens["access_token"] is not None:
             parse_result = parse_token(tokens["access_token"])
             if parse_result["success"] and parse_result["data"] is not None:
-                user_access = extract_role(parseJWT(parse_result["data"])) # pyright: ignore[reportAny]
+                user_access = extract_role(
+                    parseJWT(parse_result["data"])
+                )  # pyright: ignore[reportAny]
                 if has_access(endpoint_access_map, user_access, path):
                     request.state.user_jwt_content = parse_result["data"]
                     return await call_next(request)

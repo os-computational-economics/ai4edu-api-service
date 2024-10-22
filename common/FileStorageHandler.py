@@ -84,8 +84,9 @@ class FileStorageHandler:
         """Retrieve cached file information from Redis."""
         cache_key = f"file_info:{file_id}"
         cached_data = str(
-            self.redis_client.get(cache_key) or "" # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-        )  
+            self.redis_client.get(cache_key)
+            or ""  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        )
         return json.loads(cached_data) if cached_data else None
 
     def get_file(self, file_id: str) -> str | None:

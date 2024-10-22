@@ -139,9 +139,7 @@ def create_agent(
 
 @router.post("/delete_agent")
 def delete_agent(
-    request: Request,
-    delete_data: AgentDelete,
-    db: Annotated[Session, Depends(get_db)]
+    request: Request, delete_data: AgentDelete, db: Annotated[Session, Depends(get_db)]
 ):
     """
     Delete an existing agent record in the database by marking it as status=2.
@@ -153,11 +151,10 @@ def delete_agent(
     )  # pyright: ignore[reportAssignmentType]
 
     wsID = delete_data.workspace_id or agent_workspace.workspace_id
-    
+
     user_jwt_content = getJWT(request.state)
     if (
-        user_jwt_content["workspace_role"].get(wsID, None)
-        != "teacher"
+        user_jwt_content["workspace_role"].get(wsID, None) != "teacher"
         and not user_jwt_content["system_admin"]
     ):
         return response(
@@ -183,9 +180,7 @@ def delete_agent(
 
 @router.post("/update_agent")
 def edit_agent(
-    request: Request,
-    update_data: AgentUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    request: Request, update_data: AgentUpdate, db: Annotated[Session, Depends(get_db)]
 ):
     """
     Update an existing agent record in the database.
@@ -287,12 +282,14 @@ def list_agents(
     )  # pyright: ignore[reportAssignmentType]
     # get the prompt for each agent
     if user_role == "teacher":
-        agentRet: list[AgentTeacherResponse] = agents # pyright: ignore[reportAssignmentType]
+        agentRet: list[AgentTeacherResponse] = (
+            agents  # pyright: ignore[reportAssignmentType]
+        )
         for agent in agentRet:
             agent.system_prompt = (
                 agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
             )
-        agents = agentRet # pyright: ignore[reportAssignmentType]
+        agents = agentRet  # pyright: ignore[reportAssignmentType]
     else:
         for agent in agents:
             agent.agent_files = {}
@@ -301,9 +298,7 @@ def list_agents(
 
 @router.get("/agent/{agent_id}")
 def get_agent_by_id(
-    request: Request,
-    agent_id: UUID,
-    db: Annotated[Session, Depends(get_db)]
+    request: Request, agent_id: UUID, db: Annotated[Session, Depends(get_db)]
 ):
     """
     Fetch an agent by its UUID.

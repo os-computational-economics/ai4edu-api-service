@@ -57,7 +57,7 @@ class UserRoleUpdate(BaseModel):
 def create_workspace(
     request: Request,
     workspace: WorkspaceCreate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
 
     user_jwt_content = getJWT(request.state)
@@ -91,16 +91,13 @@ def add_users_via_csv(
     request: Request,
     workspace_id: str,
     db: Annotated[Session, Depends(get_db)],
-    file: UploadFile | None = None  # pyright: ignore[reportRedeclaration]
+    file: UploadFile | None = None,  # pyright: ignore[reportRedeclaration]
 ):
     if file is None:
         file: UploadFile = File(...)
     user_jwt_content = getJWT(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
-    if (
-        user_workspace_role != "teacher"
-        and not user_jwt_content["system_admin"]
-    ):
+    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
@@ -150,7 +147,7 @@ def add_users_via_csv(
 def student_join_workspace(
     request: Request,
     join_workspace: StudentJoinWorkspace,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     user_jwt_content = getJWT(request.state)
     user_id: int = user_jwt_content["user_id"]
@@ -209,14 +206,13 @@ def student_join_workspace(
 def delete_user_from_workspace(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     user_jwt_content = getJWT(request.state)
-    user_workspace_role = user_jwt_content["workspace_role"].get(user_role_update.workspace_id, None)
-    if (
-        user_workspace_role != "teacher"
-        and not user_jwt_content["system_admin"]
-    ):
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        user_role_update.workspace_id, None
+    )
+    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
@@ -263,14 +259,13 @@ def delete_user_from_workspace(
 def set_user_role(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     user_jwt_content = getJWT(request.state)
-    user_workspace_role = user_jwt_content["workspace_role"].get(user_role_update.workspace_id, None)
-    if (
-        user_workspace_role != "teacher"
-        and not user_jwt_content["system_admin"]
-    ):
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        user_role_update.workspace_id, None
+    )
+    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
@@ -316,7 +311,7 @@ def set_user_role(
 def set_user_role_with_student_id(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     This should be able to set any user to any role in any workspace, even if the user is not in that workspace
@@ -374,10 +369,7 @@ def set_user_role_with_student_id(
 
 
 @router.get("/get_workspace_list")
-def get_workspace_list(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)]
-):
+def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]):
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(

@@ -99,8 +99,10 @@ class AgentPromptHandler:
         """
         try:
             return str(
-                self.redis_client.get(agent_id) # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-            )  
+                self.redis_client.get(
+                    agent_id
+                )  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            )
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None

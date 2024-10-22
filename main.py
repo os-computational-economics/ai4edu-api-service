@@ -314,9 +314,7 @@ def generate_token(request: Request):
     Generates a temporary STT auth code for the user.
     :return:
     """
-    tokens = extract_token(
-        request.headers.get("Authorization", "")
-    )
+    tokens = extract_token(request.headers.get("Authorization", ""))
     if tokens["refresh_token"] is None:
         return response(
             success=False, message="No refresh token provided", status_code=401
@@ -424,7 +422,11 @@ def read_root(request: Request) -> dict[str, Any]:
             # TODO: create an error if failed instead of continuing with bad data
             or ""
         )
-        test_msg_get_content = getattr(message.get_message(test_thread_id, created_at), "content", "FAILED to get message")
+        test_msg_get_content = getattr(
+            message.get_message(test_thread_id, created_at),
+            "content",
+            "FAILED to get message",
+        )
         test_thread_get_content = message.get_thread(test_thread_id)
 
         return {
