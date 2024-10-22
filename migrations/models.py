@@ -7,7 +7,7 @@
 @time: 3/16/24 23:48
 """
 from datetime import datetime
-from typing import Any, Callable, override
+from typing import Any, override
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Column,

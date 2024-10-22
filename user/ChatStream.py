@@ -197,7 +197,7 @@ class ChatStream:
                 }
             )
 
-    def __openai_chat_generator(self, messages: List[dict[str, str]]):
+    def __openai_chat_generator(self, messages: list[dict[str, str]]):
         """
         OpenAI chat generator.
         :param messages:
@@ -213,7 +213,7 @@ class ChatStream:
                     new_text = chunk.choices[0].delta.content
                     yield new_text
 
-    def __anthropic_chat_generator(self, messages: List[dict[str, str]]):
+    def __anthropic_chat_generator(self, messages: list[dict[str, str]]):
         """
         Anthropic chat generator.
         :param messages:
