@@ -6,10 +6,10 @@
 @email: rxy216@case.edu
 @time: 4/16/24 12:14
 """
-from typing import Any
 import uuid
 import logging
 
+from common.JWTValidator import getJWT
 from utils.response import response
 from migrations.models import Thread
 from migrations.models import Agent
@@ -21,15 +21,13 @@ logger = logging.getLogger(__name__)
 
 def new_thread(request: Request, agent_id: str, workspace_id: str):
 
-    user_jwt_content: dict[str, Any] = (
-        request.state.user_jwt_content
-    )  # pyright: ignore[reportAny]
+    user_jwt_content = getJWT(request.state)
 
     for db in get_db():
-        user_id: str = user_jwt_content["user_id"]
-        student_id: str = user_jwt_content["student_id"]
-        workspace_role: dict[str, bool] = user_jwt_content["workspace_role"]
-        is_user_in_workspace: bool = workspace_role.get(workspace_id, False)
+        user_id = user_jwt_content["user_id"]
+        student_id = user_jwt_content["student_id"]
+        workspace_role = user_jwt_content["workspace_role"]
+        is_user_in_workspace: bool = not not workspace_role.get(workspace_id, False)
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")

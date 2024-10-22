@@ -87,8 +87,8 @@ class MessageStorageHandler:
             response = self.table.get_item(
                 Key={"thread_id": thread_id, "created_at": created_at}
             )
-            item = response["Item"]
-            return Message(**item)
+            item = response["Item"] # pyright: ignore[reportTypedDictNotRequiredAccess] This is okay because we are in a try-catch
+            return Message(**item) # pyright: ignore[reportArgumentType] Same here
         except Exception as e:
             print(f"Error getting the message from the database: {e}")
             return None
@@ -104,7 +104,7 @@ class MessageStorageHandler:
                 KeyConditionExpression=Key("thread_id").eq(thread_id)
             )
             items = response["Items"]
-            return [Message(**item) for item in items]
+            return [Message(**item) for item in items] # pyright: ignore[reportArgumentType] Same here
         except Exception as e:
             print(f"Error getting the thread from the database: {e}")
             return []

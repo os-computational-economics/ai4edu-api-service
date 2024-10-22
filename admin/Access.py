@@ -1,5 +1,6 @@
 import logging
-from typing import Any
+from typing import Annotated
+from common.JWTValidator import getJWT
 from migrations.models import User, UserWorkspace
 
 from fastapi import APIRouter, Depends, Request
@@ -16,7 +17,7 @@ router = APIRouter()
 @router.get("/get_user_list")
 def get_user_list(
     request: Request,
-    db: Session | None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
     workspace_id: str = "all",
@@ -29,12 +30,8 @@ def get_user_list(
     :param page_size: Number of users per page.
     :param workspace_id: Workspace ID, "all" for all workspaces
     """
-    if db is None:
-        db: Session = Depends(get_db)
 
-    user_jwt_content: dict[str, Any] = (
-        request.state.user_jwt_content
-    )  # pyright: ignore[reportAny]
+    user_jwt_content = getJWT(request.state)
 
     if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
         return response(

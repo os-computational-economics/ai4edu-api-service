@@ -6,7 +6,10 @@
 @email: rxy216@case.edu
 @time: 5/24/24 19:54
 """
-endpoint_access_map = {
+
+AccessMap = dict[str, dict[str, bool]]
+
+endpoint_access_map: AccessMap = {
     "/ai4edu_testing": {"student": False, "teacher": False, "admin": True},
     "/agent/{agent_id}": {"student": True, "teacher": True, "admin": True},
     "/agent/get/{agent_id}": {

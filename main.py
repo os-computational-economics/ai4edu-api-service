@@ -134,7 +134,7 @@ origins = [
     "https://ai4edu-temp-dev.jerryang.org",
 ]
 
-regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
+regex_origins = "https://.*jerryyang666s-projects\\.vercel\\.app"
 
 app.add_middleware(
     CORSMiddleware,
@@ -314,7 +314,7 @@ def generate_token(request: Request):
     Generates a temporary STT auth code for the user.
     :return:
     """
-    tokens: dict[str, str | None] = extract_token(
+    tokens = extract_token(
         request.headers.get("Authorization", "")
     )
     if tokens["refresh_token"] is None:
@@ -387,8 +387,8 @@ def read_root(request: Request) -> dict[str, Any]:
         # test database connection
         engine = create_engine(os.getenv("DB_URI") or "")
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT version FROM db_version"))
-            db_result = result.fetchone()[0]
+            result = conn.execute(text("SELECT version FROM db_version")).fetchone()
+            db_result = (result or ["FAILED to retrieve version"])[0]
 
         # test docker volume access
         try:
@@ -421,9 +421,10 @@ def read_root(request: Request) -> dict[str, Any]:
         message = MessageStorageHandler()
         created_at = (
             message.put_message(test_thread_id, test_user_id, test_role, test_content)
+            # TODO: create an error if failed instead of continuing with bad data
             or ""
         )
-        test_msg_get_content = message.get_message(test_thread_id, created_at).content
+        test_msg_get_content = getattr(message.get_message(test_thread_id, created_at), "content", "FAILED to get message")
         test_thread_get_content = message.get_thread(test_thread_id)
 
         return {

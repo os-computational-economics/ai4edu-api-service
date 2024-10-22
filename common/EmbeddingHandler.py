@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 
 _ = load_dotenv()
 
+# TODO: move getenv into some propagation class
+# TODO: type-check pinecone
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pc = Pinecone(api_key=PINECONE_API_KEY)

@@ -115,7 +115,7 @@ class ChatStream:
         )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
-        agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        agent_prompt = agent_prompt_handler.get_agent_parompt(self.agent_id)
         return EventSourceResponse(
             self.__chat_generator(chat_stream_model.messages, agent_prompt)
         )
@@ -137,7 +137,7 @@ class ChatStream:
             self.requested_provider,
         )
         response_text = ""
-        all_sources = []
+        all_sources: list[str] = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
         chunk_buffer = ""
@@ -180,7 +180,7 @@ class ChatStream:
                     }
                 )
         # put the finished response into the database (AI message)
-        self.message_storage_handler.put_message(
+        _ = self.message_storage_handler.put_message(
             self.thread_id, self.user_id, self.requested_provider, response_text
         )
         # Process any remaining text in the chunk_buffer after the stream has finished

@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime
+from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from uuid import UUID
 
+from common.JWTValidator import getJWT
 from utils.response import response
 from common.MessageStorageHandler import MessageStorageHandler
 
@@ -61,7 +63,7 @@ def get_thread_by_id(thread_id: UUID):
 def get_thread_list(
     workspace_id: str,
     request: Request,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
     student_id: str | None = None,
@@ -72,14 +74,11 @@ def get_thread_list(
     """
     List threads with pagination, filtered by agent creator.
     """
-    if db is None:
-        db: Session = Depends(get_db)
-    user_workspace_role = request.state.__getattr__("user_jwt_content")[
-        "workspace_role"
-    ].get(workspace_id, None)
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and request.state.__getattr__("user_jwt_content")["student_id"] != student_id
+        and user_jwt_content["student_id"] != student_id
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -106,7 +105,7 @@ def get_thread_list(
             start_datetime = datetime.fromisoformat(start_date)
             query = query.filter(Thread.created_at >= start_datetime)
         except ValueError:
-            raise response(
+            return response(
                 False,
                 status_code=400,
                 message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
@@ -116,7 +115,7 @@ def get_thread_list(
             end_datetime = datetime.fromisoformat(end_date)
             query = query.filter(Thread.created_at <= end_datetime)
         except ValueError:
-            raise response(
+            return response(
                 False,
                 status_code=400,
                 message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",

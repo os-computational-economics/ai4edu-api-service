@@ -72,6 +72,10 @@ class AgentValue:
     agent_files: dict[str, Any] = {}
 
 
+class AgentTeacherResponse(AgentValue):
+    system_prompt: str = ""
+
+
 class Thread(Base):
     __tablename__ = "ai_threads"
 

@@ -84,9 +84,9 @@ class AgentPromptHandler:
         :return: True if successful, False otherwise.
         """
         try:
-            _ = self.redis_client.set(
+            _ = self.redis_client.set(  # pyright: ignore[reportUnknownMemberType]
                 agent_id, prompt
-            )  # pyright: ignore[reportUnknownMemberType]
+            )
             return True
         except Exception as e:
             logging.error(f"Error caching the agent prompt into redis: {e}")
@@ -99,8 +99,8 @@ class AgentPromptHandler:
         """
         try:
             return str(
-                self.redis_client.get(agent_id)
-            )  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                self.redis_client.get(agent_id) # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            )  
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None

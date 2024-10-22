@@ -9,12 +9,14 @@
 import csv
 import io
 import logging
+from typing import Annotated
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
 
+from common.JWTValidator import getJWT
 from migrations.models import (
     User,
     UserValue,
@@ -55,11 +57,11 @@ class UserRoleUpdate(BaseModel):
 def create_workspace(
     request: Request,
     workspace: WorkspaceCreate,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)]
 ):
-    if db is None:
-        db: Session = Depends(get_db)
-    if not request.state.__getattr__("user_jwt_content")["system_admin"]:
+
+    user_jwt_content = getJWT(request.state)
+    if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
@@ -88,19 +90,16 @@ def create_workspace(
 def add_users_via_csv(
     request: Request,
     workspace_id: str,
-    file: UploadFile | None = None,  # pyright: ignore[reportRedeclaration]
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)],
+    file: UploadFile | None = None  # pyright: ignore[reportRedeclaration]
 ):
     if file is None:
         file: UploadFile = File(...)
-    if db is None:
-        db: Session = Depends(get_db)
-    user_workspace_role = request.state.__getattr__("user_jwt_content")[
-        "workspace_role"
-    ].get(workspace_id, None)
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and not request.state.__getattr__("user_jwt_content")["system_admin"]
+        and not user_jwt_content["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -151,12 +150,11 @@ def add_users_via_csv(
 def student_join_workspace(
     request: Request,
     join_workspace: StudentJoinWorkspace,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)]
 ):
-    if db is None:
-        db: Session = Depends(get_db)
-    user_id: int = request.state.__getattr__("user_jwt_content")["user_id"]
-    student_id: str = request.state.__getattr__("user_jwt_content")["student_id"]
+    user_jwt_content = getJWT(request.state)
+    user_id: int = user_jwt_content["user_id"]
+    student_id: str = user_jwt_content["student_id"]
     try:
         user: UserValue | None = (
             db.query(User)
@@ -211,16 +209,13 @@ def student_join_workspace(
 def delete_user_from_workspace(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)]
 ):
-    if db is None:
-        db: Session = Depends(get_db)
-    user_workspace_role = request.state.__getattr__("user_jwt_content")[
-        "workspace_role"
-    ].get(user_role_update.workspace_id, None)
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(user_role_update.workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and not request.state.__getattr__("user_jwt_content")["system_admin"]
+        and not user_jwt_content["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -268,16 +263,13 @@ def delete_user_from_workspace(
 def set_user_role(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)]
 ):
-    if not db:
-        db: Session = Depends(get_db)
-    user_workspace_role = request.state.__getattr__("user_jwt_content")[
-        "workspace_role"
-    ].get(user_role_update.workspace_id, None)
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(user_role_update.workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and not request.state.__getattr__("user_jwt_content")["system_admin"]
+        and not user_jwt_content["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -324,10 +316,8 @@ def set_user_role(
 def set_user_role_with_student_id(
     request: Request,
     user_role_update: UserRoleUpdate,
-    db: Session | None = None,  # pyright: ignore[reportRedeclaration]
+    db: Annotated[Session, Depends(get_db)]
 ):
-    if db is None:
-        db: Session = Depends(get_db)
     """
     This should be able to set any user to any role in any workspace, even if the user is not in that workspace
     :param request:
@@ -335,7 +325,8 @@ def set_user_role_with_student_id(
     :param db:
     :return:
     """
-    if not request.state.__getattr__("user_jwt_content")["system_admin"]:
+    user_jwt_content = getJWT(request.state)
+    if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
@@ -384,11 +375,11 @@ def set_user_role_with_student_id(
 
 @router.get("/get_workspace_list")
 def get_workspace_list(
-    request: Request, db: Session | None = None
-):  # pyright: ignore[reportRedeclaration]
-    if db is None:
-        db: Session = Depends(get_db)
-    if not request.state.__getattr__("user_jwt_content")["system_admin"]:
+    request: Request,
+    db: Annotated[Session, Depends(get_db)]
+):
+    user_jwt_content = getJWT(request.state)
+    if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )

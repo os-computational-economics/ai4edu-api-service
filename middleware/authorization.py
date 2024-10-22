@@ -1,15 +1,28 @@
-from starlette.middleware.base import BaseHTTPMiddleware
+from typing import TypedDict, override
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from common.JWTValidator import UserJWTContent, parseJWT
 from utils.whitelist import whitelist
-from utils.endpoint_access_map import endpoint_access_map
+from utils.endpoint_access_map import AccessMap, endpoint_access_map
 from utils.token_utils import parse_token
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def extract_token(auth_header) -> dict:
+class Tokens(TypedDict):
+    access_token: str | None
+    refresh_token: str | None
+
+
+class Role(TypedDict):
+    admin: bool
+    teacher: bool
+    student: bool
+
+
+def extract_token(auth_header: str) -> Tokens:
     access_token = None
     refresh_token = None
     if auth_header and auth_header.startswith("Bearer "):
@@ -28,7 +41,7 @@ def extract_token(auth_header) -> dict:
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 
-def has_access(endpoint_access_map, user_access, current_path):
+def has_access(endpoint_access_map: AccessMap, user_access: Role, current_path: str):
     # Check if the current path exists in the endpoint_access_map
     if current_path in endpoint_access_map:
         access_roles = endpoint_access_map[current_path]
@@ -64,7 +77,7 @@ def has_access(endpoint_access_map, user_access, current_path):
     return False
 
 
-def extract_actual_path(path):
+def extract_actual_path(path: str):
     # Split the path by the forward slash (/)
     path_parts = path.split("/")
     # Remove the first three elements from the path_parts list
@@ -74,7 +87,7 @@ def extract_actual_path(path):
     return actual_path
 
 
-def extract_role(access_token_load) -> dict:
+def extract_role(access_token_load: UserJWTContent | None) -> Role:
     """
     Extract the role from the access token payload
     if the user is system_admin, the role admin is True
@@ -83,10 +96,12 @@ def extract_role(access_token_load) -> dict:
     :param access_token_load: access token payload
     :return: a dictionary mapping roles to whether the user has that role
     """
-    default_role = {"admin": False, "teacher": False, "student": True}
+    if access_token_load is None:
+        return {"admin": False, "teacher": False, "student": False}
+    default_role: Role = {"admin": False, "teacher": False, "student": True}
     if access_token_load["system_admin"]:
         default_role["admin"] = True
-    for workspace, role in access_token_load["workspace_role"].items():
+    for _, role in access_token_load["workspace_role"].items():
         if role == "teacher":
             default_role["teacher"] = True
             break
@@ -94,7 +109,8 @@ def extract_role(access_token_load) -> dict:
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    @override
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
         path = extract_actual_path(request.url.path)
         print("path", path)
         if path in whitelist:
@@ -103,8 +119,8 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         tokens = extract_token(request.headers.get("Authorization", ""))
         if tokens["access_token"] is not None:
             parse_result = parse_token(tokens["access_token"])
-            if parse_result["success"]:
-                user_access = extract_role(parse_result["data"])
+            if parse_result["success"] and parse_result["data"] is not None:
+                user_access = extract_role(parseJWT(parse_result["data"])) # pyright: ignore[reportAny]
                 if has_access(endpoint_access_map, user_access, path):
                     request.state.user_jwt_content = parse_result["data"]
                     return await call_next(request)

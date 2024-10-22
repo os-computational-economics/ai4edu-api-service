@@ -13,9 +13,9 @@ from migrations.models import Base
 # access to the values within the .ini file in use.
 config = context.config
 
-load_dotenv()
-load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
-config.set_main_option("sqlalchemy.url", os.getenv("DB_URI"))
+_ = load_dotenv()
+_ = load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
+config.set_main_option("sqlalchemy.url", os.getenv("DB_URI") or "")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -49,6 +49,7 @@ def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
+        # TODO: not sure what this is for or how it is meant to be called ↓
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -74,6 +75,7 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
+            # TODO: not sure what this is for or how it is meant to be called ↓
             target_metadata=target_metadata,
             version_table_schema=target_metadata.schema,
         )
