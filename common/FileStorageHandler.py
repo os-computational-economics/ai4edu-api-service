@@ -217,6 +217,8 @@ class FileStorageHandler:
             )
             return url
         except Exception as e:
+            # rollback the transaction if an error occurs
+            self._get_db().rollback()
             logger.error(f"Error generating presigned URL: {str(e)}")
             return None
 
