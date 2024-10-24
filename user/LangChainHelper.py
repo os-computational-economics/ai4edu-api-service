@@ -8,27 +8,44 @@
 """
 import os
 from collections.abc import Iterable
-from typing import Any
 from dotenv import load_dotenv
 
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.history_aware_retriever import (
+    create_history_aware_retriever,  # pyright: ignore[reportUnknownVariableType] Ignore these imports as they are untyped
+)
+from langchain.chains.retrieval import (
+    create_retrieval_chain,  # pyright: ignore[reportUnknownVariableType]
+)
+from langchain.chains.combine_documents import (
+    create_stuff_documents_chain,  # pyright: ignore[reportUnknownVariableType]
+)
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory, HumanMessage, AIMessage
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.messages import BaseMessage
+from langchain_core.messages.human import HumanMessage
+from langchain_core.messages.ai import AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.runnables import ConfigurableFieldSpec
+from langchain_core.retrievers import RetrieverLike
+from langchain_core.runnables.history import (
+    MessagesOrDictWithMessages,
+    RunnableWithMessageHistory,
+)
+from langchain_core.runnables import ConfigurableFieldSpec, Runnable
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_anthropic import ChatAnthropic
-from langchain.retrievers import MergerRetriever
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
+from pinecone.control.pinecone import Pinecone
+from pydantic import SecretStr
+
+from common.Messages import ConversationalStream, MessageHistory
 
 _ = load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or ""
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY") or ""
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or ""
+
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -42,16 +59,17 @@ if index_name not in pc.list_indexes().names():
         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
     )
 
-# TODO: Look at this later, the argument is of the wrong name (?)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(api_key=SecretStr(OPENAI_API_KEY))
 llm = ChatOpenAI(
-    temperature=0, openai_api_key=OPENAI_API_KEY, model_name="gpt-4o", streaming=True
+    temperature=0, api_key=SecretStr(OPENAI_API_KEY), model="gpt-4o", streaming=True
 )
 llm2 = ChatAnthropic(
     temperature=0,
-    api_key=ANTHROPIC_API_KEY,
+    api_key=SecretStr(ANTHROPIC_API_KEY),
     model_name="claude-3-5-sonnet-20240620",
     streaming=True,
+    timeout=None,
+    stop=None,
 )
 
 
@@ -66,15 +84,20 @@ llm2 = ChatAnthropic(
 
 
 def get_session_history(
-    *, thread_id: str, history_from_request: dict
+    *, thread_id: str, history_from_request: MessageHistory
 ) -> BaseChatMessageHistory:
     print(thread_id)
     history = ChatMessageHistory()
-    for idx, message in history_from_request.items():
+    for _, message in history_from_request.items():
         if message["role"] == "user":
-            history.add_message(HumanMessage(message["content"]))
+            # TODO: converted to string here, although the message may contain other content instead
+            history.add_message(HumanMessage(str(message["content"])))
         elif message["role"] == "assistant":
-            history.add_message(AIMessage(message["content"]))
+            # TODO: converted to string here, although the message may contain other content instead
+            #! Additionally, AIMessages are not required to contain a content key
+            history.add_message(
+                AIMessage(str(message["content"]) if "content" in message else "")
+            )
     print(history)
     return history
 
@@ -84,7 +107,7 @@ def chat_stream_with_retrieve(
     question: str,
     retrieval_namespace: str,
     system_prompt: str = "You are a personalized assistant.",
-    history_from_request: dict[int, dict[str, str]] | None = None,
+    history_from_request: MessageHistory | None = None,
     llm_for_question_consolidation: str = "openai",
     llm_for_answer: str = "openai",
 ) -> Iterable[str]:
@@ -102,7 +125,7 @@ def chat_stream_with_retrieve(
     vectorstore = PineconeVectorStore.from_existing_index(
         index_name, embeddings, namespace=retrieval_namespace
     )
-    retriever = vectorstore.as_retriever()
+    retriever: RetrieverLike = vectorstore.as_retriever()
 
     ### Contextualize question ###
     # This prompt will be used to contextualize the question, making the question for vector search
@@ -110,12 +133,14 @@ def chat_stream_with_retrieve(
     which might reference context in the chat history, formulate a standalone question \
     which can be understood without the chat history. Do NOT answer the question, \
     just reformulate it if needed and otherwise return it as is."""
-    contextualize_q_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", contextualize_q_system_prompt),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-        ]
+    contextualize_q_prompt = (
+        ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
+            [
+                ("system", contextualize_q_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
     )
 
     if history_from_request is None:
@@ -127,30 +152,30 @@ def chat_stream_with_retrieve(
         contextualize_q_prompt,
     )
 
-    qa_system_prompt: str = (
-        """You are a personalized assistant. \
+    qa_system_prompt = f"""You are a personalized assistant. \
     Use the following pieces of retrieved context to answer the question. \
     If you don't know the answer, just say that you don't know. \
     Keep the answer concise.\
-    {additional_system_prompt}\
-    {context}""".format(
-            additional_system_prompt=system_prompt, context="{context}"
-        )
-    )
+    {system_prompt}\
+    {{context}}"""
 
-    qa_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", qa_system_prompt),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-        ]
+    qa_prompt = (
+        ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
     )
 
     question_answer_chain = create_stuff_documents_chain(
         llm2 if llm_for_answer == "anthropic" else llm, qa_prompt
     )
 
-    rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+    rag_chain: Runnable[
+        MessagesOrDictWithMessages, MessagesOrDictWithMessages | str | BaseMessage
+    ] = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
     conversational_rag_chain = RunnableWithMessageHistory(
         rag_chain,
@@ -178,7 +203,9 @@ def chat_stream_with_retrieve(
         ],
     )
 
-    for chunk in conversational_rag_chain.stream(
+    for (
+        chunk
+    ) in conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
         {"input": question},
         config={
             "configurable": {
@@ -187,6 +214,10 @@ def chat_stream_with_retrieve(
             }
         },
     ):
+        #! This portion of code is incredibly hard to typecheck as the .stream() method returns a dynamic type
+        #! We know this type to be ConversationStream, but the.stream() method is still a generic function
+        #! Type casting/forcing is possible here, but annoying
+        chunk: ConversationalStream
         answer = chunk.get("answer")
         if answer:
             yield "answer", answer

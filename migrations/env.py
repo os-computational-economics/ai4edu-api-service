@@ -49,8 +49,7 @@ def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
-        # TODO: not sure what this is for or how it is meant to be called ↓
-        target_metadata=target_metadata,
+        target_metadata=target_metadata,  # pyright: ignore[reportArgumentType] The typing for this package is wrong
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -75,8 +74,7 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            # TODO: not sure what this is for or how it is meant to be called ↓
-            target_metadata=target_metadata,
+            target_metadata=target_metadata,  # pyright: ignore[reportArgumentType] The typing for this package is wrong
             version_table_schema=target_metadata.schema,
         )
 

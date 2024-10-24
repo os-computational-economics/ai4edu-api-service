@@ -7,8 +7,11 @@
 @time: 2/29/24 15:14
 """
 import json
+from anthropic.types import MessageParam
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
+from common.Messages import Message, MessageHistory
 from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AgentPromptHandler import AgentPromptHandler
@@ -20,7 +23,7 @@ from user.LangChainHelper import chat_stream_with_retrieve
 
 class ChatStreamModel(BaseModel):
     dynamic_auth_code: str
-    messages: dict[int, dict[str, str]]
+    messages: MessageHistory
     thread_id: str | None = None
     provider: str = "openai"
     user_id: str
@@ -107,29 +110,35 @@ class ChatStream:
         self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
+        lastItem = chat_stream_model.messages[len(chat_stream_model.messages) - 1]
         _ = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
             "human",
-            chat_stream_model.messages[len(chat_stream_model.messages) - 1]["content"],
+            #! Is this meant to be a string?
+            #! What if it is a:
+            #! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
+            lastItem["content"] or "" if "content" in lastItem else "",
         )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
-        agent_prompt = agent_prompt_handler.get_agent_parompt(self.agent_id)
+        agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         return EventSourceResponse(
-            self.__chat_generator(chat_stream_model.messages, agent_prompt)
+            self.__chat_generator(chat_stream_model.messages, agent_prompt or "")
         )
 
-    def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt: str):
+    def __chat_generator(self, messages: MessageHistory, system_prompt: str):
         """
         Chat generator.
         :param messages: All previous messages
         :return:
         """
         print(f"Using {self.requested_provider}")
+        lastMessage = messages[len(messages) - 1]
         stream = chat_stream_with_retrieve(
             self.thread_id,
-            messages[len(messages) - 1]["content"],
+            #! Assumes users are only able to send text messages
+            str(lastMessage["content"]) if "content" in lastMessage else "",
             self.retrieval_namespace,
             system_prompt,
             messages,
@@ -197,7 +206,7 @@ class ChatStream:
                 }
             )
 
-    def __openai_chat_generator(self, messages: list[dict[str, str]]):
+    def __openai_chat_generator(self, messages: list[ChatCompletionMessageParam]):
         """
         OpenAI chat generator.
         :param messages:
@@ -213,7 +222,7 @@ class ChatStream:
                     new_text = chunk.choices[0].delta.content
                     yield new_text
 
-    def __anthropic_chat_generator(self, messages: list[dict[str, str]]):
+    def __anthropic_chat_generator(self, messages: list[MessageParam]):
         """
         Anthropic chat generator.
         :param messages:
@@ -252,7 +261,7 @@ class ChatStream:
         chunk_buffer = sentence_ender.join(new_text_split[1:])
         return chunk_buffer, chunk_id
 
-    def __messages_processor(self, messages: dict[int, dict[str, str]]):
+    def __messages_processor(self, messages: MessageHistory):
         """
         Process the message.
         :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}
@@ -261,6 +270,7 @@ class ChatStream:
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        messages_list: list[Message] = []
         if agent_prompt:
             messages_list = [{"role": "system", "content": agent_prompt}]
         else:

@@ -85,7 +85,8 @@
                   orjson
                   packaging
                   # TODO: fix this package
-                  # pinecone-client
+                  (pkgs.callPackage ./pinecone.nix python312Packages)
+                  (pkgs.callPackage ./langchain-pinecone.nix python312Packages)
                   psycopg
                   # psycopg-binary
                   pycparser

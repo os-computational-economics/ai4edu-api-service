@@ -107,8 +107,9 @@ class MessageStorageHandler:
             )
             items = response["Items"]
             return [
-                Message(**item) for item in items
-            ]  # pyright: ignore[reportArgumentType] Same here
+                Message(**item)  # pyright: ignore[reportArgumentType] Same here
+                for item in items
+            ]
         except Exception as e:
             print(f"Error getting the thread from the database: {e}")
             return []

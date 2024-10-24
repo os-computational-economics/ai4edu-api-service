@@ -1,10 +1,12 @@
 from typing import Any
 from starlette.responses import JSONResponse
 
+from migrations.models import AgentValue
+
 
 def response(
     success: bool,
-    data: None | dict[str, Any] = None,
+    data: None | dict[str, Any] | AgentValue = None,
     message: str = "Success",
     status_code: int = 400,
 ):

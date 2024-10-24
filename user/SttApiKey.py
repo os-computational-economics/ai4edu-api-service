@@ -7,14 +7,14 @@
 @time: 3/22/24 00:29
 """
 import os
-from typing import Any
+from typing import Any, Literal
 
 import requests
 from pydantic import BaseModel
 
 
 class SttApiKeyResponse(BaseModel):
-    status: str  # "success" or "fail"
+    status: Literal["success", "fail"]  # "success" or "fail"
     error_message: str | None = None
     key: str
 

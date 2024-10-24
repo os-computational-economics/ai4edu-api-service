@@ -7,7 +7,7 @@
 @time: 4/11/24 11:48
 """
 import boto3
-import redis
+from redis import Redis
 from boto3.dynamodb.conditions import Key
 import logging
 import os
@@ -26,12 +26,12 @@ class AgentPromptHandler:
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
         )
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
-        self.redis_client: redis.Redis = redis.Redis(
-            host=os.getenv("REDIS_ADDRESS"),
+        self.redis_client = Redis(
+            host=os.getenv("REDIS_ADDRESS") or "localhost",
             port=6379,
-            protocol=3,
+            # protocol=3,
             decode_responses=True,
-        )  # pyright: ignore[reportCallIssue]
+        )
 
     def put_agent_prompt(self, agent_id: str, prompt: str) -> bool:
         """
@@ -84,9 +84,7 @@ class AgentPromptHandler:
         :return: True if successful, False otherwise.
         """
         try:
-            _ = self.redis_client.set(  # pyright: ignore[reportUnknownMemberType]
-                agent_id, prompt
-            )
+            _ = self.redis_client.set(agent_id, prompt)
             return True
         except Exception as e:
             logging.error(f"Error caching the agent prompt into redis: {e}")
@@ -98,11 +96,7 @@ class AgentPromptHandler:
         :param agent_id: The ID of the agent.
         """
         try:
-            return str(
-                self.redis_client.get(
-                    agent_id
-                )  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-            )
+            return str(self.redis_client.get(agent_id))
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None

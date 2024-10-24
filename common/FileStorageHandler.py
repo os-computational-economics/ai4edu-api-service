@@ -15,7 +15,7 @@ from botocore.config import Config
 from dotenv import load_dotenv
 import uuid
 import logging
-import redis
+from redis import Redis
 from sqlalchemy.orm import Session
 from migrations.session import get_db
 from migrations.models import File, FileValue
@@ -35,13 +35,11 @@ class FileStorageHandler:
             "s3", region_name="us-east-2", config=Config(signature_version="s3v4")
         )
         self.db: Session | None = None
-        self.redis_client: redis.Redis = (
-            redis.Redis(  # pyright: ignore[reportCallIssue]
-                host=os.getenv("REDIS_ADDRESS"),
-                port=6379,
-                protocol=3,
-                decode_responses=True,
-            )
+        self.redis_client = Redis(
+            host=os.getenv("REDIS_ADDRESS") or "localhost",
+            port=6379,
+            # protocol=3,
+            decode_responses=True,
         )
 
     def _get_db(self) -> Session:
@@ -76,17 +74,14 @@ class FileStorageHandler:
             "chunking_separator": file_obj.chunking_separator,
             "created_at": file_obj.created_at.isoformat(),
         }
-        _ = self.redis_client.setex(  # pyright: ignore[reportUnknownMemberType]
+        _ = self.redis_client.setex(
             cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data)
         )
 
     def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:
         """Retrieve cached file information from Redis."""
         cache_key = f"file_info:{file_id}"
-        cached_data = str(
-            self.redis_client.get(cache_key)
-            or ""  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-        )
+        cached_data = str(self.redis_client.get(cache_key) or "")
         return json.loads(cached_data) if cached_data else None
 
     def get_file(self, file_id: str) -> str | None:

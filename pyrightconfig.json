@@ -1,0 +1,9 @@
+{
+    "stubPath": "typings",
+    "ignore": [
+        "typings",
+        "/nix",
+        ".direnv",
+        "migrations/versions"
+    ]
+}

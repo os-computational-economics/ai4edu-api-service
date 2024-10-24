@@ -42,26 +42,35 @@ def parseJWT(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None:
         ret = UserJWTContent(
             user_id=int(user_jwt_content["user_id"]),  # pyright: ignore[reportAny]
             first_name=str(
-                user_jwt_content["first_name"]
-            ),  # pyright: ignore[reportAny]
+                user_jwt_content["first_name"]  # pyright: ignore[reportAny]
+            ),
             last_name=str(user_jwt_content["last_name"]),  # pyright: ignore[reportAny]
             student_id=str(
-                user_jwt_content["student_id"]
-            ),  # pyright: ignore[reportAny]
+                user_jwt_content["student_id"]  # pyright: ignore[reportAny]
+            ),
             workspace_role=dict(
                 [
-                    (i, str(user_jwt_content["workspace_role"][i]))
-                    for i in user_jwt_content["workspace_role"]
+                    (
+                        i,
+                        str(
+                            user_jwt_content["workspace_role"][
+                                i
+                            ]  # pyright: ignore[reportAny]
+                        ),
+                    )
+                    for i in user_jwt_content[  # pyright: ignore[reportAny]
+                        "workspace_role"
+                    ]
                 ]
-            ),  # pyright: ignore[reportAny]
+            ),
             system_admin=not not user_jwt_content["student_id"],
             email=str(user_jwt_content["student_id"]),  # pyright: ignore[reportAny]
             iat=datetime.fromtimestamp(
-                user_jwt_content["iat"]
-            ),  # pyright: ignore[reportAny]
+                user_jwt_content["iat"]  # pyright: ignore[reportAny]
+            ),
             exp=datetime.fromtimestamp(
-                user_jwt_content["exp"]
-            ),  # pyright: ignore[reportAny]
+                user_jwt_content["exp"]  # pyright: ignore[reportAny]
+            ),
         )
     except:
         return None

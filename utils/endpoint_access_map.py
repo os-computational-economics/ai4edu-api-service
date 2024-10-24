@@ -7,7 +7,11 @@
 @time: 5/24/24 19:54
 """
 
-AccessMap = dict[str, dict[str, bool]]
+from typing import Literal
+
+
+PersonType = Literal["student", "teacher", "admin"]
+AccessMap = dict[str, dict[PersonType, bool]]
 
 endpoint_access_map: AccessMap = {
     "/ai4edu_testing": {"student": False, "teacher": False, "admin": True},

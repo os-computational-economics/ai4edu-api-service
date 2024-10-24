@@ -23,7 +23,7 @@ import time
 from datetime import datetime
 import uuid
 
-import redis
+from redis import Redis
 from openai import OpenAI
 from anthropic import Anthropic
 from sqlalchemy import create_engine
@@ -376,9 +376,12 @@ def read_root(request: Request) -> dict[str, Any]:
         formatted_time = now.strftime("%Y-%m-%d-%H:%M:%S")
 
         #  test redis connection
-        r: redis.Redis[Any] = redis.Redis(
-            host=redis_address, port=6379, protocol=3, decode_responses=True
-        )  # pyright: ignore[reportCallIssue]
+        r = Redis(
+            # protocol=3,
+            host=redis_address,
+            port=6379,
+            decode_responses=True,
+        )
         _ = r.set("foo", "success-" + formatted_time)
         rds = r.get("foo")
 
