@@ -7,10 +7,12 @@ from .config import Config
 
 logger = ...
 DEFAULT_CONTROLLER_HOST = ...
+
 class PineconeConfig:
     @staticmethod
-    def build(api_key: Optional[str] = ..., host: Optional[str] = ..., additional_headers: Optional[Dict[str, str]] = ..., **kwargs) -> Config:
-        ...
-    
-
-
+    def build(
+        api_key: Optional[str] = ...,
+        host: Optional[str] = ...,
+        additional_headers: Optional[Dict[str, str]] = ...,
+        **kwargs
+    ) -> Config: ...

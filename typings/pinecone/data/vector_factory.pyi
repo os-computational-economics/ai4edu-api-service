@@ -7,8 +7,4 @@ from pinecone.core.openapi.data.models import Vector
 
 class VectorFactory:
     @staticmethod
-    def build(item: Union[Vector, Tuple, Dict], check_type: bool = ...) -> Vector:
-        ...
-    
-
-
+    def build(item: Union[Vector, Tuple, Dict], check_type: bool = ...) -> Vector: ...

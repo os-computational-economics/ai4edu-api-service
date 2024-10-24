@@ -13,12 +13,10 @@ class PodSpecDefinition(NamedTuple):
     metadata_config: Optional[Dict]
     ...
 
-
 class ServerlessSpecDefinition(NamedTuple):
     cloud: str
     region: str
     ...
-
 
 PodKey = Literal["pod"]
 PodSpec = Dict[PodKey, PodSpecDefinition]

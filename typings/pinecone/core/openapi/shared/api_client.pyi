@@ -26,39 +26,45 @@ class ApiClient:
     :param pool_threads: The number of threads to use for async requests
         to the API. More threads means more concurrent API requests.
     """
+
     _pool = ...
-    def __init__(self, configuration=..., header_name=..., header_value=..., cookie=..., pool_threads=...) -> None:
+    def __init__(
+        self,
+        configuration=...,
+        header_name=...,
+        header_value=...,
+        cookie=...,
+        pool_threads=...,
+    ) -> None: ...
+    def __enter__(self):  # -> Self:
         ...
-    
-    def __enter__(self): # -> Self:
+
+    def __exit__(self, exc_type, exc_value, traceback):  # -> None:
         ...
-    
-    def __exit__(self, exc_type, exc_value, traceback): # -> None:
+
+    def close(self):  # -> None:
         ...
-    
-    def close(self): # -> None:
-        ...
-    
+
     @property
-    def pool(self): # -> ThreadPool:
+    def pool(self):  # -> ThreadPool:
         """Create thread pool on first request
         avoids instantiating unused threadpool for blocking clients.
         """
         ...
-    
+
     @property
     def user_agent(self):
         """User agent for this API client"""
         ...
-    
+
     @user_agent.setter
-    def user_agent(self, value): # -> None:
+    def user_agent(self, value):  # -> None:
         ...
-    
-    def set_default_header(self, header_name, header_value): # -> None:
+
+    def set_default_header(self, header_name, header_value):  # -> None:
         ...
-    
-    def parameters_to_multipart(self, params, collection_types): # -> list[Any]:
+
+    def parameters_to_multipart(self, params, collection_types):  # -> list[Any]:
         """Get parameters as list of tuples, formatting as json if value is collection_types
 
         :param params: Parameters as list of two-tuples
@@ -66,9 +72,11 @@ class ApiClient:
         :return: Parameters as list of tuple or urllib3.fields.RequestField
         """
         ...
-    
+
     @classmethod
-    def sanitize_for_serialization(cls, obj): # -> dict[Any, Any] | bytes | str | int | float | bool | list[Any] | None:
+    def sanitize_for_serialization(
+        cls, obj
+    ):  # -> dict[Any, Any] | bytes | str | int | float | bool | list[Any] | None:
         """Prepares data for transmission before it is sent with the rest client
         If obj is None, return None.
         If obj is str, int, long, float, bool, return directly.
@@ -82,8 +90,10 @@ class ApiClient:
         :return: The serialized form of data.
         """
         ...
-    
-    def deserialize(self, response, response_type, _check_type): # -> BufferedReader | list[Any] | dict[Any, Any] | None:
+
+    def deserialize(
+        self, response, response_type, _check_type
+    ):  # -> BufferedReader | list[Any] | dict[Any, Any] | None:
         """Deserializes response into an object.
 
         :param response: RESTResponse object to be deserialized.
@@ -104,8 +114,27 @@ class ApiClient:
         :return: deserialized object.
         """
         ...
-    
-    def call_api(self, resource_path: str, method: str, path_params: typing.Optional[typing.Dict[str, typing.Any]] = ..., query_params: typing.Optional[typing.List[typing.Tuple[str, typing.Any]]] = ..., header_params: typing.Optional[typing.Dict[str, typing.Any]] = ..., body: typing.Optional[typing.Any] = ..., post_params: typing.Optional[typing.List[typing.Tuple[str, typing.Any]]] = ..., files: typing.Optional[typing.Dict[str, typing.List[io.IOBase]]] = ..., response_type: typing.Optional[typing.Tuple[typing.Any]] = ..., auth_settings: typing.Optional[typing.List[str]] = ..., async_req: typing.Optional[bool] = ..., _return_http_data_only: typing.Optional[bool] = ..., collection_formats: typing.Optional[typing.Dict[str, str]] = ..., _preload_content: bool = ..., _request_timeout: typing.Optional[typing.Union[int, float, typing.Tuple]] = ..., _host: typing.Optional[str] = ..., _check_type: typing.Optional[bool] = ...): # -> BufferedReader | list[Any] | dict[Any, Any] | tuple[BufferedReader | Any | list[Any] | dict[Any, Any] | None, Any, Any] | AsyncResult | None:
+
+    def call_api(
+        self,
+        resource_path: str,
+        method: str,
+        path_params: typing.Optional[typing.Dict[str, typing.Any]] = ...,
+        query_params: typing.Optional[typing.List[typing.Tuple[str, typing.Any]]] = ...,
+        header_params: typing.Optional[typing.Dict[str, typing.Any]] = ...,
+        body: typing.Optional[typing.Any] = ...,
+        post_params: typing.Optional[typing.List[typing.Tuple[str, typing.Any]]] = ...,
+        files: typing.Optional[typing.Dict[str, typing.List[io.IOBase]]] = ...,
+        response_type: typing.Optional[typing.Tuple[typing.Any]] = ...,
+        auth_settings: typing.Optional[typing.List[str]] = ...,
+        async_req: typing.Optional[bool] = ...,
+        _return_http_data_only: typing.Optional[bool] = ...,
+        collection_formats: typing.Optional[typing.Dict[str, str]] = ...,
+        _preload_content: bool = ...,
+        _request_timeout: typing.Optional[typing.Union[int, float, typing.Tuple]] = ...,
+        _host: typing.Optional[str] = ...,
+        _check_type: typing.Optional[bool] = ...,
+    ):  # -> BufferedReader | list[Any] | dict[Any, Any] | tuple[BufferedReader | Any | list[Any] | dict[Any, Any] | None, Any, Any] | AsyncResult | None:
         """Makes the HTTP request (synchronous) and returns deserialized data.
 
         To make an async_req request, set the async_req parameter.
@@ -160,12 +189,22 @@ class ApiClient:
             then the method will return the response directly.
         """
         ...
-    
-    def request(self, method, url, query_params=..., headers=..., post_params=..., body=..., _preload_content=..., _request_timeout=...):
+
+    def request(
+        self,
+        method,
+        url,
+        query_params=...,
+        headers=...,
+        post_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ):
         """Makes the HTTP request using RESTClient."""
         ...
-    
-    def parameters_to_tuples(self, params, collection_formats): # -> list[Any]:
+
+    def parameters_to_tuples(self, params, collection_formats):  # -> list[Any]:
         """Get parameters as list of tuples, formatting collections.
 
         :param params: Parameters as dict or list of two-tuples
@@ -173,12 +212,12 @@ class ApiClient:
         :return: Parameters as list of tuples, collections formatted
         """
         ...
-    
+
     @staticmethod
-    def get_file_data_and_close_file(file_instance: io.IOBase) -> bytes:
-        ...
-    
-    def files_parameters(self, files: typing.Optional[typing.Dict[str, typing.List[io.IOBase]]] = ...): # -> list[Any]:
+    def get_file_data_and_close_file(file_instance: io.IOBase) -> bytes: ...
+    def files_parameters(
+        self, files: typing.Optional[typing.Dict[str, typing.List[io.IOBase]]] = ...
+    ):  # -> list[Any]:
         """Builds form parameters.
 
         :param files: None or a dict with key=param_name and
@@ -186,24 +225,30 @@ class ApiClient:
         :return: List of tuples of form parameters with file data
         """
         ...
-    
-    def select_header_accept(self, accepts): # -> LiteralString | Literal['application/json'] | None:
+
+    def select_header_accept(
+        self, accepts
+    ):  # -> LiteralString | Literal['application/json'] | None:
         """Returns `Accept` based on an array of accepts provided.
 
         :param accepts: List of headers.
         :return: Accept (e.g. application/json).
         """
         ...
-    
-    def select_header_content_type(self, content_types): # -> Literal['application/json']:
+
+    def select_header_content_type(
+        self, content_types
+    ):  # -> Literal['application/json']:
         """Returns `Content-Type` based on an array of content_types provided.
 
         :param content_types: List of content-types.
         :return: Content-Type (e.g. application/json).
         """
         ...
-    
-    def update_params_for_auth(self, headers, querys, auth_settings, resource_path, method, body): # -> None:
+
+    def update_params_for_auth(
+        self, headers, querys, auth_settings, resource_path, method, body
+    ):  # -> None:
         """Updates header and query params based on authentication setting.
 
         :param headers: Header parameters dict to be updated.
@@ -215,11 +260,17 @@ class ApiClient:
             The object type is the return value of _encoder.default().
         """
         ...
-    
-
 
 class Endpoint:
-    def __init__(self, settings=..., params_map=..., root_map=..., headers_map=..., api_client=..., callable=...) -> None:
+    def __init__(
+        self,
+        settings=...,
+        params_map=...,
+        root_map=...,
+        headers_map=...,
+        api_client=...,
+        callable=...,
+    ) -> None:
         """Creates an endpoint
 
         Args:
@@ -254,7 +305,7 @@ class Endpoint:
                 Endpoint is called
         """
         ...
-    
+
     def __call__(self, *args, **kwargs):
         """This method is invoked when endpoints are called
         Example:
@@ -267,9 +318,5 @@ class Endpoint:
 
         """
         ...
-    
-    def call_with_http_info(self, **kwargs):
-        ...
-    
 
-
+    def call_with_http_info(self, **kwargs): ...

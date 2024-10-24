@@ -8,6 +8,8 @@
 """
 import os
 from collections.abc import Iterable
+from typing import Any, Literal
+from collections.abc import Iterator
 from dotenv import load_dotenv
 
 from langchain.chains.history_aware_retriever import (
@@ -110,7 +112,10 @@ def chat_stream_with_retrieve(
     history_from_request: MessageHistory | None = None,
     llm_for_question_consolidation: str = "openai",
     llm_for_answer: str = "openai",
-) -> Iterable[str]:
+) -> (
+    Iterable[tuple[Literal["answer"], str]]
+    | Iterable[tuple[Literal["source"], dict[str, Any]]]
+):
     """
     Chat stream with retrieval.
     :param thread_id: thread id of the chat.
@@ -203,17 +208,19 @@ def chat_stream_with_retrieve(
         ],
     )
 
-    for (
-        chunk
-    ) in conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
-        {"input": question},
-        config={
-            "configurable": {
-                "thread_id": thread_id,
-                "history_from_request": history_from_request,
-            }
-        },
-    ):
+    rag_stream: Iterator[ConversationalStream] = (
+        conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
+            {"input": question},
+            config={
+                "configurable": {
+                    "thread_id": thread_id,
+                    "history_from_request": history_from_request,
+                }
+            },
+        )
+    )
+
+    for chunk in rag_stream:
         #! This portion of code is incredibly hard to typecheck as the .stream() method returns a dynamic type
         #! We know this type to be ConversationStream, but the.stream() method is still a generic function
         #! Type casting/forcing is possible here, but annoying
@@ -226,7 +233,10 @@ def chat_stream_with_retrieve(
         if context:
             sources = chunk.get("context")
             for doc in sources:
-                yield "source", doc.metadata
+                md: dict[str, Any] = (
+                    doc.metadata
+                )  # pyright: ignore[reportUnknownMemberType]
+                yield "source", md
 
 
 # Example usage:

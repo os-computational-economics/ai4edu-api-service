@@ -15,27 +15,31 @@ class bcolors:
     BOLD = ...
     UNDERLINE = ...
 
-
 logger = ...
+
 class RESTResponse(io.IOBase):
-    def __init__(self, resp) -> None:
-        ...
-    
+    def __init__(self, resp) -> None: ...
     def getheaders(self):
         """Returns a dictionary of the response headers."""
         ...
-    
+
     def getheader(self, name, default=...):
         """Returns a given response header."""
         ...
-    
-
 
 class RESTClientObject:
-    def __init__(self, configuration, pools_size=..., maxsize=...) -> None:
-        ...
-    
-    def request(self, method, url, query_params=..., headers=..., body=..., post_params=..., _preload_content=..., _request_timeout=...):
+    def __init__(self, configuration, pools_size=..., maxsize=...) -> None: ...
+    def request(
+        self,
+        method,
+        url,
+        query_params=...,
+        headers=...,
+        body=...,
+        post_params=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ):
         """Perform requests.
 
         :param method: http request method
@@ -55,27 +59,69 @@ class RESTClientObject:
                                  (connection, read) timeouts.
         """
         ...
-    
-    def GET(self, url, headers=..., query_params=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def HEAD(self, url, headers=..., query_params=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def OPTIONS(self, url, headers=..., query_params=..., post_params=..., body=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def DELETE(self, url, headers=..., query_params=..., body=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def POST(self, url, headers=..., query_params=..., post_params=..., body=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def PUT(self, url, headers=..., query_params=..., post_params=..., body=..., _preload_content=..., _request_timeout=...):
-        ...
-    
-    def PATCH(self, url, headers=..., query_params=..., post_params=..., body=..., _preload_content=..., _request_timeout=...):
-        ...
-    
 
-
+    def GET(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def HEAD(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def OPTIONS(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        post_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def DELETE(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def POST(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        post_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def PUT(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        post_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...
+    def PATCH(
+        self,
+        url,
+        headers=...,
+        query_params=...,
+        post_params=...,
+        body=...,
+        _preload_content=...,
+        _request_timeout=...,
+    ): ...

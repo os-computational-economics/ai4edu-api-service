@@ -10,4 +10,13 @@ from .index_list import IndexList
 from .collection_list import CollectionList
 from .index_model import IndexModel
 
-__all__ = ["CollectionDescription", "PodSpec", "PodSpecDefinition", "ServerlessSpec", "ServerlessSpecDefinition", "IndexList", "CollectionList", "IndexModel"]
+__all__ = [
+    "CollectionDescription",
+    "PodSpec",
+    "PodSpecDefinition",
+    "ServerlessSpec",
+    "ServerlessSpecDefinition",
+    "IndexList",
+    "CollectionList",
+    "IndexModel",
+]

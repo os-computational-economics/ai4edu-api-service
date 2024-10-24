@@ -85,8 +85,8 @@ app = FastAPI(
     redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
     openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json",
 )
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY") or "")
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY") or "")
 file_storage = FileStorageHandler()
 
 # Admin AgentRouter

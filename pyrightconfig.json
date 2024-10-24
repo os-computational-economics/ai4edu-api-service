@@ -2,7 +2,7 @@
     "stubPath": "typings",
     "ignore": [
         "typings",
-        "/nix",
+        "nix/store",
         ".direnv",
         "migrations/versions"
     ]

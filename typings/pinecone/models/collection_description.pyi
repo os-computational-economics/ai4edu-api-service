@@ -8,8 +8,7 @@ class CollectionDescription(NamedTuple):
     """
     The description of a collection.
     """
+
     name: str
     source: str
     ...
-
-

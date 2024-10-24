@@ -6,21 +6,21 @@ import io
 
 none_type = ...
 file_type = io.IOBase
-def convert_js_args_to_python_args(fn): # -> _Wrapped[Callable[..., Any], Any, Callable[..., Any], Any]:
+
+def convert_js_args_to_python_args(
+    fn,
+):  # -> _Wrapped[Callable[..., Any], Any, Callable[..., Any], Any]:
     ...
 
 class cached_property:
     result_key = ...
-    def __init__(self, fn) -> None:
+    def __init__(self, fn) -> None: ...
+    def __get__(self, instance, cls=...):  # -> Any:
         ...
-    
-    def __get__(self, instance, cls=...): # -> Any:
-        ...
-    
-
 
 PRIMITIVE_TYPES = ...
-def allows_single_value_input(cls): # -> bool:
+
+def allows_single_value_input(cls):  # -> bool:
     """
     This function returns True if the input composed schema model or any
     descendant model allows a value only input
@@ -35,7 +35,9 @@ def allows_single_value_input(cls): # -> bool:
     """
     ...
 
-def composed_model_input_classes(cls): # -> list[type[ModelSimple] | Any] | list[type[ModelNormal]] | list[Any]:
+def composed_model_input_classes(
+    cls,
+):  # -> list[type[ModelSimple] | Any] | list[type[ModelNormal]] | list[Any]:
     """
     This function returns a list of the possible models that can be accepted as
     inputs.
@@ -45,91 +47,88 @@ def composed_model_input_classes(cls): # -> list[type[ModelSimple] | Any] | list
 
 class OpenApiModel:
     """The base class for all OpenAPIModels"""
-    def set_attribute(self, name, value): # -> None:
+
+    def set_attribute(self, name, value):  # -> None:
         ...
-    
+
     def __repr__(self):
         """For `print` and `pprint`"""
         ...
-    
+
     def __ne__(self, other) -> bool:
         """Returns true if both objects are not equal"""
         ...
-    
-    def __setattr__(self, attr, value): # -> None:
+
+    def __setattr__(self, attr, value):  # -> None:
         """set the value of an attribute using dot notation: `instance.attr = val`"""
         ...
-    
+
     def __getattr__(self, attr):
         """get the value of an attribute using dot notation: `instance.attr`"""
         ...
-    
-    def __new__(cls, *args, **kwargs): # -> None:
-        ...
-    
 
+    def __new__(cls, *args, **kwargs):  # -> None:
+        ...
 
 class ModelSimple(OpenApiModel):
     """the parent class of models whose type != object in their
     swagger/openapi"""
-    def __setitem__(self, name, value): # -> None:
+
+    def __setitem__(self, name, value):  # -> None:
         """set the value of an attribute using square-bracket notation: `instance[attr] = val`"""
         ...
-    
-    def get(self, name, default=...): # -> Any:
+
+    def get(self, name, default=...):  # -> Any:
         """returns the value of an attribute or some default value if the attribute was not set"""
         ...
-    
-    def __getitem__(self, name): # -> Any:
+
+    def __getitem__(self, name):  # -> Any:
         """get the value of an attribute using square-bracket notation: `instance[attr]`"""
         ...
-    
-    def __contains__(self, name): # -> bool:
+
+    def __contains__(self, name):  # -> bool:
         """used by `in` operator to check if an attrbute value was set in an instance: `'attr' in instance`"""
         ...
-    
-    def to_str(self): # -> str:
+
+    def to_str(self):  # -> str:
         """Returns the string representation of the model"""
         ...
-    
+
     def __eq__(self, other) -> bool:
         """Returns true if both objects are equal"""
         ...
-    
-
 
 class ModelNormal(OpenApiModel):
     """the parent class of models whose type == object in their
     swagger/openapi"""
-    def __setitem__(self, name, value): # -> None:
+
+    def __setitem__(self, name, value):  # -> None:
         """set the value of an attribute using square-bracket notation: `instance[attr] = val`"""
         ...
-    
-    def get(self, name, default=...): # -> Any:
+
+    def get(self, name, default=...):  # -> Any:
         """returns the value of an attribute or some default value if the attribute was not set"""
         ...
-    
-    def __getitem__(self, name): # -> Any:
+
+    def __getitem__(self, name):  # -> Any:
         """get the value of an attribute using square-bracket notation: `instance[attr]`"""
         ...
-    
-    def __contains__(self, name): # -> bool:
+
+    def __contains__(self, name):  # -> bool:
         """used by `in` operator to check if an attrbute value was set in an instance: `'attr' in instance`"""
         ...
-    
-    def to_dict(self): # -> dict[Any, Any]:
+
+    def to_dict(self):  # -> dict[Any, Any]:
         """Returns the model properties as a dict"""
         ...
-    
-    def to_str(self): # -> str:
+
+    def to_str(self):  # -> str:
         """Returns the string representation of the model"""
         ...
-    
+
     def __eq__(self, other) -> bool:
         """Returns true if both objects are equal"""
         ...
-    
-
 
 class ModelComposed(OpenApiModel):
     """the parent class of models whose type == object in their
@@ -156,41 +155,42 @@ class ModelComposed(OpenApiModel):
     value (list): list of class instances, self or instances in _composed_instances
     which contain the value that the key is referring to.
     """
-    def __setitem__(self, name, value): # -> None:
+
+    def __setitem__(self, name, value):  # -> None:
         """set the value of an attribute using square-bracket notation: `instance[attr] = val`"""
         ...
-    
     __unset_attribute_value__ = ...
-    def get(self, name, default=...): # -> Any | None:
+    def get(self, name, default=...):  # -> Any | None:
         """returns the value of an attribute or some default value if the attribute was not set"""
         ...
-    
-    def __getitem__(self, name): # -> Any | None:
+
+    def __getitem__(self, name):  # -> Any | None:
         """get the value of an attribute using square-bracket notation: `instance[attr]`"""
         ...
-    
-    def __contains__(self, name): # -> bool:
+
+    def __contains__(self, name):  # -> bool:
         """used by `in` operator to check if an attrbute value was set in an instance: `'attr' in instance`"""
         ...
-    
-    def to_dict(self): # -> dict[Any, Any]:
+
+    def to_dict(self):  # -> dict[Any, Any]:
         """Returns the model properties as a dict"""
         ...
-    
-    def to_str(self): # -> str:
+
+    def to_str(self):  # -> str:
         """Returns the string representation of the model"""
         ...
-    
+
     def __eq__(self, other) -> bool:
         """Returns true if both objects are equal"""
         ...
-    
-
 
 COERCION_INDEX_BY_TYPE = ...
 UPCONVERSION_TYPE_PAIRS = ...
 COERCIBLE_TYPE_PAIRS = ...
-def get_simple_class(input_value): # -> type | type[tuple[Any, ...]] | type[list[Any]] | type[dict[Any, Any]] | type[None] | file_type | type[bool] | type[int] | type[str]:
+
+def get_simple_class(
+    input_value,
+):  # -> type | type[tuple[Any, ...]] | type[list[Any]] | type[dict[Any, Any]] | type[None] | file_type | type[bool] | type[int] | type[str]:
     """Returns an input_value's simple class that we will use for type checking
     Python2:
     float and int will return int, where int is the python3 int backport
@@ -204,7 +204,7 @@ def get_simple_class(input_value): # -> type | type[tuple[Any, ...]] | type[list
     """
     ...
 
-def check_allowed_values(allowed_values, input_variable_path, input_values): # -> None:
+def check_allowed_values(allowed_values, input_variable_path, input_values):  # -> None:
     """Raises an exception if the input_values are not allowed
 
     Args:
@@ -215,7 +215,7 @@ def check_allowed_values(allowed_values, input_variable_path, input_values): # -
     """
     ...
 
-def is_json_validation_enabled(schema_keyword, configuration=...): # -> bool:
+def is_json_validation_enabled(schema_keyword, configuration=...):  # -> bool:
     """Returns true if JSON schema validation is enabled for the specified
     validation keyword. This can be used to skip JSON schema structural validation
     as requested in the configuration.
@@ -226,7 +226,9 @@ def is_json_validation_enabled(schema_keyword, configuration=...): # -> bool:
     """
     ...
 
-def check_validations(validations, input_variable_path, input_values, configuration=...):
+def check_validations(
+    validations, input_variable_path, input_values, configuration=...
+):
     """Raises an exception if the input_values are invalid
 
     Args:
@@ -238,7 +240,7 @@ def check_validations(validations, input_variable_path, input_values, configurat
     """
     ...
 
-def order_response_types(required_types): # -> list[Any]:
+def order_response_types(required_types):  # -> list[Any]:
     """Returns the required types sorted in coercion order
 
     Args:
@@ -251,7 +253,9 @@ def order_response_types(required_types): # -> list[Any]:
     """
     ...
 
-def remove_uncoercible(required_types_classes, current_item, spec_property_naming, must_convert=...): # -> list[Any]:
+def remove_uncoercible(
+    required_types_classes, current_item, spec_property_naming, must_convert=...
+):  # -> list[Any]:
     """Only keeps the type conversions that are possible
 
     Args:
@@ -273,17 +277,19 @@ def remove_uncoercible(required_types_classes, current_item, spec_property_namin
     """
     ...
 
-def get_discriminated_classes(cls): # -> list[Any]:
+def get_discriminated_classes(cls):  # -> list[Any]:
     """
     Returns all the classes that a discriminator converts to
     TODO: lru_cache this
     """
     ...
 
-def get_possible_classes(cls, from_server_context): # -> list[Any]:
+def get_possible_classes(cls, from_server_context):  # -> list[Any]:
     ...
 
-def get_required_type_classes(required_types_mixed, spec_property_naming): # -> tuple[tuple[Any, ...], dict[Any, Any]]:
+def get_required_type_classes(
+    required_types_mixed, spec_property_naming
+):  # -> tuple[tuple[Any, ...], dict[Any, Any]]:
     """Converts the tuple required_types into a tuple and a dict described
     below
 
@@ -306,7 +312,7 @@ def get_required_type_classes(required_types_mixed, spec_property_naming): # -> 
     """
     ...
 
-def change_keys_js_to_python(input_dict, model_class): # -> dict[Any, Any]:
+def change_keys_js_to_python(input_dict, model_class):  # -> dict[Any, Any]:
     """
     Converts from javascript_key keys in the input_dict to python_keys in
     the output dict using the mapping in model_class.
@@ -317,7 +323,9 @@ def change_keys_js_to_python(input_dict, model_class): # -> dict[Any, Any]:
     """
     ...
 
-def get_type_error(var_value, path_to_item, valid_classes, key_type=...): # -> PineconeApiTypeError:
+def get_type_error(
+    var_value, path_to_item, valid_classes, key_type=...
+):  # -> PineconeApiTypeError:
     ...
 
 def deserialize_primitive(data, klass, path_to_item):
@@ -330,7 +338,9 @@ def deserialize_primitive(data, klass, path_to_item):
     """
     ...
 
-def get_discriminator_class(model_class, discr_name, discr_value, cls_visited): # -> None:
+def get_discriminator_class(
+    model_class, discr_name, discr_value, cls_visited
+):  # -> None:
     """Returns the child class specified by the discriminator.
 
     Args:
@@ -348,7 +358,14 @@ def get_discriminator_class(model_class, discr_name, discr_value, cls_visited): 
     """
     ...
 
-def deserialize_model(model_data, model_class, path_to_item, check_type, configuration, spec_property_naming): # -> None:
+def deserialize_model(
+    model_data,
+    model_class,
+    path_to_item,
+    check_type,
+    configuration,
+    spec_property_naming,
+):  # -> None:
     """Deserializes model_data to model instance.
 
     Args:
@@ -373,7 +390,9 @@ def deserialize_model(model_data, model_class, path_to_item, check_type, configu
     """
     ...
 
-def deserialize_file(response_data, configuration, content_disposition=...): # -> BufferedReader:
+def deserialize_file(
+    response_data, configuration, content_disposition=...
+):  # -> BufferedReader:
     """Deserializes body to file
 
     Saves response body into a file in a temporary folder,
@@ -393,7 +412,16 @@ def deserialize_file(response_data, configuration, content_disposition=...): # -
     """
     ...
 
-def attempt_convert_item(input_value, valid_classes, path_to_item, configuration, spec_property_naming, key_type=..., must_convert=..., check_type=...): # -> BufferedReader | None:
+def attempt_convert_item(
+    input_value,
+    valid_classes,
+    path_to_item,
+    configuration,
+    spec_property_naming,
+    key_type=...,
+    must_convert=...,
+    check_type=...,
+):  # -> BufferedReader | None:
     """
     Args:
         input_value (any): the data to convert
@@ -419,7 +447,7 @@ def attempt_convert_item(input_value, valid_classes, path_to_item, configuration
     """
     ...
 
-def is_type_nullable(input_type): # -> bool:
+def is_type_nullable(input_type):  # -> bool:
     """
     Returns true if None is an allowed value for the specified input_type.
 
@@ -436,7 +464,7 @@ def is_type_nullable(input_type): # -> bool:
     """
     ...
 
-def is_valid_type(input_class_simple, valid_classes): # -> bool:
+def is_valid_type(input_class_simple, valid_classes):  # -> bool:
     """
     Args:
         input_class_simple (class): the class of the input_value that we are
@@ -448,7 +476,14 @@ def is_valid_type(input_class_simple, valid_classes): # -> bool:
     """
     ...
 
-def validate_and_convert_types(input_value, required_types_mixed, path_to_item, spec_property_naming, _check_type, configuration=...): # -> BufferedReader | list[Any] | dict[Any, Any] | None:
+def validate_and_convert_types(
+    input_value,
+    required_types_mixed,
+    path_to_item,
+    spec_property_naming,
+    _check_type,
+    configuration=...,
+):  # -> BufferedReader | list[Any] | dict[Any, Any] | None:
     """Raises a TypeError is there is a problem, otherwise returns value
 
     Args:
@@ -479,7 +514,7 @@ def validate_and_convert_types(input_value, required_types_mixed, path_to_item, 
     """
     ...
 
-def model_to_dict(model_instance, serialize=...): # -> dict[Any, Any]:
+def model_to_dict(model_instance, serialize=...):  # -> dict[Any, Any]:
     """Returns the model properties as a dict
 
     Args:
@@ -492,7 +527,9 @@ def model_to_dict(model_instance, serialize=...): # -> dict[Any, Any]:
     """
     ...
 
-def type_error_message(var_value=..., var_name=..., valid_classes=..., key_type=...): # -> str:
+def type_error_message(
+    var_value=..., var_name=..., valid_classes=..., key_type=...
+):  # -> str:
     """
     Keyword Args:
         var_value (any): the variable which has the type_error
@@ -505,11 +542,11 @@ def type_error_message(var_value=..., var_name=..., valid_classes=..., key_type=
     """
     ...
 
-def get_valid_classes_phrase(input_classes): # -> str | LiteralString:
+def get_valid_classes_phrase(input_classes):  # -> str | LiteralString:
     """Returns a string phrase describing what types are allowed"""
     ...
 
-def get_allof_instances(self, model_args, constant_args): # -> list[Any]:
+def get_allof_instances(self, model_args, constant_args):  # -> list[Any]:
     """
     Args:
         self: the class we are handling
@@ -528,7 +565,7 @@ def get_allof_instances(self, model_args, constant_args): # -> list[Any]:
     """
     ...
 
-def get_oneof_instance(cls, model_kwargs, constant_kwargs, model_arg=...): # -> None:
+def get_oneof_instance(cls, model_kwargs, constant_kwargs, model_arg=...):  # -> None:
     """
     Find the oneOf schema that matches the input data (e.g. payload).
     If exactly one schema matches the input data, an instance of that schema
@@ -558,7 +595,7 @@ def get_oneof_instance(cls, model_kwargs, constant_kwargs, model_arg=...): # -> 
     """
     ...
 
-def get_anyof_instances(self, model_args, constant_args): # -> list[Any]:
+def get_anyof_instances(self, model_args, constant_args):  # -> list[Any]:
     """
     Args:
         self: the class we are handling
@@ -574,13 +611,15 @@ def get_anyof_instances(self, model_args, constant_args): # -> list[Any]:
     """
     ...
 
-def get_discarded_args(self, composed_instances, model_args): # -> set[Any]:
+def get_discarded_args(self, composed_instances, model_args):  # -> set[Any]:
     """
     Gathers the args that were discarded by configuration.discard_unknown_keys
     """
     ...
 
-def validate_get_composed_info(constant_args, model_args, self): # -> list[list[Any] | set[Any] | dict[Any, Any]]:
+def validate_get_composed_info(
+    constant_args, model_args, self
+):  # -> list[list[Any] | set[Any] | dict[Any, Any]]:
     """
     For composed schemas, generate schema instances for
     all schemas in the oneOf/anyOf/allOf definition. If additional
@@ -613,4 +652,3 @@ def validate_get_composed_info(constant_args, model_args, self): # -> list[list[
                 additional_properties_type. This list can include self
     """
     ...
-

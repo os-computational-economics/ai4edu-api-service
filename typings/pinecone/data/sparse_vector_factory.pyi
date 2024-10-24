@@ -7,8 +7,4 @@ from pinecone.core.openapi.data.models import SparseValues
 
 class SparseValuesFactory:
     @staticmethod
-    def build(input: Union[Dict, SparseValues]) -> SparseValues:
-        ...
-    
-
-
+    def build(input: Union[Dict, SparseValues]) -> SparseValues: ...

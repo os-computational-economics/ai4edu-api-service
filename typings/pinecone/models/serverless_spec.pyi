@@ -7,8 +7,5 @@ from typing import NamedTuple
 class ServerlessSpec(NamedTuple):
     cloud: str
     region: str
-    def asdict(self): # -> dict[str, dict[str, Any]]:
+    def asdict(self):  # -> dict[str, dict[str, Any]]:
         ...
-    
-
-

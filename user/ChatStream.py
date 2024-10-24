@@ -7,7 +7,7 @@
 @time: 2/29/24 15:14
 """
 import json
-from anthropic.types import MessageParam
+from typing import Any
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
@@ -146,7 +146,7 @@ class ChatStream:
             self.requested_provider,
         )
         response_text = ""
-        all_sources: list[str] = []
+        all_sources: list[dict[str, Any]] = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
         chunk_buffer = ""
@@ -206,7 +206,9 @@ class ChatStream:
                 }
             )
 
-    def __openai_chat_generator(self, messages: list[ChatCompletionMessageParam]):
+    def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
+        self, messages: list[ChatCompletionMessageParam]
+    ):
         """
         OpenAI chat generator.
         :param messages:
@@ -222,24 +224,30 @@ class ChatStream:
                     new_text = chunk.choices[0].delta.content
                     yield new_text
 
-    def __anthropic_chat_generator(self, messages: list[MessageParam]):
+    def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
+        self, messages: list[Message]
+    ):
         """
         Anthropic chat generator.
         :param messages:
         :return:
         """
         system_message_content = ""
-        if messages[0]["role"] == "system":
-            system_message = messages.pop(0)
+        system_message = messages.pop(0)
+        if system_message["role"] == "system":
             system_message_content = system_message["content"]
+        [
+            m.update({"content": str(m["content"] if "content" in m else "")})
+            for m in messages
+        ]
         with self.anthropic_client.messages.stream(
             system=system_message_content,
             max_tokens=2048,
-            messages=messages,
+            messages=messages,  # pyright: ignore[reportArgumentType]
             model="claude-3-sonnet-20240229",
         ) as stream:
             for text in stream.text_stream:
-                if text is not None:
+                if text != "":
                     yield text
 
     def __process_chunking(
@@ -261,7 +269,9 @@ class ChatStream:
         chunk_buffer = sentence_ender.join(new_text_split[1:])
         return chunk_buffer, chunk_id
 
-    def __messages_processor(self, messages: MessageHistory):
+    def __messages_processor(  # pyright: ignore[reportUnusedFunction]
+        self, messages: MessageHistory
+    ):
         """
         Process the message.
         :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}

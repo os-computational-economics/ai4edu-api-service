@@ -10,6 +10,7 @@ class PodSpec(NamedTuple):
 
     To learn more about the options for each configuration, please see [Understanding Indexes](https://docs.pinecone.io/docs/indexes)
     """
+
     environment: str
     replicas: Optional[int] = ...
     shards: Optional[int] = ...
@@ -17,11 +18,8 @@ class PodSpec(NamedTuple):
     pod_type: Optional[str] = ...
     metadata_config: Optional[Dict] = ...
     source_collection: Optional[str] = ...
-    def asdict(self): # -> dict[str, dict[str, Any]]:
+    def asdict(self):  # -> dict[str, dict[str, Any]]:
         """
         Returns the PodSpec as a dictionary.
         """
         ...
-    
-
-
