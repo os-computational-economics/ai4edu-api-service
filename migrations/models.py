@@ -195,19 +195,21 @@ class Workspace(Base):
 
     workspace_id = Column(String(16), primary_key=True, nullable=False)
     workspace_name = Column(String(64), unique=True, nullable=False)
-    workspace_active = Column(Boolean, default=False, nullable=False)
+    status = Column(
+        Integer, default=1, nullable=False
+    )  # 1-active, 0-inactive, 2-deleted
     school_id = Column(Integer, default=0, nullable=False)
     workspace_password = Column(String(128), nullable=False)
 
     @override
     def __repr__(self):
-        return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, active: {self.workspace_active}, school_id: {self.school_id}"
+        return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, status: {self.status}, school_id: {self.school_id}"
 
 
 class WorkspaceValue:
     workspace_id: str = ""
     workspace_name: str = ""
-    workspace_active: bool = False
+    status: int = 1
     school_id: int = 0
     workspace_password: str = ""
 
