@@ -48,7 +48,7 @@ llm = ChatOpenAI(
 llm2 = ChatAnthropic(
     temperature=0,
     api_key=ANTHROPIC_API_KEY,
-    model_name="claude-3-5-sonnet-20240620",
+    model_name="claude-3-5-sonnet-20241022",
     streaming=True,
 )
 
