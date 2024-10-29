@@ -99,6 +99,7 @@ pinecone-plugin-interface==0.0.7
 platformdirs==4.2.2
 podman-compose==1.2.0
 prompt_toolkit==3.0.47
+propcache==0.2.0
 psutil==6.0.0
 psycopg==3.2.2
 psycopg-binary==3.2.2
