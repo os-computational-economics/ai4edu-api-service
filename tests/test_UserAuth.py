@@ -1,8 +1,12 @@
+from typing import override
 import unittest
 from common.UserAuth import UserAuth
 
 
 class TestUserAuth(unittest.TestCase):
+    user_auth: UserAuth = UserAuth()
+
+    @override
     def setUp(self):
         self.user_auth = UserAuth()
 
@@ -19,18 +23,20 @@ class TestUserAuth(unittest.TestCase):
 
     def test_gen_access_token(self):
         refresh_token = self.user_auth.gen_refresh_token(1)
-        result = self.user_auth.gen_access_token(refresh_token)
+        self.assertIsInstance(refresh_token, str)
+        result = self.user_auth.gen_access_token(str(refresh_token))
         print(result)
         self.assertIsInstance(result, str)
 
     def test_user_logout_all_devices(self):
         token = self.user_auth.gen_refresh_token(2)
+        self.assertIsInstance(token, str)
         result = self.user_auth.user_logout_all_devices(2)
         self.assertTrue(result)
         # try to generate access token with the logged-out user
-        result = self.user_auth.gen_access_token(token)
+        result = self.user_auth.gen_access_token(str(token))
         self.assertFalse(result)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()

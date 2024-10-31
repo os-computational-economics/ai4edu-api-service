@@ -1,4 +1,6 @@
 import logging
+from typing import Annotated
+from common.JWTValidator import getJWT
 from migrations.models import User, UserWorkspace
 
 from fastapi import APIRouter, Depends, Request
@@ -15,7 +17,7 @@ router = APIRouter()
 @router.get("/get_user_list")
 def get_user_list(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
     workspace_id: str = "all",
@@ -28,16 +30,16 @@ def get_user_list(
     :param page_size: Number of users per page.
     :param workspace_id: Workspace ID, "all" for all workspaces
     """
-    if (
-        workspace_id == "all"
-        and request.state.user_jwt_content["system_admin"] is not True
-    ):
+
+    user_jwt_content = getJWT(request.state)
+
+    if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
     if (
-        request.state.user_jwt_content["workspace_role"].get(workspace_id, None) is None
-        and not request.state.user_jwt_content["system_admin"]
+        user_jwt_content["workspace_role"].get(workspace_id, None) is None
+        and not user_jwt_content["system_admin"]
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -45,9 +47,8 @@ def get_user_list(
 
     is_teacher_or_admin = False
     if (
-        request.state.user_jwt_content["workspace_role"].get(workspace_id, None)
-        == "teacher"
-        or request.state.user_jwt_content["system_admin"]
+        user_jwt_content["workspace_role"].get(workspace_id, None) == "teacher"
+        or user_jwt_content["system_admin"]
     ):
         is_teacher_or_admin = True
     try:

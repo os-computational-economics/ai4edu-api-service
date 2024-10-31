@@ -6,10 +6,12 @@
 @email: rxy216@case.edu
 @time: 2/29/24 15:14
 """
-from typing import List
 import json
+from typing import Any
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
+from common.Messages import Message, MessageHistory
 from user.TtsStream import TtsStream
 from common.MessageStorageHandler import MessageStorageHandler
 from common.AgentPromptHandler import AgentPromptHandler
@@ -21,7 +23,7 @@ from user.LangChainHelper import chat_stream_with_retrieve
 
 class ChatStreamModel(BaseModel):
     dynamic_auth_code: str
-    messages: dict[int, dict[str, str]]
+    messages: MessageHistory
     thread_id: str | None = None
     provider: str = "openai"
     user_id: str
@@ -33,14 +35,14 @@ class ChatStreamModel(BaseModel):
 class ChatSingleCallResponse(BaseModel):
     status: str  # "success" or "fail"
     error_message: str | None = None
-    messages: List[str]
+    messages: list[str]
     thread_id: str
 
 
 class ChatStreamResponse(BaseModel):
     status: str  # "success" or "fail"
     error_message: str | None = None
-    messages: List[str]
+    messages: list[str]
     thread_id: str
 
 
@@ -101,36 +103,42 @@ class ChatStream:
         Stream chat messages from OpenAI API.
         :return: A custom Server-Sent event with chat information
         """
-        self.thread_id = chat_stream_model.thread_id
+        self.thread_id = chat_stream_model.thread_id or ""
         self.user_id = chat_stream_model.user_id
         self.agent_id = chat_stream_model.agent_id
         self.tts_voice_enabled = chat_stream_model.voice
         self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
-        self.message_storage_handler.put_message(
+        lastItem = chat_stream_model.messages[len(chat_stream_model.messages) - 1]
+        _ = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
             "human",
-            chat_stream_model.messages[len(chat_stream_model.messages) - 1]["content"],
+            #! Is this meant to be a string?
+            #! What if it is a:
+            #! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
+            lastItem["content"] or "" if "content" in lastItem else "",
         )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         return EventSourceResponse(
-            self.__chat_generator(chat_stream_model.messages, agent_prompt)
+            self.__chat_generator(chat_stream_model.messages, agent_prompt or "")
         )
 
-    def __chat_generator(self, messages: dict[int, dict[str, str]], system_prompt):
+    def __chat_generator(self, messages: MessageHistory, system_prompt: str):
         """
         Chat generator.
         :param messages: All previous messages
         :return:
         """
         print(f"Using {self.requested_provider}")
+        lastMessage = messages[len(messages) - 1]
         stream = chat_stream_with_retrieve(
             self.thread_id,
-            messages[len(messages) - 1]["content"],
+            #! Assumes users are only able to send text messages
+            str(lastMessage["content"]) if "content" in lastMessage else "",
             self.retrieval_namespace,
             system_prompt,
             messages,
@@ -138,7 +146,7 @@ class ChatStream:
             self.requested_provider,
         )
         response_text = ""
-        all_sources = []
+        all_sources: list[dict[str, Any]] = []
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
         chunk_buffer = ""
@@ -181,7 +189,7 @@ class ChatStream:
                     }
                 )
         # put the finished response into the database (AI message)
-        self.message_storage_handler.put_message(
+        _ = self.message_storage_handler.put_message(
             self.thread_id, self.user_id, self.requested_provider, response_text
         )
         # Process any remaining text in the chunk_buffer after the stream has finished
@@ -198,7 +206,9 @@ class ChatStream:
                 }
             )
 
-    def __openai_chat_generator(self, messages: List[dict[str, str]]):
+    def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
+        self, messages: list[ChatCompletionMessageParam]
+    ):
         """
         OpenAI chat generator.
         :param messages:
@@ -214,24 +224,30 @@ class ChatStream:
                     new_text = chunk.choices[0].delta.content
                     yield new_text
 
-    def __anthropic_chat_generator(self, messages: List[dict[str, str]]):
+    def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
+        self, messages: list[Message]
+    ):
         """
         Anthropic chat generator.
         :param messages:
         :return:
         """
         system_message_content = ""
-        if messages[0]["role"] == "system":
-            system_message = messages.pop(0)
+        system_message = messages.pop(0)
+        if system_message["role"] == "system":
             system_message_content = system_message["content"]
+        [
+            m.update({"content": str(m["content"] if "content" in m else "")})
+            for m in messages
+        ]
         with self.anthropic_client.messages.stream(
             system=system_message_content,
             max_tokens=2048,
-            messages=messages,
+            messages=messages,  # pyright: ignore[reportArgumentType]
             model="claude-3-sonnet-20240229",
         ) as stream:
             for text in stream.text_stream:
-                if text is not None:
+                if text != "":
                     yield text
 
     def __process_chunking(
@@ -253,7 +269,9 @@ class ChatStream:
         chunk_buffer = sentence_ender.join(new_text_split[1:])
         return chunk_buffer, chunk_id
 
-    def __messages_processor(self, messages: dict[int, dict[str, str]]):
+    def __messages_processor(  # pyright: ignore[reportUnusedFunction]
+        self, messages: MessageHistory
+    ):
         """
         Process the message.
         :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}
@@ -262,6 +280,7 @@ class ChatStream:
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler()
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        messages_list: list[Message] = []
         if agent_prompt:
             messages_list = [{"role": "system", "content": agent_prompt}]
         else:

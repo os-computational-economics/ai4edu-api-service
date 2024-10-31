@@ -9,6 +9,7 @@
 import uuid
 import logging
 
+from common.JWTValidator import getJWT
 from utils.response import response
 from migrations.models import Thread
 from migrations.models import Agent
@@ -19,12 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 def new_thread(request: Request, agent_id: str, workspace_id: str):
+
+    user_jwt_content = getJWT(request.state)
+
     for db in get_db():
-        user_id = request.state.user_jwt_content["user_id"]
-        student_id = request.state.user_jwt_content["student_id"]
-        is_user_in_workspace = request.state.user_jwt_content["workspace_role"].get(
-            workspace_id, None
-        )
+        user_id = user_jwt_content["user_id"]
+        student_id = user_jwt_content["student_id"]
+        workspace_role = user_jwt_content["workspace_role"]
+        is_user_in_workspace: bool = not not workspace_role.get(workspace_id, False)
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")

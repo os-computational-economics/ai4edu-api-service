@@ -7,7 +7,7 @@ class DynamicAuth:
         self.step = 30  # seconds window
         self.salt = "xlab_jerry_salt"
 
-    def verify_auth_code(self, received_code):
+    def verify_auth_code(self, received_code: str):
         current_time_step = int(time.time()) // self.step
 
         # Check the current, previous, and next time step

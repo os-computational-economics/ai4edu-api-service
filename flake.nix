@@ -32,6 +32,9 @@
                   async-timeout
                   attrs
                   boto3
+                  boto3-stubs
+                  mypy-boto3-dynamodb
+                  mypy-boto3-s3
                   botocore
                   certifi
                   cffi
@@ -62,10 +65,11 @@
                   jsonpatch
                   jsonpointer
                   langchain
-                  # langchain-anthropic
+                  (pkgs.callPackage ./langchain-anthropic.nix python312Packages)
                   langchain-community
                   langchain-core
                   langchain-openai
+                  # TODO: needs pinecone-client to work
                   # langchain-pinecone
                   langchain-text-splitters
                   langsmith
@@ -80,7 +84,9 @@
                   openai
                   orjson
                   packaging
-                  # pinecone-client
+                  # TODO: fix this package
+                  (pkgs.callPackage ./pinecone.nix python312Packages)
+                  (pkgs.callPackage ./langchain-pinecone.nix python312Packages)
                   psycopg
                   # psycopg-binary
                   pycparser
@@ -93,6 +99,7 @@
                   python-dotenv
                   python-multipart
                   pyyaml
+                  types-redis
                   redis
                   regex
                   requests
@@ -122,7 +129,7 @@
               openssl
               postman
               dig
-              pgadmin4-desktopmode
+              # pgadmin4-desktopmode
             ];
           };
           default = docker-python;

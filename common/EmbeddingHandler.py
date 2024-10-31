@@ -9,21 +9,22 @@
 import os
 
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.chains import RetrievalQA, ConversationalRetrievalChain
-from langchain.retrievers import MergerRetriever
+from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader
-from pinecone import Pinecone, ServerlessSpec
+from langchain.document_loaders import PyPDFLoader
+from pinecone.control.pinecone import Pinecone
 
 from dotenv import load_dotenv
+from pydantic import SecretStr
 
-load_dotenv()
+_ = load_dotenv()
 
+#! TODO: move getenv into some propagation class
+# TODO: type-check pinecone
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pc = Pinecone(api_key=PINECONE_API_KEY)
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(api_key=SecretStr(OPENAI_API_KEY or ""))
 
 
 def embed_file(
@@ -52,9 +53,9 @@ def embed_file(
         pages = pdf_loader(file_path)
         # add metadata to the pages
         for page in pages:
-            if not hasattr(page, "metadata") or page.metadata is None:
+            if not hasattr(page, "metadata"):
                 page.metadata = {}
-            page.metadata.update(
+            page.metadata.update(  # pyright: ignore[reportUnknownMemberType]
                 {
                     "file_id": file_id,
                     "file_type": file_type,
@@ -64,7 +65,7 @@ def embed_file(
                     "file_name": file_name,
                 }
             )
-        PineconeVectorStore.from_documents(
+        _ = PineconeVectorStore.from_documents(
             pages, embeddings, index_name=index_name, namespace=namespace
         )
         return True

@@ -6,7 +6,7 @@
 @email: rxy216@case.edu
 @time: 3/16/24 17:52
 """
-from typing import Optional
+from typing import Any
 
 from fastapi import (
     FastAPI,
@@ -14,7 +14,6 @@ from fastapi import (
     HTTPException,
     BackgroundTasks,
     UploadFile,
-    Depends,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -24,7 +23,7 @@ import time
 from datetime import datetime
 import uuid
 
-import redis
+from redis import Redis
 from openai import OpenAI
 from anthropic import Anthropic
 from sqlalchemy import create_engine
@@ -36,7 +35,7 @@ from common.MessageStorageHandler import MessageStorageHandler
 from common.AuthSSO import AuthSSO
 from common.UserAuth import UserAuth
 from utils.response import response
-from user.ChatStream import ChatStream, ChatStreamModel, ChatSingleCallResponse
+from user.ChatStream import ChatStream, ChatStreamModel
 from user.TtsStream import TtsStream
 from user.SttApiKey import SttApiKey, SttApiKeyResponse
 
@@ -77,8 +76,8 @@ try:
 except FileNotFoundError:
     config = {}
 # load secrets from /run/secrets/ (only when running in docker)
-load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
-load_dotenv()
+_ = load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
+_ = load_dotenv()
 
 # initialize FastAPI app and OpenAI client
 app = FastAPI(
@@ -86,8 +85,8 @@ app = FastAPI(
     redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
     openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json",
 )
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY") or "")
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY") or "")
 file_storage = FileStorageHandler()
 
 # Admin AgentRouter
@@ -135,7 +134,7 @@ origins = [
     "https://ai4edu-temp-dev.jerryang.org",
 ]
 
-regex_origins = "https://.*jerryyang666s-projects\.vercel\.app"
+regex_origins = "https://.*jerryyang666s-projects\\.vercel\\.app"
 
 app.add_middleware(
     CORSMiddleware,
@@ -246,9 +245,9 @@ def get_new_thread(request: Request, agent_id: str, workspace_id: str):
 @app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
 @app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
 async def upload_file(
-        file: UploadFile,
-        file_desc: Optional[str] = None,
-        chunking_separator: Optional[str] = None,
+    file: UploadFile | None,
+    file_desc: str | None = None,
+    chunking_separator: str | None = None,
 ):
     """
     ENDPOINT: /upload_file
@@ -269,10 +268,10 @@ async def upload_file(
         # Use FileStorageHandler to store the file
         file_id = file_storage.put_file(
             file_obj=file_content,
-            file_name=file.filename,
+            file_name=file.filename or "",
             file_desc=file_desc or "",
             file_type=file_type,
-            chunking_separator=chunking_separator,
+            chunking_separator=chunking_separator or "",
         )
 
         if file_id is None:
@@ -348,7 +347,7 @@ async def ping():
 @app.get(f"{URL_PATHS['current_prod_admin']}/ai4edu_testing")
 @app.get(f"{URL_PATHS['current_dev_user']}/ai4edu_testing")
 @app.get(f"{URL_PATHS['current_prod_user']}/ai4edu_testing")
-def read_root(request: Request):
+def read_root(request: Request) -> dict[str, Any]:
     """
     Please remove (comment out) the app.add_middleware(AuthorizationMiddleware) line from main.py before running this endpoint.
     This endpoint is for testing purposes. If you see no errors, then your local environment is set up correctly.
@@ -379,22 +378,25 @@ def read_root(request: Request):
         formatted_time = now.strftime("%Y-%m-%d-%H:%M:%S")
 
         #  test redis connection
-        r = redis.Redis(
-            host=redis_address, port=6379, protocol=3, decode_responses=True
+        r = Redis(
+            # protocol=3,
+            host=redis_address,
+            port=6379,
+            decode_responses=True,
         )
-        r.set("foo", "success-" + formatted_time)
+        _ = r.set("foo", "success-" + formatted_time)
         rds = r.get("foo")
 
         # test database connection
-        engine = create_engine(os.getenv("DB_URI"))
+        engine = create_engine(os.getenv("DB_URI") or "")
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT version FROM db_version"))
-            db_result = result.fetchone()[0]
+            result = conn.execute(text("SELECT version FROM db_version")).fetchone()
+            db_result = (result or ["FAILED to retrieve version"])[0]
 
         # test docker volume access
         try:
             with open("./volume_cache/test.txt", "w") as f:
-                f.write("success-" + formatted_time)
+                _ = f.write("success-" + formatted_time)
             with open("./volume_cache/test.txt", "r") as f:
                 volume_result = f.read()
         except FileNotFoundError:
@@ -408,7 +410,10 @@ def read_root(request: Request):
             s3_test_put_file_id = file_storage.put_file(
                 file_content, "success-" + formatted_time, "desc", "text/plain", ""
             )
-        s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id)
+
+        s3_test_get_file_path = None
+        if s3_test_put_file_id is not None:
+            s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id)
 
         # test AWS DynamoDB access
         # current timestamp
@@ -417,10 +422,16 @@ def read_root(request: Request):
         test_role = "test"
         test_content = "test content"
         message = MessageStorageHandler()
-        created_at = message.put_message(
-            test_thread_id, test_user_id, test_role, test_content
+        created_at = (
+            message.put_message(test_thread_id, test_user_id, test_role, test_content)
+            # TODO: create an error if failed instead of continuing with bad data
+            or ""
         )
-        test_msg_get_content = message.get_message(test_thread_id, created_at).content
+        test_msg_get_content = getattr(
+            message.get_message(test_thread_id, created_at),
+            "content",
+            "FAILED to get message",
+        )
         test_thread_get_content = message.get_thread(test_thread_id)
 
         return {

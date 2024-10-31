@@ -7,7 +7,7 @@
 @time: 4/11/24 11:48
 """
 import boto3
-import redis
+from redis import Redis
 from boto3.dynamodb.conditions import Key
 import logging
 import os
@@ -19,17 +19,17 @@ class AgentPromptHandler:
     DYNAMODB_TABLE_NAME = "ai4edu_agent_prompt"
 
     def __init__(self):
-        self.dynamodb = boto3.resource(
+        self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
             "dynamodb",
             region_name="us-east-2",
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
         )
         self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
-        self.redis_client = redis.Redis(
-            host=os.getenv("REDIS_ADDRESS"),
+        self.redis_client = Redis(
+            host=os.getenv("REDIS_ADDRESS") or "localhost",
             port=6379,
-            protocol=3,
+            # protocol=3,
             decode_responses=True,
         )
 
@@ -40,8 +40,8 @@ class AgentPromptHandler:
         :param agent_id: The ID of the agent.
         """
         try:
-            self.table.put_item(Item={"agent_id": agent_id, "prompt": prompt})
-            self.__cache_agent_prompt(agent_id, prompt)
+            _ = self.table.put_item(Item={"agent_id": agent_id, "prompt": prompt})
+            _ = self.__cache_agent_prompt(agent_id, prompt)
             return True
         except Exception as e:
             logging.error(f"Error putting the agent prompt into the database: {e}")
@@ -67,8 +67,8 @@ class AgentPromptHandler:
                 KeyConditionExpression=Key("agent_id").eq(agent_id)
             )
             if response["Items"]:
-                prompt = response["Items"][0]["prompt"]
-                self.__cache_agent_prompt(agent_id, prompt)
+                prompt = str(response["Items"][0]["prompt"])
+                _ = self.__cache_agent_prompt(agent_id, prompt)
                 return prompt
             else:
                 return None
@@ -84,7 +84,7 @@ class AgentPromptHandler:
         :return: True if successful, False otherwise.
         """
         try:
-            self.redis_client.set(agent_id, prompt)
+            _ = self.redis_client.set(agent_id, prompt)
             return True
         except Exception as e:
             logging.error(f"Error caching the agent prompt into redis: {e}")
@@ -96,7 +96,7 @@ class AgentPromptHandler:
         :param agent_id: The ID of the agent.
         """
         try:
-            return self.redis_client.get(agent_id)
+            return str(self.redis_client.get(agent_id))
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None

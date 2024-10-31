@@ -8,7 +8,7 @@
 """
 import uuid
 from datetime import datetime, timedelta
-from migrations.models import User, RefreshToken
+from migrations.models import RefreshTokenValue, User, RefreshToken, UserValue
 from migrations.session import get_db
 from utils.token_utils import jwt_generator
 import logging
@@ -18,7 +18,7 @@ class UserAuth:
     def __init__(self):
         self.db = None
 
-    def user_login(self, student_id: str, user_info: dict) -> int or bool:
+    def user_login(self, student_id: str, user_info: dict[str, str]) -> int | bool:
         """
         login the user when sso authentication is successful
         :param student_id: school specific student id
@@ -28,13 +28,15 @@ class UserAuth:
         if self.db is None:
             self.db = next(get_db())
         try:
-            user = self.db.query(User).filter(User.email == user_info["mail"]).first()
-            if user:
+            userDb: UserValue | None = (
+                self.db.query(User).filter(User.email == user_info["mail"]).first()
+            )  # pyright: ignore[reportAssignmentType]
+            if userDb:
                 # if user already exists, update last login time
-                user.last_login = datetime.now()
+                userDb.last_login = datetime.now()
             else:
                 # if user does not exist, create a new user
-                user = User(
+                newUser: UserValue = User(
                     first_name=user_info["givenName"],
                     last_name=user_info["sn"],
                     email=user_info["mail"],
@@ -45,8 +47,10 @@ class UserAuth:
                     school_id=0,
                     last_login=datetime.now(),
                     create_at=datetime.now(),
-                )
-                self.db.add(user)
+                )  # pyright: ignore[reportAssignmentType]
+                self.db.add(newUser)
+            # If userDb does not exist, newUser must exist
+            user = userDb or newUser  # pyright: ignore[reportPossiblyUnboundVariable]
             self.db.commit()
             return user.user_id
         except Exception as e:
@@ -54,7 +58,7 @@ class UserAuth:
             self.db.rollback()
             return False
 
-    def gen_refresh_token(self, user_id) -> str or bool:
+    def gen_refresh_token(self, user_id: int) -> str | bool:
         if self.db is None:
             self.db = next(get_db())
         try:
@@ -79,7 +83,7 @@ class UserAuth:
             self.db.rollback()
             return False
 
-    def gen_access_token(self, refresh_token) -> str or bool:
+    def gen_access_token(self, refresh_token: str) -> str | bool:
         """
         Generate access token from refresh token.
         :param refresh_token: refresh token
@@ -89,15 +93,17 @@ class UserAuth:
             self.db = next(get_db())
         try:
             # Check if the refresh token is valid
-            refresh_token_obj = (
+            refresh_token_obj: RefreshTokenValue = (
                 self.db.query(RefreshToken)
                 .filter(RefreshToken.token == refresh_token)
                 .first()
-            )
+            )  # pyright: ignore[reportAssignmentType]
             if refresh_token_obj and refresh_token_obj.expire_at > datetime.now():
                 # refresh token is valid, get user info
                 user_id = refresh_token_obj.user_id
-                user = self.db.query(User).filter(User.user_id == user_id).first()
+                user: UserValue = (
+                    self.db.query(User).filter(User.user_id == user_id).first()
+                )  # pyright: ignore[reportAssignmentType]
                 first_name = user.first_name
                 last_name = user.last_name
                 student_id = user.student_id
@@ -106,7 +112,7 @@ class UserAuth:
                 email = user.email
                 try:
                     token = jwt_generator(
-                        user_id,
+                        str(user_id),
                         first_name,
                         last_name,
                         student_id,
@@ -128,7 +134,7 @@ class UserAuth:
             self.db.rollback()
             return False
 
-    def user_logout_all_devices(self, user_id) -> bool:
+    def user_logout_all_devices(self, user_id: int) -> bool:
         """
         Logout user from all devices.
         :param user_id: user id
@@ -137,14 +143,14 @@ class UserAuth:
         if self.db is None:
             self.db = next(get_db())
         try:
-            tokens = (
+            tokens: list[RefreshTokenValue] = (
                 self.db.query(RefreshToken)
                 .filter(
                     RefreshToken.user_id == user_id,
                     RefreshToken.expire_at > datetime.now(),
                 )
                 .all()
-            )
+            )  # pyright: ignore[reportAssignmentType]
             for token in tokens:
                 token.expire_at = datetime.now()
             self.db.commit()

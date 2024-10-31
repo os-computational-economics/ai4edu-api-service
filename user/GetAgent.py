@@ -1,3 +1,4 @@
+from typing import Annotated
 from sqlalchemy.sql import text
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/get/{agent_id}")
-def get_agent_by_id(agent_id: str, db: Session = Depends(get_db)):
+def get_agent_by_id(agent_id: str, db: Annotated[Session, Depends(get_db)]):
     """
     This function gets the settings of an agent by its ID
     :param agent_id: The ID of the agent
@@ -49,14 +50,14 @@ def get_agent_by_id(agent_id: str, db: Session = Depends(get_db)):
         )
 
 
-def check_uuid_format(agent_id):
+def check_uuid_format(agent_id: str):
     """
     This function checks if the UUID is in the correct format
     :param agent_id: The UUID to check
     :return: True if the UUID is in the correct format, False otherwise
     """
     try:
-        UUID(agent_id)
+        _ = UUID(agent_id)
     except ValueError:
         return False
     return True
