@@ -7,7 +7,7 @@
 @time: 3/16/24 23:48
 """
 from datetime import datetime
-from typing import Any, override
+from typing import Any, Literal, override
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Column,
@@ -22,6 +22,7 @@ from sqlalchemy import (
     JSON,
     UniqueConstraint,
     PrimaryKeyConstraint,
+    Text,
 )
 
 
@@ -240,3 +241,52 @@ class UserWorkspaceValue:
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
     student_id: str = ""
+
+
+# create table ai_feedback
+# (
+#     feedback_id        serial
+#         constraint ai_feedback_pk
+#             primary key,
+#     user_id            integer               not null
+#         constraint ai_feedback_ai_users_user_id_fk
+#             references ai_users (user_id),
+#     thread_id          uuid                  not null
+#         constraint ai_feedback_ai_threads_thread_id_fk
+#             references ai_threads (thread_id),
+#     message_id         varchar(256),
+#     feedback_time      timestamp             default now(),
+#     rating_format      integer               not null,
+#     rating             integer               not null,
+
+#     comments           text,
+#     constraint chk_rating_validity check (
+#         (rating_format = 2 and rating in (0, 1)) or
+#         (rating_format = 5 and rating between 1 and 5) or
+#         (rating_format = 10 and rating between 1 and 10)
+#     )
+# )
+
+
+class UserFeedback(Base):
+    __tablename__ = "ai_feedback"
+
+    feedback_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    thread_id = Column(UUID(as_uuid=True), nullable=False)
+    message_id = Column(String(256))
+    feedback_time = Column(DateTime, default=func.now())
+    rating_format = Column(Integer, nullable=False)
+    rating = Column(Integer, nullable=False)
+    comments = Column(Text)
+
+
+class UserFeedbackValue:
+    feedback_id: int = 0
+    user_id: int = 0
+    thread_id: str = ""
+    message_id: str = ""
+    feedback_time: datetime = datetime.now()
+    rating_format: Literal[2, 5, 10] = 2
+    rating: int = 0
+    comments: str = ""

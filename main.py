@@ -41,6 +41,7 @@ from user.SttApiKey import SttApiKey, SttApiKeyResponse
 
 from user.Threads import new_thread
 from user.GetAgent import router as GetAgentRouter
+from user.Feedback import router as FeedbackRouter
 
 from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
@@ -102,6 +103,10 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 # so we can seperate the two and maybe add security where users can get the full info given to admin users
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
+
+# User Feedback Router
+app.include_router(FeedbackRouter, prefix=f"{URL_PATHS['current_dev_user']}/feedback")
+app.include_router(FeedbackRouter, prefix=f"{URL_PATHS['current_prod_user']}/feedback")
 
 # Admin AccessRouter
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
