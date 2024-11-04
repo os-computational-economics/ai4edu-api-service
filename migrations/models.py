@@ -243,31 +243,6 @@ class UserWorkspaceValue:
     student_id: str = ""
 
 
-# create table ai_feedback
-# (
-#     feedback_id        serial
-#         constraint ai_feedback_pk
-#             primary key,
-#     user_id            integer               not null
-#         constraint ai_feedback_ai_users_user_id_fk
-#             references ai_users (user_id),
-#     thread_id          uuid                  not null
-#         constraint ai_feedback_ai_threads_thread_id_fk
-#             references ai_threads (thread_id),
-#     message_id         varchar(256),
-#     feedback_time      timestamp             default now(),
-#     rating_format      integer               not null,
-#     rating             integer               not null,
-
-#     comments           text,
-#     constraint chk_rating_validity check (
-#         (rating_format = 2 and rating in (0, 1)) or
-#         (rating_format = 5 and rating between 1 and 5) or
-#         (rating_format = 10 and rating between 1 and 10)
-#     )
-# )
-
-
 class UserFeedback(Base):
     __tablename__ = "ai_feedback"
 
