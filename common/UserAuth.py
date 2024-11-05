@@ -108,6 +108,7 @@ class UserAuth:
                 last_name = user.last_name
                 student_id = user.student_id
                 system_admin = user.system_admin
+                #! MAY RETURN DELETED WORKSPACES!!
                 workspace_role = user.workspace_role
                 email = user.email
                 try:
