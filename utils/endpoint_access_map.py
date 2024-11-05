@@ -26,7 +26,7 @@ endpoint_access_map: AccessMap = {
     "/agents/update_agent": {"student": False, "teacher": True, "admin": True},
     "/agents/agents": {"student": True, "teacher": True, "admin": True},
     "/agents/agent/{agent_id}": {"student": True, "teacher": True, "admin": True},
-    "/agents/feedback/{feedback_id}": {"student": True, "teacher": True, "admin": True},
+    "/feedback/{feedback_id}": {"student": True, "teacher": True, "admin": True},
     "/threads/get_thread/{thread_id}": {
         "student": True,
         "teacher": True,
@@ -59,6 +59,11 @@ endpoint_access_map: AccessMap = {
         "admin": True,
     },
     "/workspace/get_workspace_list": {
+        "student": False,
+        "teacher": False,
+        "admin": True,
+    },
+    "/workspace/delete_workspace/{workspace}": {
         "student": False,
         "teacher": False,
         "admin": True,

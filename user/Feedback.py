@@ -12,7 +12,7 @@ from migrations.session import get_db
 router = APIRouter()
 
 
-@router.get("/{thread_id}")
+@router.post("/{thread_id}")
 def get_agent_by_id(
     request: Request, thread_id: str, db: Annotated[Session, Depends(get_db)]
 ):
