@@ -96,7 +96,11 @@ class AgentPromptHandler:
         :param agent_id: The ID of the agent.
         """
         try:
-            return str(self.redis_client.get(agent_id))
+            prompt = self.redis_client.get(agent_id)
+            if prompt:
+                return str(prompt)
+            else:
+                return None
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None
