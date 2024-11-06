@@ -56,7 +56,7 @@ class MessageStorageHandler:
         :param user_id: The ID of the user who the message belongs to.
         :param role: The role of message sender.
         :param content: The content of the message.
-        :return: The time when the message is created. If failed, return None.
+        :return: The ID of the message. If the operation fails, return None.
         """
         try:
             created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
@@ -71,7 +71,7 @@ class MessageStorageHandler:
                     "content": content,
                 }
             )
-            return created_at
+            return msg_id
         except Exception as e:
             print(f"Error putting the message into the database: {e}")
             return None

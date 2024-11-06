@@ -6,15 +6,23 @@ from common.JWTValidator import getJWT
 from migrations.models import UserFeedback
 from utils.response import response
 from user.GetAgent import check_uuid_format
+from pydantic import BaseModel
 
 from migrations.session import get_db
 
 router = APIRouter()
 
 
-@router.post("/{thread_id}")
-def get_agent_by_id(
-    request: Request, thread_id: str, db: Annotated[Session, Depends(get_db)]
+class RatingData(BaseModel):
+    thread_id: str
+    rating: int
+    message_id: str = ""
+    comments: str = ""
+
+
+@router.post("/rating")
+def submit_rating(
+        request: Request, rating_data: RatingData, db: Annotated[Session, Depends(get_db)]
 ):
     """
     This function gets the settings of an agent by its ID
@@ -22,25 +30,24 @@ def get_agent_by_id(
     :param db: The database session
     :return: The settings of the agent
     """
-    if not check_uuid_format(thread_id):
+    if not check_uuid_format(rating_data.thread_id):
         return response(False, status_code=400, message="Invalid UUID format")
     user_jwt_content = getJWT(request.state)
-    message_id = request.query_params.get("message_id", "")
 
     try:
-        rating = int(request.query_params.get("rating", -1))
-        comments = request.query_params.get("comments", "")
-        if (message_id and rating in [0, 1]) or (
-            not message_id and rating > 0 and rating <= 5
+        rating_data.rating = int(rating_data.rating)
+
+        if (rating_data.message_id and rating_data.rating in [0, 1]) or (
+                not rating_data.message_id and rating_data.rating > 0 and rating_data.rating <= 5
         ):
             db.add(
                 UserFeedback(
                     user_id=user_jwt_content["user_id"],
-                    thread_id=thread_id,
-                    message_id=message_id,
-                    rating_format=2 if message_id else 5,
-                    rating=rating,
-                    comments=comments,
+                    thread_id=rating_data.thread_id,
+                    message_id=rating_data.message_id,
+                    rating_format=2 if rating_data.message_id else 5,
+                    rating=rating_data.rating,
+                    comments=rating_data.comments,
                 )
             )
             db.commit()
