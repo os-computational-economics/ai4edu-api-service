@@ -189,9 +189,10 @@ class ChatStream:
                     }
                 )
         # put the finished response into the database (AI message)
-        _ = self.message_storage_handler.put_message(
+        msg_id = self.message_storage_handler.put_message(
             self.thread_id, self.user_id, self.requested_provider, response_text
         )
+        print("Latest response:", response_text, "msg_id:", msg_id)
         # Process any remaining text in the chunk_buffer after the stream has finished
         if chunk_buffer:
             chunk_id += 1
@@ -203,8 +204,18 @@ class ChatStream:
                     "source": all_sources,
                     "tts_session_id": self.tts_session_id,
                     "tts_max_chunk_id": chunk_id,
+                    "msg_id": msg_id,
                 }
             )
+        yield json.dumps(
+            {
+                "response": response_text,
+                "source": all_sources,
+                "tts_session_id": self.tts_session_id,
+                "tts_max_chunk_id": chunk_id,
+                "msg_id": msg_id,
+            }
+        )
 
     def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
         self, messages: list[ChatCompletionMessageParam]

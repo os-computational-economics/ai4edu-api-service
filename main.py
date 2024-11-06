@@ -41,6 +41,7 @@ from user.SttApiKey import SttApiKey, SttApiKeyResponse
 
 from user.Threads import new_thread
 from user.GetAgent import router as GetAgentRouter
+from user.Feedback import router as FeedbackRouter
 
 from admin.AgentManager import router as AgentRouter
 from admin.Thread import router as ThreadRouter
@@ -102,6 +103,10 @@ app.include_router(ThreadRouter, prefix=f"{URL_PATHS['current_prod_admin']}/thre
 # so we can seperate the two and maybe add security where users can get the full info given to admin users
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_dev_user']}/agent")
 app.include_router(GetAgentRouter, prefix=f"{URL_PATHS['current_prod_user']}/agent")
+
+# User Feedback Router
+app.include_router(FeedbackRouter, prefix=f"{URL_PATHS['current_dev_user']}/feedback")
+app.include_router(FeedbackRouter, prefix=f"{URL_PATHS['current_prod_user']}/feedback")
 
 # Admin AccessRouter
 app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_dev_admin']}/access")
@@ -188,7 +193,7 @@ def delete_file_after_delay(file_path: str, delay: float):
 @app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
 async def get_tts_file(
-        tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
+    tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
 ):
     """
     ENDPOINT: /user/get_tts_file
@@ -296,7 +301,8 @@ async def get_presigned_url_for_file(file_id: str):
     :param file_id:
     :return:
     """
-    if file_id is None or file_id == "":
+    file_id = file_id or ""
+    if file_id == "":
         return response(success=False, message="No file ID provided", status_code=400)
     url = file_storage.get_presigned_url(file_id)
     if url is None:

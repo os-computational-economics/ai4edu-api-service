@@ -7,6 +7,7 @@
 @time: 6/24/24 23:34
 """
 import os
+import time
 from collections.abc import Iterable
 from typing import Any, Literal
 from collections.abc import Iterator
@@ -88,7 +89,6 @@ llm2 = ChatAnthropic(
 def get_session_history(
     *, thread_id: str, history_from_request: MessageHistory
 ) -> BaseChatMessageHistory:
-    print(thread_id)
     history = ChatMessageHistory()
     for _, message in history_from_request.items():
         if message["role"] == "user":
@@ -100,7 +100,8 @@ def get_session_history(
             history.add_message(
                 AIMessage(str(message["content"]) if "content" in message else "")
             )
-    print(history)
+    # print the current timestamp in ISO string format
+    print(f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}")
     return history
 
 
@@ -207,6 +208,8 @@ def chat_stream_with_retrieve(
             ),
         ],
     )
+
+    print("Latest question: ", question)
 
     rag_stream: Iterator[ConversationalStream] = (
         conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]

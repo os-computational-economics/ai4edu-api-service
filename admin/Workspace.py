@@ -13,7 +13,7 @@ from typing import Annotated
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
 
 from common.JWTValidator import getJWT
@@ -82,6 +82,37 @@ def create_workspace(
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
+
+
+@router.post("/delete_workspace/{workspace}")
+def delete_workspace(
+    request: Request,
+    workspace: str,
+    db: Annotated[Session, Depends(get_db)],
+):
+
+    user_jwt_content = getJWT(request.state)
+    if not user_jwt_content["system_admin"]:
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
+    try:
+        query: WorkspaceValue = (
+            db.query(Workspace).filter(Workspace.workspace_id == workspace).one()
+        )  # pyright: ignore[reportAssignmentType]
+        query.status = 2
+        db.commit()
+        return response(True, message="Workspace deleted successfully")
+    except NoResultFound:
+        db.rollback()
+        return response(False, status_code=400, message="Workspace not found")
+    except MultipleResultsFound:
+        db.rollback()
+        return response(False, status_code=500, message="Database is broken")
+    except Exception as e:
+        logger.error(f"Error deleting workspace: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
 
@@ -376,7 +407,7 @@ def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).all()
+        workspaces = db.query(Workspace).filter(Workspace.status != 2).all()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,

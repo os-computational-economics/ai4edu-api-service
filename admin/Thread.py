@@ -13,7 +13,7 @@ from migrations.session import get_db
 
 from sqlalchemy.orm import Session
 
-from migrations.models import Thread, Agent, ThreadValue
+from migrations.models import Thread, Agent, ThreadValue, Workspace
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -91,7 +91,11 @@ def get_thread_list(
         Thread.agent_name,
         Thread.workspace_id,
         Thread.student_id,
+    ).join(
+        Workspace,
+        Thread.workspace_id == Workspace.workspace_id,
     ).filter(
+        Workspace.status != 2,
         Thread.workspace_id == workspace_id
     )  # even the agent is deleted, the thread still exists
 

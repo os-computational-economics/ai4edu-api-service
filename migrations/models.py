@@ -7,7 +7,7 @@
 @time: 3/16/24 23:48
 """
 from datetime import datetime
-from typing import Any, override
+from typing import Any, Literal, override
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Column,
@@ -22,6 +22,7 @@ from sqlalchemy import (
     JSON,
     UniqueConstraint,
     PrimaryKeyConstraint,
+    Text,
 )
 
 
@@ -240,3 +241,27 @@ class UserWorkspaceValue:
     created_at: datetime = datetime.now()
     updated_at: datetime = datetime.now()
     student_id: str = ""
+
+
+class UserFeedback(Base):
+    __tablename__ = "ai_feedback"
+
+    feedback_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    thread_id = Column(UUID(as_uuid=True), nullable=False)
+    message_id = Column(String(256))
+    feedback_time = Column(DateTime, default=func.now())
+    rating_format = Column(Integer, nullable=False)
+    rating = Column(Integer, nullable=False)
+    comments = Column(Text)
+
+
+class UserFeedbackValue:
+    feedback_id: int = 0
+    user_id: int = 0
+    thread_id: str = ""
+    message_id: str = ""
+    feedback_time: datetime = datetime.now()
+    rating_format: Literal[2, 5, 10] = 2
+    rating: int = 0
+    comments: str = ""

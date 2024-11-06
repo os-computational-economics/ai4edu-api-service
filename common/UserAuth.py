@@ -108,6 +108,8 @@ class UserAuth:
                 last_name = user.last_name
                 student_id = user.student_id
                 system_admin = user.system_admin
+                #! MAY RETURN DELETED WORKSPACES!!
+                # TODO: Do sync with json format workspace_role in ai_users table
                 workspace_role = user.workspace_role
                 email = user.email
                 try:
