@@ -12,6 +12,7 @@ import logging
 from typing import Annotated
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
@@ -222,8 +223,7 @@ def student_join_workspace(
 
         user_workspace.role = "student"
         user_workspace.user_id = user_id
-        user.workspace_role[join_workspace.workspace_id] = "student"
-        flag_modified(user, "workspace_role")
+        _ = db.execute(text("SELECT updateUserRoles(:i)"), {"i": user_id})
         db.commit()
 
         return response(True, message="User added to workspace successfully")

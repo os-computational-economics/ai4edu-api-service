@@ -151,3 +151,16 @@ create table ai_feedback
         (rating_format = 10 and rating between 1 and 10)
     )
 )
+
+CREATE OR REPLACE FUNCTION updateUserRoles(uid INT) RETURNS JSONB
+LANGUAGE SQL
+BEGIN ATOMIC
+UPDATE ai_users
+	SET workspace_role=(SELECT json_object_agg(p.workspace_id, role)
+		FROM public.ai_user_workspace AS p
+		JOIN ai_workspaces AS w ON p.workspace_id=w.workspace_id
+		WHERE user_id=uid AND w.status != 2)
+	WHERE user_id=uid;
+
+SELECT workspace_role AS newJ FROM ai_users WHERE user_id=uid;
+END;
