@@ -53,8 +53,11 @@ import logging
 from middleware.authorization import AuthorizationMiddleware, extract_token
 
 logging.basicConfig(
-    level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s UTC %(levelname)s: %(name)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
 )
+logging.Formatter.converter = time.gmtime
 
 DEV_PREFIX = "/dev"
 PROD_PREFIX = "/prod"
@@ -193,7 +196,7 @@ def delete_file_after_delay(file_path: str, delay: float):
 @app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
 async def get_tts_file(
-    tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
+        tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks
 ):
     """
     ENDPOINT: /user/get_tts_file
@@ -250,9 +253,9 @@ def get_new_thread(request: Request, agent_id: str, workspace_id: str):
 @app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
 @app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
 async def upload_file(
-    file: UploadFile | None,
-    file_desc: str | None = None,
-    chunking_separator: str | None = None,
+        file: UploadFile | None,
+        file_desc: str | None = None,
+        chunking_separator: str | None = None,
 ):
     """
     ENDPOINT: /upload_file
@@ -429,9 +432,9 @@ def read_root(request: Request) -> dict[str, Any]:
         test_content = "test content"
         message = MessageStorageHandler()
         created_at = (
-            message.put_message(test_thread_id, test_user_id, test_role, test_content)
-            # TODO: create an error if failed instead of continuing with bad data
-            or ""
+                message.put_message(test_thread_id, test_user_id, test_role, test_content)
+                # TODO: create an error if failed instead of continuing with bad data
+                or ""
         )
         test_msg_get_content = getattr(
             message.get_message(test_thread_id, created_at),
