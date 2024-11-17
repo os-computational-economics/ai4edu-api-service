@@ -319,7 +319,7 @@ def get_agent_by_id(
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
-    if user_role != "teacher":
-        agent.agent_files = {}
+    # if user_role != "teacher":
+    #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here
     return response(True, data=agent)
