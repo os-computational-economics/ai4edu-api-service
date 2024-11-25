@@ -150,7 +150,7 @@ create table ai_feedback
         (rating_format = 5 and rating between 1 and 5) or
         (rating_format = 10 and rating between 1 and 10)
     )
-)
+);
 
 CREATE OR REPLACE FUNCTION updateUserRoles(uid INT) RETURNS JSONB
 LANGUAGE SQL

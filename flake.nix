@@ -73,7 +73,6 @@
                   # langchain-pinecone
                   langchain-text-splitters
                   langsmith
-                  magic
                   Mako
                   markdown-it-py
                   markupsafe
@@ -98,6 +97,7 @@
                   pypdf
                   python-dateutil
                   python-dotenv
+                  python-magic
                   python-multipart
                   pyyaml
                   types-redis

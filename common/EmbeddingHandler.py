@@ -48,7 +48,7 @@ def embed_file(
     :param workspace_id: The ID of the workspace. Optional.
     :return: True if the embedding is successful, False otherwise.
     """
-    file_magic: str = magic.detect_from_filename(file_path).mime_type
+    file_magic: str = magic.from_file(file_path, mime=True)
     if file_magic == "application/pdf":
         pages = pdf_loader(file_path)
         # add metadata to the pages
