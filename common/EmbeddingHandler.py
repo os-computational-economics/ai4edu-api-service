@@ -16,6 +16,7 @@ from pinecone.control.pinecone import Pinecone
 
 from dotenv import load_dotenv
 from pydantic import SecretStr
+import magic
 
 _ = load_dotenv()
 
@@ -33,7 +34,6 @@ def embed_file(
     file_path: str,
     file_id: str,
     file_name: str,
-    file_type: str,
     agent_id: str = "NA",
     workspace_id: str = "NA",
 ) -> bool:
@@ -44,12 +44,12 @@ def embed_file(
     :param file_path: The path of the file to be embedded.
     :param file_id: The ID of the file.
     :param file_name: The name of the file.
-    :param file_type: The type of the file.
     :param agent_id: The ID of the agent. Optional.
     :param workspace_id: The ID of the workspace. Optional.
     :return: True if the embedding is successful, False otherwise.
     """
-    if file_type == "pdf":
+    file_magic: str = magic.detect_from_filename(file_path).mime_type
+    if file_magic == "application/pdf":
         pages = pdf_loader(file_path)
         # add metadata to the pages
         for page in pages:
@@ -58,7 +58,8 @@ def embed_file(
             page.metadata.update(  # pyright: ignore[reportUnknownMemberType]
                 {
                     "file_id": file_id,
-                    "file_type": file_type,
+                    "file_type": file_magic,
+                    #! does this have to be "pdf" or can it be "application/pdf"
                     "file_path": file_path,
                     "agent_id": agent_id,
                     "workspace_id": workspace_id,
@@ -68,6 +69,14 @@ def embed_file(
         _ = PineconeVectorStore.from_documents(
             pages, embeddings, index_name=index_name, namespace=namespace
         )
+        return True
+    elif file_magic == "text/plain":
+        # TODO: implement text embedding
+        with open(file_path, "r") as file:
+            _ = PineconeVectorStore.from_texts(  # pyright: ignore[reportUnknownMemberType]
+                file.readlines(), embeddings, index_name=index_name, namespace=namespace
+            )
+        print("Text embedding not implemented yet")
         return True
     else:
         print("Unsupported file type")

@@ -73,6 +73,7 @@
                   # langchain-pinecone
                   langchain-text-splitters
                   langsmith
+                  magic
                   Mako
                   markdown-it-py
                   markupsafe
