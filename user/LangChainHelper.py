@@ -101,7 +101,9 @@ def get_session_history(
                 AIMessage(str(message["content"]) if "content" in message else "")
             )
     # print the current timestamp in ISO string format
-    print(f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}")
+    print(
+        f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}"
+    )
     return history
 
 
