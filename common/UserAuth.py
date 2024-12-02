@@ -110,6 +110,7 @@ class UserAuth:
                 system_admin = user.system_admin
                 #! MAY RETURN DELETED WORKSPACES!!
                 # TODO: Do sync with json format workspace_role in ai_users table
+                # TODO: Call new stored procedure here
                 workspace_role = user.workspace_role
                 email = user.email
                 try:

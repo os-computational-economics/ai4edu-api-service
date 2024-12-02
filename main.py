@@ -268,14 +268,12 @@ async def upload_file(
         file_content = await file.read()
 
         # Determine file type (you might want to implement a more sophisticated method)
-        file_type = file.content_type or "application/octet-stream"
 
         # Use FileStorageHandler to store the file
         file_id = file_storage.put_file(
             file_obj=file_content,
             file_name=file.filename or "",
             file_desc=file_desc or "",
-            file_type=file_type,
             chunking_separator=chunking_separator or "",
         )
 
@@ -414,7 +412,7 @@ def read_root(request: Request) -> dict[str, Any]:
         with open("./volume_cache/test.txt", "rb") as f:
             file_content = f.read()
             s3_test_put_file_id = file_storage.put_file(
-                file_content, "success-" + formatted_time, "desc", "text/plain", ""
+                file_content, "success-" + formatted_time, "desc", ""
             )
 
         s3_test_get_file_path = None

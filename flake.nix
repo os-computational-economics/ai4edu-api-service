@@ -84,6 +84,7 @@
                   openai
                   orjson
                   packaging
+                  pypdf
                   # TODO: fix this package
                   (pkgs.callPackage ./pinecone.nix python312Packages)
                   (pkgs.callPackage ./langchain-pinecone.nix python312Packages)
@@ -97,6 +98,7 @@
                   pypdf
                   python-dateutil
                   python-dotenv
+                  python-magic
                   python-multipart
                   pyyaml
                   types-redis

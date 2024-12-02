@@ -83,20 +83,21 @@ def get_thread_list(
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
-    query = db.query(
-        Thread.thread_id,
-        Thread.user_id,
-        Thread.created_at,
-        Thread.agent_id,
-        Thread.agent_name,
-        Thread.workspace_id,
-        Thread.student_id,
-    ).join(
-        Workspace,
-        Thread.workspace_id == Workspace.workspace_id,
-    ).filter(
-        Workspace.status != 2,
-        Thread.workspace_id == workspace_id
+    query = (
+        db.query(
+            Thread.thread_id,
+            Thread.user_id,
+            Thread.created_at,
+            Thread.agent_id,
+            Thread.agent_name,
+            Thread.workspace_id,
+            Thread.student_id,
+        )
+        .join(
+            Workspace,
+            Thread.workspace_id == Workspace.workspace_id,
+        )
+        .filter(Workspace.status != 2, Thread.workspace_id == workspace_id)
     )  # even the agent is deleted, the thread still exists
 
     if agent_name:

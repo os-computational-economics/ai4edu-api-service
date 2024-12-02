@@ -14,8 +14,8 @@ import os
 
 
 class AuthSSO:
-    CURRENT_ENV = os.getenv("REDIS_ADDRESS")
-    DOMAIN = os.getenv("DOMAIN")
+    CURRENT_ENV = os.getenv("REDIS_ADDRESS") or ""
+    DOMAIN = os.getenv("DOMAIN") or ""
 
     def __init__(self, ticket: str, came_from: str):
         self.student_id = None
