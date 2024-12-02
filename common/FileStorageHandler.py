@@ -19,6 +19,8 @@ from redis import Redis
 from sqlalchemy.orm import Session
 from migrations.session import get_db
 from migrations.models import File, FileValue
+import magic
+from pypdf import PdfWriter
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +130,6 @@ class FileStorageHandler:
         file_obj: bytes,
         file_name: str,
         file_desc: str,
-        file_type: str,
         chunking_separator: str,
     ) -> str | None:
         """
@@ -142,6 +143,7 @@ class FileStorageHandler:
         """
         file_id = uuid.uuid4()
         file_ext = os.path.splitext(file_name)[1]
+        f_type = magic.from_buffer(file_obj, mime=True)
         try:
             # Store locally
             local_folder = os.path.join(self.LOCAL_FOLDER, str(file_id))
@@ -150,6 +152,14 @@ class FileStorageHandler:
 
             with open(local_path, "wb") as local_file:
                 _ = local_file.write(file_obj)
+
+            if f_type == "application/pdf":
+                pdf_writer = PdfWriter(clone_from=local_path)
+                pdf_writer.add_metadata({
+                    "Title": file_name
+                })
+                with open(local_path, "wb") as meta_file:
+                    _ = pdf_writer.write(meta_file)
         except Exception as e:
             logger.error(f"Error saving file locally: {str(e)}")
             return None
@@ -157,7 +167,7 @@ class FileStorageHandler:
         # Upload to S3
         s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
         upload_status = self.__upload_file(
-            self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type
+            self.BUCKET_NAME, local_path, s3_object_name, content_type=f_type
         )
 
         if upload_status:
@@ -167,7 +177,7 @@ class FileStorageHandler:
                     file_id=file_id,
                     file_name=file_name,
                     file_desc=file_desc,
-                    file_type=file_type,
+                    file_type=f_type,
                     file_ext=file_ext,
                     file_status=1,  # Using the default status
                     chunking_separator=chunking_separator,
