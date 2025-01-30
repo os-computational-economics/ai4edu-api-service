@@ -41,6 +41,7 @@ endpoint_access_map: AccessMap = {
     "/access/get_user_list": {"student": False, "teacher": True, "admin": True},
     # workspace endpoints
     "/workspace/create_workspace": {"student": False, "teacher": False, "admin": True},
+    "/workspace/set_workspace_status": {"student": False, "teacher": True, "admin": True},
     "/workspace/add_users_via_csv": {"student": False, "teacher": True, "admin": True},
     "/workspace/student_join_workspace": {
         "student": True,
