@@ -134,7 +134,7 @@ def set_workspace_status(
         workspace.status = int(update_workspace.workspace_status)
         db.commit()
 
-        return response(True, message="User added to workspace successfully")
+        return response(True, message="Successfully updated workspace status")
 
     # Report intermittent or external error
     except Exception as e:
@@ -463,7 +463,7 @@ def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).filter(Workspace.status != 1).all()
+        workspaces = db.query(Workspace).filter(Workspace.status == 1).all()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
