@@ -10,6 +10,7 @@ import csv
 import io
 import logging
 from typing import Annotated
+from enum import IntEnum
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
 from sqlalchemy.orm import Session
@@ -34,11 +35,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# Enum indicating the status of a workspace
+class WorkspaceStatus(IntEnum):
+    INACTIVE = 0
+    ACTIVE = 1
+    DELETED = 2
+
+
 class WorkspaceCreate(BaseModel):
     workspace_id: str
     workspace_name: str
     workspace_password: str
     school_id: int = 0
+
+
+class WorkspaceUpdateStatus(BaseModel):
+    workspace_id: str
+    workspace_status: WorkspaceStatus
 
 
 class StudentJoinWorkspace(BaseModel):
@@ -82,6 +95,50 @@ def create_workspace(
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
+
+
+@router.post("/set_workspace_status")
+def set_workspace_status(
+    request: Request,
+    update_workspace: WorkspaceUpdateStatus,
+    db: Annotated[Session, Depends(get_db)],
+):
+    # Get JWT and user workspace role for authentication
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        update_workspace.workspace_id, None
+    )
+
+    # Disallow non-admin users and users who are not teachers of the workspace from setting the workspace's status
+    if not user_jwt_content["system_admin"] or not user_workspace_role != "teacher":
+        return response(
+            False, status_code=403, message="You do not have access to this resource"
+        )
+
+    # If the user is authorized, update the workspace according to the given status
+    try:
+
+        # Attempt to find workspace. If it can't be found, return a 404 exception
+        workspace: WorkspaceValue = (
+            db.query(Workspace)
+            .filter(Workspace.workspace_id == update_workspace.workspace_id)
+            .first()
+        )  # pyright: ignore[reportAssignmentType]
+
+        if not workspace:
+            return response(False, status_code=404, message="Failed to find workspace")
+
+        # Update the workspace status in the database, report success to the user
+        workspace.status = int(update_workspace.workspace_status)
+        db.commit()
+
+        return response(True, message="User added to workspace successfully")
+
+    # Report intermittent or external error
+    except Exception as e:
+        logger.error(f"Error changing workspace status: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
 
@@ -395,7 +452,6 @@ def set_user_role_with_student_id(
         return response(True, message="User role updated successfully")
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
-        db.rollback()
         return response(False, status_code=500, message=str(e))
 
 
@@ -407,7 +463,7 @@ def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).filter(Workspace.status != 2).all()
+        workspaces = db.query(Workspace).filter(Workspace.status != 1).all()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
