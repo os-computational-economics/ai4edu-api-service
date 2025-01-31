@@ -112,7 +112,7 @@ def set_workspace_status(
     )
 
     # Disallow non-admin users and users who are not teachers of the workspace from setting the workspace's status
-    if not user_jwt_content["system_admin"] or not user_workspace_role != "teacher":
+    if not user_jwt_content["system_admin"] or not user_workspace_role == "teacher":
         return response(
             False, status_code=403, message="You may not change the status of this workspace"
         )
