@@ -10,9 +10,9 @@ import csv
 import io
 import logging
 from typing import Annotated
-from enum import IntEnum
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
@@ -462,7 +462,7 @@ def get_workspace_list(
         )
     try:
         offset = (page - 1) * page_size
-        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).offset(offset).limit(
+        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).order_by(desc(Workspace.status)).offset(offset).limit(
             page_size).all()
         total_workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).count()
         workspace_list = [
