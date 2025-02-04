@@ -243,7 +243,9 @@ def student_join_workspace(
 
         workspace: WorkspaceValue = (
             db.query(Workspace)
-            .filter(Workspace.workspace_id == join_workspace.workspace_id)
+            .filter(Workspace.workspace_id == join_workspace.workspace_id,
+                    Workspace.status == WorkspaceStatus.ACTIVE
+            )
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
