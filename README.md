@@ -2,7 +2,7 @@
 
 ## Quick Start Guide (without using nix)
 
-### Please follow the steps below to get the backend API up and running on your local machine..
+### Please follow the steps below to get the backend API up and running on your local machine.
 
 1. Clone the repository to your local machine.
 1. Install Docker on your local machine. (https://docs.docker.com/get-docker/)
