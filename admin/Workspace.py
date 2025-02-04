@@ -25,6 +25,7 @@ from migrations.models import (
     UserWorkspaceValue,
     Workspace,
     WorkspaceValue,
+    WorkspaceStatus,
 )
 from migrations.session import get_db
 from utils.response import response
@@ -33,13 +34,6 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-# Enum indicating the status of a workspace
-class WorkspaceStatus(IntEnum):
-    INACTIVE = 0
-    ACTIVE = 1
-    DELETED = 2
 
 
 class WorkspaceCreate(BaseModel):
@@ -131,7 +125,7 @@ def set_workspace_status(
             return response(False, status_code=404, message="Failed to find workspace")
 
         # Update the workspace status in the database, report success to the user
-        workspace.status = int(update_workspace.workspace_status)
+        workspace.status = WorkspaceStatus(update_workspace.workspace_status)
         db.commit()
 
         return response(True, message="Successfully updated workspace status")
@@ -159,7 +153,7 @@ def delete_workspace(
         query: WorkspaceValue = (
             db.query(Workspace).filter(Workspace.workspace_id == workspace).one()
         )  # pyright: ignore[reportAssignmentType]
-        query.status = 2
+        query.status = WorkspaceStatus.DELETED
         db.commit()
         return response(True, message="Workspace deleted successfully")
     except NoResultFound:

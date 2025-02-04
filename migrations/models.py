@@ -24,6 +24,7 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
     Text,
 )
+from enum import IntEnum
 
 
 class BaseType:
@@ -207,11 +208,16 @@ class Workspace(Base):
         return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, status: {self.status}, school_id: {self.school_id}"
 
 
-# TODO: Consider changing "status" to an int enum, given the status has a fixed value (see "Workspace.py" for an example)
+class WorkspaceStatus(IntEnum):
+    ACTIVE = 1
+    INACTIVE = 0
+    DELETED = 2
+
+
 class WorkspaceValue:
     workspace_id: str = ""
     workspace_name: str = ""
-    status: int = 1
+    status: WorkspaceStatus = WorkspaceStatus.ACTIVE
     school_id: int = 0
     workspace_password: str = ""
 
