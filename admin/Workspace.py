@@ -457,12 +457,13 @@ def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).filter(Workspace.status == 1).all()
+        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).all()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
                 "workspace_name": workspace.workspace_name,
                 "school_id": workspace.school_id,
+                "status": workspace.status,
             }
             for workspace in workspaces
         ]
