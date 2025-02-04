@@ -446,6 +446,7 @@ def set_user_role_with_student_id(
         return response(True, message="User role updated successfully")
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
+        db.rollback()
         return response(False, status_code=500, message=str(e))
 
 
