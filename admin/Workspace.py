@@ -66,7 +66,6 @@ def create_workspace(
     workspace: WorkspaceCreate,
     db: Annotated[Session, Depends(get_db)],
 ):
-
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
@@ -143,7 +142,6 @@ def delete_workspace(
     workspace: str,
     db: Annotated[Session, Depends(get_db)],
 ):
-
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
@@ -451,14 +449,22 @@ def set_user_role_with_student_id(
 
 
 @router.get("/get_workspace_list")
-def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]):
+def get_workspace_list(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 10
+):
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).all()
+        offset = (page - 1) * page_size
+        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).offset(offset).limit(
+            page_size).all()
+        total_workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).count()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
@@ -468,7 +474,8 @@ def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]
             }
             for workspace in workspaces
         ]
-        return response(True, data={"workspace_list": workspace_list})
+        return response(True, data={"workspace_list": workspace_list, "total": total_workspaces, "page": page,
+                                    "page_size": page_size})
     except Exception as e:
         logger.error(f"Error fetching workspace list: {e}")
         return response(False, status_code=500, message=str(e))
