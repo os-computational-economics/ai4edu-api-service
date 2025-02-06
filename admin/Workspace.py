@@ -12,6 +12,7 @@ import logging
 from typing import Annotated
 import chardet
 from fastapi import APIRouter, Depends, UploadFile, File, Request
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
@@ -24,6 +25,7 @@ from migrations.models import (
     UserWorkspaceValue,
     Workspace,
     WorkspaceValue,
+    WorkspaceStatus,
 )
 from migrations.session import get_db
 from utils.response import response
@@ -39,6 +41,11 @@ class WorkspaceCreate(BaseModel):
     workspace_name: str
     workspace_password: str
     school_id: int = 0
+
+
+class WorkspaceUpdateStatus(BaseModel):
+    workspace_id: str
+    workspace_status: WorkspaceStatus
 
 
 class StudentJoinWorkspace(BaseModel):
@@ -59,7 +66,6 @@ def create_workspace(
     workspace: WorkspaceCreate,
     db: Annotated[Session, Depends(get_db)],
 ):
-
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
@@ -86,13 +92,56 @@ def create_workspace(
         return response(False, status_code=500, message=str(e))
 
 
+@router.post("/set_workspace_status")
+def set_workspace_status(
+    request: Request,
+    update_workspace: WorkspaceUpdateStatus,
+    db: Annotated[Session, Depends(get_db)],
+):
+    # Get JWT and user workspace role for authentication
+    user_jwt_content = getJWT(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        update_workspace.workspace_id, None
+    )
+
+    # Disallow non-admin users and users who are not teachers of the workspace from setting the workspace's status
+    if not user_jwt_content["system_admin"] and user_workspace_role != "teacher":
+        return response(
+            False, status_code=403, message="You may not change the status of this workspace"
+        )
+
+    # If the user is authorized, update the workspace according to the given status
+    try:
+
+        # Attempt to find workspace. If it can't be found, return a 404 exception
+        workspace: WorkspaceValue = (
+            db.query(Workspace)
+            .filter(Workspace.workspace_id == update_workspace.workspace_id)
+            .first()
+        )  # pyright: ignore[reportAssignmentType]
+
+        if not workspace:
+            return response(False, status_code=404, message="Failed to find workspace")
+
+        # Update the workspace status in the database, report success to the user
+        workspace.status = WorkspaceStatus(update_workspace.workspace_status)
+        db.commit()
+
+        return response(True, message="Successfully updated workspace status")
+
+    # Report intermittent or external error
+    except Exception as e:
+        logger.error(f"Error changing workspace status: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
+
+
 @router.post("/delete_workspace/{workspace}")
 def delete_workspace(
     request: Request,
     workspace: str,
     db: Annotated[Session, Depends(get_db)],
 ):
-
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
@@ -102,7 +151,7 @@ def delete_workspace(
         query: WorkspaceValue = (
             db.query(Workspace).filter(Workspace.workspace_id == workspace).one()
         )  # pyright: ignore[reportAssignmentType]
-        query.status = 2
+        query.status = WorkspaceStatus.DELETED
         db.commit()
         return response(True, message="Workspace deleted successfully")
     except NoResultFound:
@@ -194,7 +243,9 @@ def student_join_workspace(
 
         workspace: WorkspaceValue = (
             db.query(Workspace)
-            .filter(Workspace.workspace_id == join_workspace.workspace_id)
+            .filter(Workspace.workspace_id == join_workspace.workspace_id,
+                    Workspace.status == WorkspaceStatus.ACTIVE
+            )
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
@@ -400,23 +451,33 @@ def set_user_role_with_student_id(
 
 
 @router.get("/get_workspace_list")
-def get_workspace_list(request: Request, db: Annotated[Session, Depends(get_db)]):
+def get_workspace_list(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 10
+):
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
     try:
-        workspaces = db.query(Workspace).filter(Workspace.status != 2).all()
+        offset = (page - 1) * page_size
+        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).order_by(desc(Workspace.status)).offset(offset).limit(
+            page_size).all()
+        total_workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).count()
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
                 "workspace_name": workspace.workspace_name,
                 "school_id": workspace.school_id,
+                "status": workspace.status,
             }
             for workspace in workspaces
         ]
-        return response(True, data={"workspace_list": workspace_list})
+        return response(True, data={"workspace_list": workspace_list, "total": total_workspaces, "page": page,
+                                    "page_size": page_size})
     except Exception as e:
         logger.error(f"Error fetching workspace list: {e}")
         return response(False, status_code=500, message=str(e))
