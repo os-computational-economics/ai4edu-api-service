@@ -150,20 +150,26 @@ def remove_workspace_roles(
     
     """
 
-    # Get all users to change workspace values for
-    users_to_modify: list[UserValue] = (
-        db.query(User)
-        .filter(User.workspace_id in workspace.workspace_role)
-        .all()
-    )  # pyright: ignore[reportAssignmentType]
+    try:
+        # Get all users to change workspace values for
+        users_to_modify: list[UserValue] = (
+            db.query(User)
+            .filter(User.workspace_id in workspace.workspace_role)
+            .all()
+        )  # pyright: ignore[reportAssignmentType]
 
-    # Remove the workspace role from each associated user
-    for user in users_to_modify:
-        del user.workspace_role[workspace.workspace_id]
+        # Remove the workspace role from each associated user
+        for user in users_to_modify:
+            del user.workspace_role[workspace.workspace_id]
+        
+        # Commit the changes
+        db.commit()
+        logger.info("Removed workspace roles from user entries")
     
-    # Commit the changes
-    db.commit()
-    logger.info("Removed workspace roles from user entries")
+    except Exception as e:
+        logger.error(f"Error removing workspace roles: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
 
 
 def restore_workspace_roles(
@@ -176,31 +182,37 @@ def restore_workspace_roles(
     
     """
 
-    # Get the previous workspace roles from the "ai_user_workspace" table
-    user_workspaces: list[UserWorkspaceValue] = (
-        db.query(UserWorkspace)
-        .filter(UserWorkspace.workspace_id == workspace.workspace_id)
-        .all()
-    )
-
-    # For each workspace id, add the associated role back to the associated user id
-    for user_workspace in user_workspaces:
-
-        user: UserValue = (
-            db.query(User)
-            .filter(User.user_id == user_workspace.user_id)
-            .first()
+    try:
+        # Get the previous workspace roles from the "ai_user_workspace" table
+        user_workspaces: list[UserWorkspaceValue] = (
+            db.query(UserWorkspace)
+            .filter(UserWorkspace.workspace_id == workspace.workspace_id)
+            .all()
         )
 
-        # If the user exists, then re-add the role
-        if user:
-            user.workspace_role[user_workspace.workspace_id] = user_workspace.role
-        else:
-            logger.info("User does not exist in ai_users table, skipping this user...")
-        
-    # Commit any changes to the database, log a successful operation
-    db.commit
-    logger.info("Restored workspace roles for associated user entries")
+        # For each workspace id, add the associated role back to the associated user id
+        for user_workspace in user_workspaces:
+
+            user: UserValue = (
+                db.query(User)
+                .filter(User.user_id == user_workspace.user_id)
+                .first()
+            )
+
+            # If the user exists, then re-add the role
+            if user:
+                user.workspace_role[user_workspace.workspace_id] = user_workspace.role
+            else:
+                logger.info("User does not exist in ai_users table, skipping this user...")
+            
+        # Commit any changes to the database, log a successful operation
+        db.commit()
+        logger.info("Restored workspace roles for associated user entries")
+    
+    except Exception as e:
+        logger.error(f"Error restoring workspace roles: {e}")
+        db.rollback()
+        return response(False, status_code=500, message=str(e))
 
 
 @router.post("/delete_workspace/{workspace}")
