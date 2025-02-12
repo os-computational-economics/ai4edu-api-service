@@ -129,7 +129,10 @@ def set_workspace_status(
         db.commit()
 
         # Sync user workspace cache
-        background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+        if update_workspace.workspace_status == WorkspaceStatus.INACTIVE:
+            background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+        else:
+            background_tasks.add_task(restore_workspace_roles, db, update_workspace)
 
         return response(True, message="Successfully updated workspace status")
 
