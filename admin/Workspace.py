@@ -11,7 +11,7 @@ import io
 import logging
 from typing import Annotated
 import chardet
-from fastapi import APIRouter, Depends, UploadFile, File, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Request
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
@@ -97,6 +97,7 @@ def set_workspace_status(
     request: Request,
     update_workspace: WorkspaceUpdateStatus,
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks
 ):
     # Get JWT and user workspace role for authentication
     user_jwt_content = getJWT(request.state)
@@ -127,6 +128,9 @@ def set_workspace_status(
         workspace.status = WorkspaceStatus(update_workspace.workspace_status)
         db.commit()
 
+        # Sync user workspace cache
+        background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+
         return response(True, message="Successfully updated workspace status")
 
     # Report intermittent or external error
@@ -134,6 +138,32 @@ def set_workspace_status(
         logger.error(f"Error changing workspace status: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
+
+
+def remove_workspace_roles(
+    db: Annotated[Session, Depends(get_db)],
+    workspace: WorkspaceUpdateStatus):
+    """
+
+    When a workspace is deactivated, remove any associated workspace roles from any users
+    which have roles related to that workspace
+    
+    """
+
+    # Get all users to change workspace values for
+    users_to_modify: list[UserValue] = (
+        db.query(User)
+        .filter(workspace.workspace_id in User.workspace_role)
+        .all()
+    )  # pyright: ignore[reportAssignmentType]
+
+    # Remove the workspace role from each associated user
+    for user in users_to_modify:
+        del user.workspace_role[workspace.workspace_id]
+    
+    # Commit the changes
+    db.commit()
+    logger.info("Removed workspace roles from user entries")
 
 
 @router.post("/delete_workspace/{workspace}")
