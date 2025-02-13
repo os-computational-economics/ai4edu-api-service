@@ -66,7 +66,7 @@ def get_thread_list(
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-    user_id: str | None = None,
+    user_id: int | None = None,
     agent_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -103,7 +103,8 @@ def get_thread_list(
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
     if user_id:
-        if user_id != "all":
+        # -1 indicates all records should be shown
+        if user_id != -1:
             query = query.filter(Thread.user_id == user_id)
     if start_date:
         try:
