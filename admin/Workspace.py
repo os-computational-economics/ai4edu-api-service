@@ -12,7 +12,7 @@ import logging
 from typing import Annotated
 import chardet
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Request
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
@@ -157,13 +157,14 @@ def remove_workspace_roles(
         # Get all users to change workspace values for
         users_to_modify: list[UserValue] = (
             db.query(User)
-            .filter(User.workspace_id in workspace.workspace_role)
+            .filter(func.json_extract_path_text(User.workspace_role, workspace.workspace_id).isnot(None))
             .all()
         )  # pyright: ignore[reportAssignmentType]
 
         # Remove the workspace role from each associated user
         for user in users_to_modify:
             del user.workspace_role[workspace.workspace_id]
+            flag_modified(user, "workspace_role")
         
         # Commit the changes
         db.commit()
@@ -172,7 +173,6 @@ def remove_workspace_roles(
     except Exception as e:
         logger.error(f"Error removing workspace roles: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
 
 
 def restore_workspace_roles(
@@ -205,6 +205,7 @@ def restore_workspace_roles(
             # If the user exists, then re-add the role
             if user:
                 user.workspace_role[user_workspace.workspace_id] = user_workspace.role
+                flag_modified(user, "workspace_role")
             else:
                 logger.info("User does not exist in ai_users table, skipping this user...")
             
@@ -215,7 +216,6 @@ def restore_workspace_roles(
     except Exception as e:
         logger.error(f"Error restoring workspace roles: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
 
 
 @router.post("/delete_workspace/{workspace}")
