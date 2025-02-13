@@ -97,7 +97,7 @@ def set_workspace_status(
     request: Request,
     update_workspace: WorkspaceUpdateStatus,
     db: Annotated[Session, Depends(get_db)],
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
 ):
     # Get JWT and user workspace role for authentication
     user_jwt_content = getJWT(request.state)
@@ -108,7 +108,9 @@ def set_workspace_status(
     # Disallow non-admin users and users who are not teachers of the workspace from setting the workspace's status
     if not user_jwt_content["system_admin"] and user_workspace_role != "teacher":
         return response(
-            False, status_code=403, message="You may not change the status of this workspace"
+            False,
+            status_code=403,
+            message="You may not change the status of this workspace",
         )
 
     # If the user is authorized, update the workspace according to the given status
@@ -144,20 +146,24 @@ def set_workspace_status(
 
 
 def remove_workspace_roles(
-    db: Annotated[Session, Depends(get_db)],
-    workspace: WorkspaceUpdateStatus):
+    db: Annotated[Session, Depends(get_db)], workspace: WorkspaceUpdateStatus
+):
     """
 
     When a workspace is deactivated, remove any associated workspace roles from any users
     which have roles related to that workspace
-    
+
     """
 
     try:
         # Get all users to change workspace values for
         users_to_modify: list[UserValue] = (
             db.query(User)
-            .filter(func.json_extract_path_text(User.workspace_role, workspace.workspace_id).isnot(None))
+            .filter(
+                func.json_extract_path_text(
+                    User.workspace_role, workspace.workspace_id
+                ).isnot(None)
+            )
             .all()
         )  # pyright: ignore[reportAssignmentType]
 
@@ -165,24 +171,24 @@ def remove_workspace_roles(
         for user in users_to_modify:
             del user.workspace_role[workspace.workspace_id]
             flag_modified(user, "workspace_role")
-        
+
         # Commit the changes
         db.commit()
         logger.info("Removed workspace roles from user entries")
-    
+
     except Exception as e:
         logger.error(f"Error removing workspace roles: {e}")
         db.rollback()
 
 
 def restore_workspace_roles(
-    db: Annotated[Session, Depends(get_db)],
-    workspace: WorkspaceUpdateStatus):
+    db: Annotated[Session, Depends(get_db)], workspace: WorkspaceUpdateStatus
+):
     """
 
     When a workspace is reactivated, restore any associated workspace roles to users
     which had roles in that workspace
-    
+
     """
 
     try:
@@ -197,9 +203,7 @@ def restore_workspace_roles(
         for user_workspace in user_workspaces:
 
             user: UserValue = (
-                db.query(User)
-                .filter(User.user_id == user_workspace.user_id)
-                .first()
+                db.query(User).filter(User.user_id == user_workspace.user_id).first()
             )
 
             # If the user exists, then re-add the role
@@ -207,12 +211,14 @@ def restore_workspace_roles(
                 user.workspace_role[user_workspace.workspace_id] = user_workspace.role
                 flag_modified(user, "workspace_role")
             else:
-                logger.info("User does not exist in ai_users table, skipping this user...")
-            
+                logger.info(
+                    "User does not exist in ai_users table, skipping this user..."
+                )
+
         # Commit any changes to the database, log a successful operation
         db.commit()
         logger.info("Restored workspace roles for associated user entries")
-    
+
     except Exception as e:
         logger.error(f"Error restoring workspace roles: {e}")
         db.rollback()
@@ -325,8 +331,9 @@ def student_join_workspace(
 
         workspace: WorkspaceValue = (
             db.query(Workspace)
-            .filter(Workspace.workspace_id == join_workspace.workspace_id,
-                    Workspace.status == WorkspaceStatus.ACTIVE
+            .filter(
+                Workspace.workspace_id == join_workspace.workspace_id,
+                Workspace.status == WorkspaceStatus.ACTIVE,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
@@ -537,7 +544,7 @@ def get_workspace_list(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
-    page_size: int = 10
+    page_size: int = 10,
 ):
     user_jwt_content = getJWT(request.state)
     if not user_jwt_content["system_admin"]:
@@ -546,9 +553,19 @@ def get_workspace_list(
         )
     try:
         offset = (page - 1) * page_size
-        workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).order_by(desc(Workspace.status)).offset(offset).limit(
-            page_size).all()
-        total_workspaces = db.query(Workspace).filter(Workspace.status != WorkspaceStatus.DELETED).count()
+        workspaces = (
+            db.query(Workspace)
+            .filter(Workspace.status != WorkspaceStatus.DELETED)
+            .order_by(desc(Workspace.status))
+            .offset(offset)
+            .limit(page_size)
+            .all()
+        )
+        total_workspaces = (
+            db.query(Workspace)
+            .filter(Workspace.status != WorkspaceStatus.DELETED)
+            .count()
+        )
         workspace_list = [
             {
                 "workspace_id": workspace.workspace_id,
@@ -558,8 +575,15 @@ def get_workspace_list(
             }
             for workspace in workspaces
         ]
-        return response(True, data={"workspace_list": workspace_list, "total": total_workspaces, "page": page,
-                                    "page_size": page_size})
+        return response(
+            True,
+            data={
+                "workspace_list": workspace_list,
+                "total": total_workspaces,
+                "page": page,
+                "page_size": page_size,
+            },
+        )
     except Exception as e:
         logger.error(f"Error fetching workspace list: {e}")
         return response(False, status_code=500, message=str(e))
