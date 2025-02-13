@@ -66,7 +66,7 @@ def get_thread_list(
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-    student_id: str | None = None,
+    user_id: str | None = None,
     agent_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -78,7 +78,7 @@ def get_thread_list(
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if (
         user_workspace_role != "teacher"
-        and user_jwt_content["student_id"] != student_id
+        and user_jwt_content["user_id"] != user_id
     ):
         return response(
             False, status_code=403, message="You do not have access to this resource"
@@ -102,9 +102,9 @@ def get_thread_list(
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
-    if student_id:
-        if student_id != "all":
-            query = query.filter(Thread.student_id == student_id)
+    if user_id:
+        if user_id != "all":
+            query = query.filter(Thread.user_id == user_id)
     if start_date:
         try:
             start_datetime = datetime.fromisoformat(start_date)
