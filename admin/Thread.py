@@ -76,10 +76,7 @@ def get_thread_list(
     """
     user_jwt_content = getJWT(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
-    if (
-        user_workspace_role != "teacher"
-        and user_jwt_content["user_id"] != user_id
-    ):
+    if user_workspace_role != "teacher" and user_jwt_content["user_id"] != user_id:
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
