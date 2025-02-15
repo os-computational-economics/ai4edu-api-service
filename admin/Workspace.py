@@ -55,7 +55,6 @@ class StudentJoinWorkspace(BaseModel):
 
 class UserRoleUpdate(BaseModel):
     user_id: int
-    student_id: str
     workspace_id: str
     role: str  # student, teacher, pending
 
@@ -478,8 +477,8 @@ def set_user_role(
         return response(False, status_code=500, message=str(e))
 
 
-@router.post("/set_user_role_with_student_id")
-def set_user_role_with_student_id(
+@router.post("/set_user_role_with_user_id")
+def set_user_role_with_user_id(
     request: Request,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
@@ -499,7 +498,7 @@ def set_user_role_with_student_id(
     try:
         user: UserValue | None = (
             db.query(User)
-            .filter(User.student_id == user_role_update.student_id)
+            .filter(User.user_id == user_role_update.user_id)
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
@@ -509,7 +508,6 @@ def set_user_role_with_student_id(
             db.query(UserWorkspace)
             .filter(
                 UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
                 UserWorkspace.workspace_id == user_role_update.workspace_id,
             )
             .first()

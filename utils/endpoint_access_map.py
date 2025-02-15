@@ -58,7 +58,7 @@ endpoint_access_map: AccessMap = {
         "admin": True,
     },
     "/workspace/set_user_role": {"student": False, "teacher": True, "admin": True},
-    "/workspace/set_user_role_with_student_id": {
+    "/workspace/set_user_role_with_user_id": {
         "student": False,
         "teacher": True,
         "admin": True,
