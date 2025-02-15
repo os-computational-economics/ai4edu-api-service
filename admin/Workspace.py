@@ -497,9 +497,7 @@ def set_user_role_with_user_id(
         )
     try:
         user: UserValue | None = (
-            db.query(User)
-            .filter(User.user_id == user_role_update.user_id)
-            .first()
+            db.query(User).filter(User.user_id == user_role_update.user_id).first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
             return response(False, status_code=404, message="User not found")
