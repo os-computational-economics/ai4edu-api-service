@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.responses import JSONResponse
 
-from common.JWTValidator import getJWT
+from common.JWTValidator import get_jwt
 from migrations.models import (
     User,
     UserValue,
@@ -86,7 +86,7 @@ def create_workspace(
         Success message or 400 if exists
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource",
@@ -130,7 +130,7 @@ def set_workspace_status(
 
     """
     # Get JWT and user workspace role for authentication
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
         update_workspace.workspace_id, None,
     )
@@ -187,7 +187,7 @@ def delete_workspace(
         Success message or 400 if workspace not found
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource",
@@ -232,7 +232,7 @@ def add_users_via_csv(
     """
     if file is None:
         file: UploadFile = File(...)
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
@@ -274,7 +274,8 @@ def add_users_via_csv(
         return response(True, message="Users added via CSV successfully")
     except Exception as e:
         logger.error(
-            "Error adding users via CSV: Please make sure you save the roster as a CSV file and try again",
+            "Error adding users via CSV: Please make sure you" +
+                " save the roster as a CSV file and try again",
         )
         db.rollback()
         return response(False, status_code=500, message=str(e))
@@ -297,7 +298,7 @@ def student_join_workspace(
         Success message or 404 if user or workspace not found
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_id: int = user_jwt_content["user_id"]
     student_id: str = user_jwt_content["student_id"]
     try:
@@ -369,7 +370,7 @@ def delete_user_from_workspace(
         Success message or 404 if user or workspace not found
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
         user_role_update.workspace_id, None,
     )
@@ -433,7 +434,7 @@ def set_user_role(
         Success message or 404 if user or not found
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
         user_role_update.workspace_id, None,
     )
@@ -496,7 +497,7 @@ def set_user_role_with_student_id(
         Success message or 404 if user or not found
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource",
@@ -563,7 +564,7 @@ def get_workspace_list(
         List of workspaces with pagination
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
             False, status_code=403, message="You do not have access to this resource",

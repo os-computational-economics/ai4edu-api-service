@@ -96,7 +96,7 @@ class ChatStream:
         self.tts: TtsStream = TtsStream(self.tts_session_id, CONFIG=CONFIG)
         "The TTS stream for Deepgram Text to Speech"
 
-        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler(CONFIG=CONFIG)
+        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler(config=CONFIG)
         "The message storage handler for storing messages for this chat"
 
         self.CONFIG: Config = CONFIG
@@ -123,7 +123,7 @@ class ChatStream:
             lastItem["content"] or "" if "content" in lastItem else "",
         )
         #  get agent prompt
-        agent_prompt_handler = AgentPromptHandler(CONFIG=self.CONFIG)
+        agent_prompt_handler = AgentPromptHandler(config=self.CONFIG)
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         return EventSourceResponse(
             self.__chat_generator(chat_stream_model.messages, agent_prompt or ""),
@@ -286,7 +286,7 @@ class ChatStream:
         :return:
         """
         #  get agent prompt
-        agent_prompt_handler = AgentPromptHandler(CONFIG=self.CONFIG)
+        agent_prompt_handler = AgentPromptHandler(config=self.CONFIG)
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         messages_list: list[Message] = []
         if agent_prompt:

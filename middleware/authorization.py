@@ -5,7 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from common.JWTValidator import UserJWTContent, parseJWT
+from common.JWTValidator import UserJWTContent, parse_jwt
 from utils.endpoint_access_map import AccessMap, PersonType, endpoint_access_map
 from utils.token_utils import parse_token
 from utils.whitelist import whitelist
@@ -119,7 +119,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
             parse_result = parse_token(tokens["access_token"])
             if parse_result["success"] and parse_result["data"] is not None:
                 user_access = extract_role(
-                    parseJWT(parse_result["data"]),  # pyright: ignore[reportAny]
+                    parse_jwt(parse_result["data"]),  # pyright: ignore[reportAny]
                 )
                 if has_access(endpoint_access_map, user_access, path):
                     request.state.user_jwt_content = parse_result["data"]

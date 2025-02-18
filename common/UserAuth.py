@@ -1,12 +1,11 @@
 # Copyright (c) 2024.
-"""@file: UserAuth.py.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 5/21/24 17:23
+"""
 """
 import logging
 import uuid
 from datetime import datetime, timedelta
+
+from sqlalchemy.orm import Session
 
 from migrations.models import RefreshToken, RefreshTokenValue, User, UserValue
 from migrations.session import get_db
@@ -14,14 +13,23 @@ from utils.token_utils import jwt_generator
 
 
 class UserAuth:
-    def __init__(self):
-        self.db = None
+
+    """Manages user authentication and authorization and multi-device support"""
+
+    def __init__(self) -> None:
+        """Initialize UserAuth object"""
+        self.db: Session | None = None
 
     def user_login(self, student_id: str, user_info: dict[str, str]) -> int | bool:
         """Login the user when sso authentication is successful
-        :param student_id: school specific student id
-        :param user_info: user info from sso
-        :return: user_id if login successful, False otherwise
+
+        Args:
+            student_id: school specific student id
+            user_info: user info from sso
+
+        Returns:
+            user_id if login successful, False otherwise
+
         """
         if self.db is None:
             self.db = next(get_db())

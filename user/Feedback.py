@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from common.JWTValidator import getJWT
+from common.JWTValidator import get_jwt
 from migrations.models import UserFeedback
 from migrations.session import get_db
 from user.GetAgent import check_uuid_format
@@ -32,7 +32,7 @@ def submit_rating(
     """
     if not check_uuid_format(rating_data.thread_id):
         return response(False, status_code=400, message="Invalid UUID format")
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
 
     try:
         rating_data.rating = int(rating_data.rating)

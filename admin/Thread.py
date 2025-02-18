@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from common.EnvManager import getenv
-from common.JWTValidator import getJWT
+from common.JWTValidator import get_jwt
 from common.MessageStorageHandler import MessageStorageHandler
 from migrations.models import Agent, Thread, ThreadValue, Workspace, WorkspaceStatus
 from migrations.session import get_db
@@ -23,7 +23,7 @@ router = APIRouter()
 CONFIG = getenv()
 
 # Initialize the MessageStorageHandler
-message_handler = MessageStorageHandler(CONFIG=CONFIG)
+message_handler = MessageStorageHandler(config=CONFIG)
 
 
 class ThreadListQuery(BaseModel):
@@ -104,7 +104,7 @@ def get_thread_list(
         List of threads and total information if found, 403 if not auth
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if (
         user_workspace_role != "teacher"

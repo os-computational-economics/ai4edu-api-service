@@ -16,8 +16,15 @@ from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
-from common.JWTValidator import getJWT
-from migrations.models import Agent, AgentStatus, AgentTeacherResponse, AgentValue, Workspace, WorkspaceStatus
+from common.JWTValidator import get_jwt
+from migrations.models import (
+    Agent,
+    AgentStatus,
+    AgentTeacherResponse,
+    AgentValue,
+    Workspace,
+    WorkspaceStatus,
+)
 from migrations.session import get_db
 from utils.response import Response, response
 
@@ -25,7 +32,7 @@ logger = logging.getLogger(__name__)
 CONFIG = getenv()
 
 router = APIRouter()
-agent_prompt_handler = AgentPromptHandler(CONFIG=CONFIG)
+agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
 
 class AgentCreate(BaseModel):
@@ -101,7 +108,7 @@ def create_agent(
         ID if successful, Error if not
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
 
     if (
         user_jwt_content["workspace_role"].get(agent_data.workspace_id, None)
@@ -132,7 +139,7 @@ def create_agent(
 
     # if there is agent files, embed the files with pinecone
     if agent_data.agent_files:
-        fsh = FileStorageHandler(CONFIG=CONFIG)
+        fsh = FileStorageHandler(config=CONFIG)
         for file_id, file_name in agent_data.agent_files.items():
             file_path = fsh.get_file(file_id)
             if file_path:
@@ -185,7 +192,7 @@ def delete_agent(
 
     ws_id = delete_data.workspace_id or agent_workspace.workspace_id
 
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if (
         user_jwt_content["workspace_role"].get(ws_id, None) != "teacher"
         and not user_jwt_content["system_admin"]
@@ -226,7 +233,7 @@ def edit_agent(
         ID if successful, Error if not
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     if (
         user_jwt_content["workspace_role"].get(update_data.workspace_id or "All", None)
         != "teacher"
@@ -262,7 +269,7 @@ def edit_agent(
     if update_data.agent_files is not None:
         agent_to_update.agent_files = update_data.agent_files
         # embed the files with pinecone
-        fsh = FileStorageHandler(CONFIG=CONFIG)
+        fsh = FileStorageHandler(config=CONFIG)
         for file_id, file_name in update_data.agent_files.items():
             file_path = fsh.get_file(file_id)
             if file_path:
@@ -317,7 +324,7 @@ def list_agents(
         List of agents and total count
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_role is None:
         return response(
@@ -375,7 +382,7 @@ def get_agent_by_id(
     if agent is None:
         return response(False, status_code=404, message="Agent not found")
     agent_workspace = agent.workspace_id
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
         return response(

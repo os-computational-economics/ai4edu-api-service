@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
-from common.JWTValidator import getJWT
+from common.JWTValidator import get_jwt
 from migrations.models import User, UserWorkspace
 from migrations.session import get_db
 from utils.response import Response, response
@@ -39,7 +39,7 @@ def get_user_list(
         Response: A list of users
 
     """
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
 
     if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
         return response(

@@ -1,9 +1,6 @@
 # Copyright (c) 2024.
-"""@file: FileStorageHandler.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 3/22/24 21:05
-"""
+"""Class for handling files in the S3 storage system"""
+
 import json
 import logging
 import os
@@ -25,20 +22,29 @@ logger = logging.getLogger(__name__)
 
 
 class FileStorageHandler:
+
+    """Class for retrieving and storing files"""
+
+    # ! Make these environment variables
     LOCAL_FOLDER: str = "./volume_cache/"
     BUCKET_NAME: str = "ai4edu-storage"
     S3_FOLDER: str = "ai4edu_data/"
     REDIS_CACHE_EXPIRY: int = 60 * 60 * 24  # 24 hours in seconds
 
-    def __init__(self, CONFIG: Con):
+    def __init__(self, config: Con) -> None:
+        """Initialize the FileStorageHandler
+
+        Args:
+            config: Environment configuration object
+
+        """
         self.s3_client: S3Client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
             "s3", region_name="us-east-2", config=Config(signature_version="s3v4"),
         )
         self.db: Session | None = None
         self.redis_client: Redis[str] = Redis(
-            host=CONFIG["REDIS_ADDRESS"],
+            host=config["REDIS_ADDRESS"],
             port=6379,
-            # protocol=3,
             decode_responses=True,
         )
 
@@ -51,19 +57,31 @@ class FileStorageHandler:
     def _ensure_directory_exists(path: str) -> None:
         """Ensure the directory of the given path exists."""
         # if the path is a directory (ends with '/'), remove the last character
-        if path.endswith("/"):
-            directory = path[:-1]
-        else:
-            directory = os.path.dirname(path)
+        # TODO: migrate to Pathlib
+        directory = path[:-1] if path.endswith("/") else os.path.dirname(path)
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
     def _get_s3_object_name(self, file_id: str, file_ext: str) -> str:
-        """Construct the S3 object name based on the file_id and extension."""
+        """Construct the S3 object name based on the file_id and extension.
+
+        Args:
+            file_id: The ID of the file.
+            file_ext: The extension of the file.
+
+        Returns:
+            The S3 object name.
+
+        """
         return os.path.join(self.S3_FOLDER, f"{file_id}{file_ext}")
 
     def _cache_file_info(self, file_obj: FileValue) -> None:
-        """Cache file information in Redis."""
+        """Cache file information in Redis.
+
+        Args:
+            file_obj: File object to cache info about
+
+        """
         cache_key = f"file_info:{file_obj.file_id}"
         cache_data = {
             "file_name": file_obj.file_name,
@@ -79,15 +97,28 @@ class FileStorageHandler:
         )
 
     def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:
-        """Retrieve cached file information from Redis."""
+        """Retrieve cached file information from Redis.
+
+        Args:
+            file_id: The ID of the file.
+
+        Returns:
+            The cached file information as a dictionary, or None if not found.
+
+        """
         cache_key = f"file_info:{file_id}"
         cached_data = str(self.redis_client.get(cache_key) or "")
         return json.loads(cached_data) if cached_data else None
 
     def get_file(self, file_id: str) -> str | None:
         """Get the content of a file from the local cache or S3 bucket.
-        :param file_id: The ID of the file.
-        :return: The local path of the file, or None if the file is not found.
+
+        Args:
+            file_id: The ID of the file.
+
+        Returns:
+            The content of the file as a string, or None if the file is not found.
+
         """
         try:
             # Check Redis cache first
@@ -131,12 +162,17 @@ class FileStorageHandler:
         chunking_separator: str,
     ) -> str | None:
         """Store a file locally and upload it to the S3 bucket.
-        :param file_obj: A file-like object containing the file data.
-        :param file_name: The original name of the file.
-        :param file_desc: A description of the file.
-        :param file_type: The type of the file.
-        :param chunking_separator: The separator used for chunking the file.
-        :return: The file_id of the stored file.
+
+        Args:
+            file_obj: A file-like object containing the file data.
+            file_name: The original name of the file.
+            file_desc: A description of the file.
+            file_type: The type of the file.
+            chunking_separator: The separator used for chunking the file.
+
+        Returns:
+            The file_id of the stored file.
+
         """
         file_id = uuid.uuid4()
         file_ext = os.path.splitext(file_name)[1]
@@ -187,9 +223,14 @@ class FileStorageHandler:
 
     def get_presigned_url(self, file_id: str, expiration: int = 3600) -> str | None:
         """Generate a presigned URL for a file in the S3 bucket.
-        :param file_id: The ID of the file.
-        :param expiration: The expiration time of the URL in seconds.
-        :return: The presigned URL, or None if the file is not found.
+
+        Args:
+            file_id: The ID of the file.
+            expiration: The expiration time of the URL in seconds.
+
+        Returns:
+            The presigned URL, or None if the file is not found.
+
         """
         try:
             file_info = self._get_cached_file_info(file_id)
@@ -207,12 +248,11 @@ class FileStorageHandler:
 
             file_ext = file_info["file_ext"]
             s3_object_name = self._get_s3_object_name(file_id, file_ext)
-            url = self.s3_client.generate_presigned_url(
+            return self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.BUCKET_NAME, "Key": s3_object_name},
                 ExpiresIn=expiration,
             )
-            return url
         except Exception as e:
             # rollback the transaction if an error occurs
             self._get_db().rollback()
@@ -222,6 +262,18 @@ class FileStorageHandler:
     def __upload_file(
         self, bucket: str, local_path: str, object_name: str, content_type: str = "",
     ) -> bool:
+        """Upload a file to the specified S3 bucket.
+
+        Args:
+            bucket: The name of the S3 bucket.
+            local_path: The local path of the file to be uploaded.
+            object_name: The name of the object in the S3 bucket.
+            content_type: The content type of the file (optional).
+
+        Returns:
+            True if the file is uploaded successfully, False otherwise.
+
+        """
         try:
             if content_type:
                 self.s3_client.upload_file(
@@ -240,6 +292,17 @@ class FileStorageHandler:
     def __download_file(
         self, bucket_name: str, object_name: str, local_path: str,
     ) -> bool:
+        """Download a file from the specified S3 bucket.
+
+        Args:
+            bucket_name: The name of the S3 bucket.
+            object_name: The name of the object in the S3 bucket.
+            local_path: The local path where the file will be downloaded.
+
+        Returns:
+            True if the file is downloaded successfully, False otherwise.
+
+        """
         self._ensure_directory_exists(local_path)
         try:
             self.s3_client.download_file(bucket_name, object_name, local_path)
@@ -248,6 +311,7 @@ class FileStorageHandler:
             return False
         return True
 
-    def __del__(self):
+    def __del__(self) -> None:
+        """Close the database connection."""
         if self.db:
             self.db.close()

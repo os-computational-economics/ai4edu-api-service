@@ -1,9 +1,5 @@
 # Copyright (c) 2024.
-"""@file: EmbeddingHandler.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 8/16/24 02:27
-"""
+"""A collection of utility functions for processing file embeddings"""
 from langchain.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -32,15 +28,20 @@ def embed_file(
     workspace_id: str = "NA",
 ) -> bool:
     """Embed the file and put the embeddings into the Pinecone index.
-    :param index_name: The name of the Pinecone index.
-    :param namespace: The namespace of the Pinecone index.
-    :param file_path: The path of the file to be embedded.
-    :param file_id: The ID of the file.
-    :param file_name: The name of the file.
-    :param file_type: The type of the file.
-    :param agent_id: The ID of the agent. Optional.
-    :param workspace_id: The ID of the workspace. Optional.
-    :return: True if the embedding is successful, False otherwise.
+
+    Args:
+        index_name: The name of the Pinecone index.
+        namespace: The namespace of the Pinecone index.
+        file_path: The path of the file to be embedded.
+        file_id: The ID of the file.
+        file_name: The name of the file.
+        file_type: The type of the file.
+        agent_id: The ID of the agent. Optional.
+        workspace_id: The ID of the workspace. Optional.
+
+    Returns:
+        True if the embedding is successful, False otherwise.
+
     """
     if file_type == "pdf":
         pages = pdf_loader(file_path)
@@ -68,8 +69,13 @@ def embed_file(
 
 def pdf_loader(file_path: str) -> list[Document]:
     """Load the PDF file and embed the contents into the Pinecone index.
-    :param file_path: The path of the PDF file.
+
+    Args:
+        file_path: The path of the PDF file.
+
+    Returns:
+        A list of Document objects containing the embedded contents of the PDF file.
+
     """
     loader = PyPDFLoader(file_path)
-    pages = loader.load_and_split()
-    return pages
+    return loader.load_and_split()

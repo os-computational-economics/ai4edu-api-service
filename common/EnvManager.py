@@ -27,6 +27,8 @@ VARS: list[ConfigKeys] = list(get_args(ConfigKeys))
 
 Config = dict[ConfigKeys, str]
 
+# TODO: Add a default environment configuration here so that
+# TODO: things will not catastropically fail
 
 @staticmethod
 def getenv() -> Config:

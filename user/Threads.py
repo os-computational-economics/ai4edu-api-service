@@ -9,7 +9,7 @@ import uuid
 
 from fastapi import Request
 
-from common.JWTValidator import getJWT
+from common.JWTValidator import get_jwt
 from migrations.models import Agent, Thread
 from migrations.session import get_db
 from utils.response import response
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def new_thread(request: Request, agent_id: str, workspace_id: str):
 
-    user_jwt_content = getJWT(request.state)
+    user_jwt_content = get_jwt(request.state)
 
     for db in get_db():
         user_id = user_jwt_content["user_id"]

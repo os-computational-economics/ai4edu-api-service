@@ -1,9 +1,7 @@
 # Copyright (c) 2024.
-"""@file: AuthSSO.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 5/6/24 10:23
-"""
+"""Class for handling SSO in production."""
+
+# ! DO NOT USE XML ELEMENTTREE, VULERABLE TO XML INJECTION
 import xml.etree.ElementTree as ET
 
 import requests
@@ -15,31 +13,45 @@ from common.UserAuth import UserAuth
 
 class AuthSSO:
 
-    def __init__(self, ticket: str, came_from: str, CONFIG: Config):
-        self.CURRENT_ENV: str = CONFIG["REDIS_ADDRESS"]
-        self.DOMAIN: str = CONFIG["DOMAIN"]
+    """Class for handling SSO in production."""
+
+    def __init__(self, ticket: str, came_from: str, config: Config) -> None:
+        """Initialize the AuthSSO class with ticket and came_from
+
+        Args:
+            ticket: SSO ticket
+            came_from: URL to redirect after SSO
+            config: Environment configuration
+
+        """
+        self.CURRENT_ENV: str = config["REDIS_ADDRESS"]
+        self.DOMAIN: str = config["DOMAIN"]
         self.student_id: str | None = None
         self.ticket: str = ticket
         self.came_from: str = came_from
 
-    def get_user_info(self):
+    def get_user_info(self) -> RedirectResponse:
         """Get user info from ticket and return user login token
-        :return: user login token
+
+        Returns:
+            Redirrect with user login token or None if failed
+
         """
+        # TODO: implement SSO to be agnostic
         url = "https://login.case.edu/cas/serviceValidate"
         params = {
             "ticket": self.ticket,
             "service": f"https://{self.DOMAIN}/v1/prod/user/sso?came_from={self.came_from}",
         }
         if (
-            self.CURRENT_ENV == "redis-dev-server"
-            or self.CURRENT_ENV == "redis-local-server"
+            self.CURRENT_ENV in {"redis-dev-server", "redis-local-server"}
         ):
             params = {
                 "ticket": self.ticket,
                 "service": f"https://{self.DOMAIN}/v1/dev/user/sso?came_from={self.came_from}",
             }
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
+        # ! Switch to DefusedXML to prevent XML injection (important if SSO agnostic)
         root = ET.fromstring(response.text)
         # get child node
         child = root[0]
@@ -55,17 +67,19 @@ class AuthSSO:
                     return RedirectResponse(
                         url=f"{self.came_from}?refresh={refresh_token}&access={access_token}",
                     )
-                return RedirectResponse(
-                    url=f"{self.came_from}?refresh=error&access=error",
-                )
-            return RedirectResponse(
-                url=f"{self.came_from}?refresh=error&access=error",
-            )
+        return RedirectResponse(
+            url=f"{self.came_from}?refresh=error&access=error",
+        )
 
-    def get_user_info_from_xml(self, child: ET.Element):
+    def get_user_info_from_xml(self, child: ET.Element) -> dict[str, str]:
         """Get user info from xml
-        :param child: child node
-        :return: user info
+
+        Args:
+            child: child node
+
+        Returns:
+            user info
+
         """
         user_info: dict[str, str] = {}
         self.student_id = child[0].text

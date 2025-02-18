@@ -72,7 +72,7 @@ app = FastAPI(
 )
 openai_client = OpenAI(api_key=CONFIG["OPENAI_API_KEY"])
 anthropic_client = Anthropic(api_key=CONFIG["ANTHROPIC_API_KEY"])
-file_storage = FileStorageHandler(CONFIG=CONFIG)
+file_storage = FileStorageHandler(config=CONFIG)
 
 # Admin AgentRouter
 app.include_router(AgentRouter, prefix=f"{URL_PATHS['current_dev_admin']}/agents")
@@ -149,7 +149,7 @@ async def sso(ticket: str, came_from: str) -> RedirectResponse | None:
         Redirect to login or nothing
 
     """
-    auth = AuthSSO(ticket, came_from, CONFIG=CONFIG)
+    auth = AuthSSO(ticket, came_from, config=CONFIG)
     return auth.get_user_info()
 
 
@@ -236,7 +236,7 @@ def get_temp_stt_auth_code(dynamic_auth_code: str) -> SttApiKeyResponse:
         valid otherwise an error message.
 
     """
-    auth = DynamicAuth(CONFIG=CONFIG)
+    auth = DynamicAuth(config=CONFIG)
     if not auth.verify_auth_code(dynamic_auth_code):
         return SttApiKeyResponse(
             status="fail", error_message="Invalid auth code", key="",
@@ -442,7 +442,7 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
         volume_result = "fail"
 
     # test AWS S3 access
-    file_storage = FileStorageHandler(CONFIG=CONFIG)
+    file_storage = FileStorageHandler(config=CONFIG)
     # open file and read as bytes
     with Path.open(Path("./volume_cache/test.txt"), "rb") as f:
         file_content = f.read()
@@ -460,7 +460,7 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
     test_user_id = "rxy216"
     test_role = "test"
     test_content = "test content"
-    message = MessageStorageHandler(CONFIG=CONFIG)
+    message = MessageStorageHandler(config=CONFIG)
     created_at = (
         message.put_message(test_thread_id, test_user_id, test_role, test_content)
         # TODO: create an error if failed instead of continuing with bad data
