@@ -1,10 +1,13 @@
 # Copyright (c) 2024.
 """Class for handling SSO in production."""
 
-# ! DO NOT USE XML ELEMENTTREE, VULERABLE TO XML INJECTION
-import xml.etree.ElementTree as ET
+# ! ONLY IMPORTED FOR TYPE CHECKING, DO NOT USE FOR PARSING
+from xml.etree.ElementTree import Element  # noqa: S405
 
 import requests
+from defusedxml.ElementTree import (
+    fromstring,  # pylint: ignore[reportUnknownVariableType]
+)
 from fastapi.responses import RedirectResponse
 
 from common.EnvManager import Config
@@ -53,7 +56,7 @@ class AuthSSO:
             }
         response = requests.get(url, params=params, timeout=30)
         # ! Switch to DefusedXML to prevent XML injection (important if SSO agnostic)
-        root = ET.fromstring(response.text)
+        root: Element = fromstring(response.text)
         # get child node
         child = root[0]
         if "authenticationSuccess" in child.tag:
@@ -72,7 +75,7 @@ class AuthSSO:
             url=f"{self.came_from}?refresh=error&access=error",
         )
 
-    def get_user_info_from_xml(self, child: ET.Element) -> dict[str, str]:
+    def get_user_info_from_xml(self, child: Element) -> dict[str, str]:
         """Get user info from xml
 
         Args:

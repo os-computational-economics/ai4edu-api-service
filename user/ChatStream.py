@@ -2,7 +2,7 @@
 """Tools for handling chat streams"""
 import json
 import uuid
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 from typing import Any, Literal
 
 from anthropic._client import Anthropic as AnthropicClient
@@ -15,7 +15,7 @@ from common.AgentPromptHandler import AgentPromptHandler
 from common.EnvManager import Config
 from common.Messages import Message, MessageHistory
 from common.MessageStorageHandler import MessageStorageHandler
-from user.LangChainHelper import chat_stream_with_retrieve
+from user.LangChainHelper import Provider, chat_stream_with_retrieve
 from user.TtsStream import TtsStream
 
 
@@ -26,7 +26,7 @@ class ChatStreamModel(BaseModel):
     dynamic_auth_code: str
     messages: MessageHistory
     thread_id: str | None = None
-    provider: str = "openai"
+    provider: Provider = Provider.openai
     user_id: str
     agent_id: str
     voice: bool
@@ -63,7 +63,7 @@ class ChatStream:
 
     def __init__(
         self,
-        requested_provider: str,
+        requested_provider: Provider,
         openai_client: OpenAIClient,
         anthropic_client: AnthropicClient,
         config: Config,
@@ -92,7 +92,7 @@ class ChatStream:
         self.agent_id: str = ""
         "The LLM agent id for this chat"
 
-        self.requested_provider: str = requested_provider
+        self.requested_provider: Provider = requested_provider
         "The wanted AI provider to use (openai or anthropic)"
 
         self.openai_client: OpenAIClient = openai_client
@@ -151,7 +151,7 @@ class ChatStream:
 
     def __chat_generator(
         self, messages: MessageHistory, system_prompt: str,
-    ) -> Generator[str, None, None]:
+    ) -> Iterator[str]:
         """Chat generator.
 
         Args:
@@ -343,7 +343,12 @@ class ChatStream:
             messages_list = [
                 {
                     "role": "system",
-                    "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please.",
+                    "content": "You are a teaching assistant for the Computational \
+                        Economics Course. Make sure you sound like someone talking, \
+                        not writing. Use contractions, and try to be conversational. \
+                        You should not say very long paragraphs. As someone who is \
+                        talking, you should be giving short, quick messages. No long \
+                        paragraphs, No long paragraphs, please.",
                 },
             ]
         for key in sorted(messages.keys()):

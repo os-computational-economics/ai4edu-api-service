@@ -2,6 +2,7 @@
 """Abstractions for various AI models"""
 import time
 from collections.abc import Iterable, Iterator
+from enum import StrEnum
 from typing import Any, Literal
 
 from langchain.chains.combine_documents import (
@@ -70,6 +71,14 @@ llm2 = ChatAnthropic(
 )
 
 
+class Provider(StrEnum):
+
+    """List of providers"""
+
+    openai = "openai"
+    anthropic = "anthropic"
+
+
 def get_session_history(
     *, thread_id: str, history_from_request: MessageHistory,
 ) -> BaseChatMessageHistory:
@@ -95,7 +104,8 @@ def get_session_history(
                 AIMessage(str(message["content"]) if "content" in message else ""),
             )
     # print the current timestamp in ISO string format
-    print(f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}")
+    print(f"""Thread ID: {thread_id}, Current Time UTC: {
+        time.strftime('%Y-%m-%dT%H:%M:%S')}""")
     return history
 
 
@@ -105,12 +115,11 @@ def chat_stream_with_retrieve(
     retrieval_namespace: str,
     system_prompt: str = "You are a personalized assistant.",
     history_from_request: MessageHistory | None = None,
-    # ! Convert this to an ENUM
-    llm_for_question_consolidation: str = "openai",
-    llm_for_answer: str = "openai",
+    llm_for_question_consolidation: Provider = Provider.openai,
+    llm_for_answer: Provider = Provider.openai,
 ) -> (
     Iterable[tuple[Literal["answer"], str]]
-    | Iterable[tuple[Literal["source"], dict[str, Any]]]
+    | Iterable[tuple[Literal["source"], dict[str, Any]]]  # pyright: ignore[reportExplicitAny]
 ):
     """Chat stream with retrieval.
 
@@ -120,8 +129,8 @@ def chat_stream_with_retrieve(
         retrieval_namespace: the namespace of the Pinecone index for retrieval.
         system_prompt: system prompt for the chat.
         history_from_request: chat history from the request. if None, get from Redis.
-        llm_for_question_consolidation: which LLM to use for question consolidation. can be "openai" or "anthropic".
-        llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
+        llm_for_question_consolidation: which LLM to use for question consolidation
+        llm_for_answer: which LLM to use for answering the question
 
     Yields:
         Chat messages.
@@ -133,11 +142,13 @@ def chat_stream_with_retrieve(
     retriever: RetrieverLike = vectorstore.as_retriever()
 
     # Contextualize question ###
-    # This prompt will be used to contextualize the question, making the question for vector search
-    contextualize_q_system_prompt = """Given a chat history and the latest user question \
-    which might reference context in the chat history, formulate a standalone question \
-    which can be understood without the chat history. Do NOT answer the question, \
-    just reformulate it if needed and otherwise return it as is."""
+    # This prompt will be used to contextualize the question,
+    # making the question for vector search
+    contextualize_q_system_prompt = """Given a chat history and the latest user \
+    question which might reference context in the chat history, formulate a \
+    standalone question which can be understood without the chat history. \
+    Do NOT answer the question, just reformulate it if needed and otherwise \
+    return it as is."""
     contextualize_q_prompt = (
         ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
             [
@@ -152,7 +163,7 @@ def chat_stream_with_retrieve(
         history_from_request = {}
 
     history_aware_retriever = create_history_aware_retriever(
-        llm2 if llm_for_question_consolidation == "anthropic" else llm,
+        llm2 if llm_for_question_consolidation == Provider.anthropic else llm,
         retriever,
         contextualize_q_prompt,
     )
@@ -175,7 +186,7 @@ def chat_stream_with_retrieve(
     )
 
     question_answer_chain = create_stuff_documents_chain(
-        llm2 if llm_for_answer == "anthropic" else llm, qa_prompt,
+        llm2 if llm_for_answer == Provider.anthropic else llm, qa_prompt,
     )
 
     rag_chain: Runnable[
@@ -223,9 +234,10 @@ def chat_stream_with_retrieve(
     )
 
     for chunk in rag_stream:
-        # ! This portion of code is incredibly hard to typecheck as the .stream() method returns a dynamic type
-        # ! We know this type to be ConversationStream, but the.stream() method is still a generic function
-        # ! Type casting/forcing is possible here, but annoying
+        # ! This portion of code is incredibly hard to typecheck as the .stream() method
+        # ! returns a dynamic type. We know this type to be ConversationStream, but
+        # ! the.stream() method is still a generic function. Type casting/forcing
+        # ! is possible here, but annoying
         chunk: ConversationalStream
         answer = chunk.get("answer")
         if answer:
@@ -235,21 +247,21 @@ def chat_stream_with_retrieve(
         if context:
             sources = chunk.get("context")
             for doc in sources:
-                md: dict[str, Any] = (
+                md: dict[str, Any] = (  # pyright: ignore[reportExplicitAny, reportUnknownMemberType]
                     doc.metadata
-                )  # pyright: ignore[reportUnknownMemberType]
+                )
                 yield "source", md
 
 
 # Example usage:
 # for chunk in chat_stream_with_retrieve("12345",
-#                                        "How to contact the first guy?",
-#                                        system_prompt="You are an assistant for Case Western Reserve University.",
-#                                        history_from_request={
-#                                            0: {"role": "user", "content": "Who is the author of the report?"},
-#                                            1: {"role": "assistant",
-#                                                "content": "The authors of the report are Ruilin Jin and Haoran Yu."}
-#                                        },
-#                                        llm_for_question_consolidation="anthropic",
-#                                        llm_for_answer="anthropic"):
+#     "How to contact the first guy?",
+#     system_prompt="You are an assistant for Case Western Reserve University.",
+#     history_from_request={
+#         0: {"role": "user", "content": "Who is the author of the report?"},
+#         1: {"role": "assistant",
+#             "content": "The authors of the report are Ruilin Jin and Haoran Yu."}
+#     },
+#     llm_for_question_consolidation="anthropic",
+#     llm_for_answer="anthropic"):
 #     print(chunk)

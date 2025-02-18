@@ -18,7 +18,8 @@ router = APIRouter()
 
 # class AgentRequest(BaseModel):
 #     agent_id: UUID
-#     user_id: UUID | None = None #I was thinking in the future we may want to track this??
+#     user_id: UUID | None = None
+# I was thinking in the future we may want to track this??
 
 
 @router.get("/get/{agent_id}")
