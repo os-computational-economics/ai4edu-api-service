@@ -1,14 +1,15 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from common.JWTValidator import getJWT
 from migrations.models import UserFeedback
-from utils.response import response
-from user.GetAgent import check_uuid_format
-from pydantic import BaseModel
-
 from migrations.session import get_db
+from user.GetAgent import check_uuid_format
+from utils.response import response
 
 router = APIRouter()
 
@@ -22,10 +23,9 @@ class RatingData(BaseModel):
 
 @router.post("/rating")
 def submit_rating(
-        request: Request, rating_data: RatingData, db: Annotated[Session, Depends(get_db)]
+        request: Request, rating_data: RatingData, db: Annotated[Session, Depends(get_db)],
 ):
-    """
-    This function gets the settings of an agent by its ID
+    """This function gets the settings of an agent by its ID
     :param agent_id: The ID of the agent
     :param db: The database session
     :return: The settings of the agent
@@ -48,7 +48,7 @@ def submit_rating(
                     rating_format=2 if rating_data.message_id else 5,
                     rating=rating_data.rating,
                     comments=rating_data.comments,
-                )
+                ),
             )
             db.commit()
             return response(True)

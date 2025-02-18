@@ -1,24 +1,25 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: MessageStorageHandler.py
+"""@file: MessageStorageHandler.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 4/10/24 23:26
 """
+import logging
+import time
+
 import boto3
 from boto3.dynamodb.conditions import Key
+from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource, Table
 from pydantic import BaseModel
-import logging
-import os
-import time
+
+from common.EnvManager import Config
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Message(BaseModel):
-    """
-    The message object. created_at will not be passed in when creating the object.
+
+    """The message object. created_at will not be passed in when creating the object.
     thread_id: The ID of the thread, UUID. Partition key of the table
     created_at: The time when the message is created, unix timestamp in milliseconds. Sort key of the table
     msg_id: The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
@@ -36,22 +37,21 @@ class Message(BaseModel):
 
 
 class MessageStorageHandler:
-    DYNAMODB_TABLE_NAME = "ai4edu_chat_msg"
+    DYNAMODB_TABLE_NAME: str = "ai4edu_chat_msg"
 
-    def __init__(self):
-        self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
+    def __init__(self, CONFIG: Config):
+        self.dynamodb: DynamoDBServiceResource = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
             "dynamodb",
             region_name="us-east-2",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
+            aws_access_key_id=CONFIG["AWS_ACCESS_KEY_ID_DYNAMODB"],
+            aws_secret_access_key=CONFIG["AWS_SECRET_ACCESS_KEY_DYNAMODB"],
         )
-        self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
+        self.table: Table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
     def put_message(
-        self, thread_id: str, user_id: str, role: str, content: str
+        self, thread_id: str, user_id: str, role: str, content: str,
     ) -> str | None:
-        """
-        Put the message into the database. This function will generate the created_at field.
+        """Put the message into the database. This function will generate the created_at field.
         :param thread_id: The ID of the thread.
         :param user_id: The ID of the user who the message belongs to.
         :param role: The role of message sender.
@@ -69,7 +69,7 @@ class MessageStorageHandler:
                     "user_id": user_id,
                     "role": role,
                     "content": content,
-                }
+                },
             )
             return msg_id
         except Exception as e:
@@ -77,15 +77,14 @@ class MessageStorageHandler:
             return None
 
     def get_message(self, thread_id: str, created_at: str) -> Message | None:
-        """
-        Get the message from the database.
+        """Get the message from the database.
         :param created_at: The time when the message is created.
         :param thread_id: The ID of the thread.
         :return:
         """
         try:
             response = self.table.get_item(
-                Key={"thread_id": thread_id, "created_at": created_at}
+                Key={"thread_id": thread_id, "created_at": created_at},
             )
             item = response[
                 "Item"
@@ -96,14 +95,13 @@ class MessageStorageHandler:
             return None
 
     def get_thread(self, thread_id: str) -> list[Message]:
-        """
-        Get all the messages in the thread.
+        """Get all the messages in the thread.
         :param thread_id: The ID of the thread.
         :return:
         """
         try:
             response = self.table.query(
-                KeyConditionExpression=Key("thread_id").eq(thread_id)
+                KeyConditionExpression=Key("thread_id").eq(thread_id),
             )
             items = response["Items"]
             return [

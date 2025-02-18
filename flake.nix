@@ -129,6 +129,8 @@
               openssl
               postman
               dig
+              ruff
+              basedpyright
               # pgadmin4-desktopmode
             ];
           };

@@ -42,11 +42,11 @@ def parseJWT(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None:
         ret = UserJWTContent(
             user_id=int(user_jwt_content["user_id"]),  # pyright: ignore[reportAny]
             first_name=str(
-                user_jwt_content["first_name"]  # pyright: ignore[reportAny]
+                user_jwt_content["first_name"],  # pyright: ignore[reportAny]
             ),
             last_name=str(user_jwt_content["last_name"]),  # pyright: ignore[reportAny]
             student_id=str(
-                user_jwt_content["student_id"]  # pyright: ignore[reportAny]
+                user_jwt_content["student_id"],  # pyright: ignore[reportAny]
             ),
             workspace_role=dict(
                 [
@@ -55,21 +55,21 @@ def parseJWT(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None:
                         str(
                             user_jwt_content["workspace_role"][
                                 i
-                            ]  # pyright: ignore[reportAny]
+                            ],  # pyright: ignore[reportAny]
                         ),
                     )
                     for i in user_jwt_content[  # pyright: ignore[reportAny]
                         "workspace_role"
                     ]
-                ]
+                ],
             ),
             system_admin=bool(user_jwt_content["system_admin"]),  # pyright: ignore[reportAny]
             email=str(user_jwt_content["email"]),  # pyright: ignore[reportAny]
             iat=datetime.fromtimestamp(
-                user_jwt_content["iat"]  # pyright: ignore[reportAny]
+                user_jwt_content["iat"],  # pyright: ignore[reportAny]
             ),
             exp=datetime.fromtimestamp(
-                user_jwt_content["exp"]  # pyright: ignore[reportAny]
+                user_jwt_content["exp"],  # pyright: ignore[reportAny]
             ),
         )
     except:

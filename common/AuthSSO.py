@@ -1,30 +1,29 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: AuthSSO.py
+"""@file: AuthSSO.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 5/6/24 10:23
 """
-import requests
 import xml.etree.ElementTree as ET
+
+import requests
 from fastapi.responses import RedirectResponse
+
+from common.EnvManager import Config
 from common.UserAuth import UserAuth
-import os
 
 
 class AuthSSO:
-    CURRENT_ENV = os.getenv("REDIS_ADDRESS")
-    DOMAIN = os.getenv("DOMAIN")
 
-    def __init__(self, ticket: str, came_from: str):
-        self.student_id = None
-        self.ticket = ticket
-        self.came_from = came_from
+    def __init__(self, ticket: str, came_from: str, CONFIG: Config):
+        self.CURRENT_ENV: str = CONFIG["REDIS_ADDRESS"]
+        self.DOMAIN: str = CONFIG["DOMAIN"]
+        self.student_id: str | None = None
+        self.ticket: str = ticket
+        self.came_from: str = came_from
 
     def get_user_info(self):
-        """
-        get user info from ticket and return user login token
+        """Get user info from ticket and return user login token
         :return: user login token
         """
         url = "https://login.case.edu/cas/serviceValidate"
@@ -54,20 +53,17 @@ class AuthSSO:
                 access_token = user_auth.gen_access_token(str(refresh_token))
                 if user_id:
                     return RedirectResponse(
-                        url=f"{self.came_from}?refresh={refresh_token}&access={access_token}"
+                        url=f"{self.came_from}?refresh={refresh_token}&access={access_token}",
                     )
-                else:
-                    return RedirectResponse(
-                        url=f"{self.came_from}?refresh=error&access=error"
-                    )
-            else:
                 return RedirectResponse(
-                    url=f"{self.came_from}?refresh=error&access=error"
+                    url=f"{self.came_from}?refresh=error&access=error",
                 )
+            return RedirectResponse(
+                url=f"{self.came_from}?refresh=error&access=error",
+            )
 
     def get_user_info_from_xml(self, child: ET.Element):
-        """
-        get user info from xml
+        """Get user info from xml
         :param child: child node
         :return: user info
         """

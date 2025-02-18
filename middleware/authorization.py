@@ -1,12 +1,14 @@
+import logging
 from typing import TypedDict, override
+
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
 from common.JWTValidator import UserJWTContent, parseJWT
-from utils.whitelist import whitelist
 from utils.endpoint_access_map import AccessMap, PersonType, endpoint_access_map
 from utils.token_utils import parse_token
-import logging
+from utils.whitelist import whitelist
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +87,7 @@ def extract_actual_path(path: str):
 
 
 def extract_role(access_token_load: UserJWTContent | None) -> Role:
-    """
-    Extract the role from the access token payload
+    """Extract the role from the access token payload
     if the user is system_admin, the role admin is True
     if the user is at least one teacher in a workspace, the role teacher is True
     if the user is at least one student in a workspace, the role student is True
@@ -118,7 +119,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
             parse_result = parse_token(tokens["access_token"])
             if parse_result["success"] and parse_result["data"] is not None:
                 user_access = extract_role(
-                    parseJWT(parse_result["data"])  # pyright: ignore[reportAny]
+                    parseJWT(parse_result["data"]),  # pyright: ignore[reportAny]
                 )
                 if has_access(endpoint_access_map, user_access, path):
                     request.state.user_jwt_content = parse_result["data"]

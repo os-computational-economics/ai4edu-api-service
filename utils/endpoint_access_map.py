@@ -1,14 +1,11 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: endpoint_access_map.py
+"""@file: endpoint_access_map.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 5/24/24 19:54
 """
 
 from typing import Literal
-
 
 PersonType = Literal["student", "teacher", "admin"]
 AccessMap = dict[str, dict[PersonType, bool]]

@@ -1,28 +1,35 @@
+# Copyright (c) 2024.
+"""Classes and endpoints related to creating and managing threads/conversations"""
+
 import logging
 from datetime import datetime
 from typing import Annotated
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, Field
 from uuid import UUID
 
-from common.JWTValidator import getJWT
-from utils.response import response
-from common.MessageStorageHandler import MessageStorageHandler
-
-from migrations.session import get_db
-
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
 
-from migrations.models import Thread, Agent, ThreadValue, Workspace
+from common.EnvManager import getenv
+from common.JWTValidator import getJWT
+from common.MessageStorageHandler import MessageStorageHandler
+from migrations.models import Agent, Thread, ThreadValue, Workspace, WorkspaceStatus
+from migrations.session import get_db
+from utils.response import Response, response
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+CONFIG = getenv()
 
 # Initialize the MessageStorageHandler
-message_handler = MessageStorageHandler()
+message_handler = MessageStorageHandler(CONFIG=CONFIG)
 
 
 class ThreadListQuery(BaseModel):
+
+    """Unused."""
+
     user_id: str | None = None
     start_date: str | None = None
     end_date: str | None = None
@@ -33,6 +40,9 @@ class ThreadListQuery(BaseModel):
 
 
 class ThreadContent(BaseModel):
+
+    """Unused."""
+
     thread_id: str
     user_id: str
     created_at: str
@@ -40,9 +50,15 @@ class ThreadContent(BaseModel):
 
 
 @router.get("/get_thread/{thread_id}")
-def get_thread_by_id(thread_id: UUID):
-    """
-    Fetch all entries for a specific thread by its UUID, sorted by creation time.
+def get_thread_by_id(thread_id: UUID) -> Response | JSONResponse:
+    """Fetch all entries for a specific thread by its UUID, sorted by creation time.
+
+    Args:
+        thread_id: UUID of the thread
+
+    Returns:
+        ID and messages if found, 500 if not
+
     """
     try:
         thread_messages = message_handler.get_thread(str(thread_id))
@@ -52,7 +68,7 @@ def get_thread_by_id(thread_id: UUID):
         # Sort the messages by 'created_at' time in descending order
         sorted_messages = sorted(thread_messages, key=lambda x: x.created_at)
         return response(
-            True, data={"thread_id": thread_id, "messages": sorted_messages}
+            True, data={"thread_id": thread_id, "messages": sorted_messages},
         )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
@@ -71,8 +87,22 @@ def get_thread_list(
     start_date: str | None = None,
     end_date: str | None = None,
 ):
-    """
-    List threads with pagination, filtered by agent creator.
+    """List threads with pagination, filtered by agent creator.
+
+    Args:
+        workspace_id: ID of the workspace
+        request: FastAPI request object
+        db: SQLAlchemy database session
+        page: Page number for pagination
+        page_size: Number of threads per page
+        student_id: Filter threads by student ID (if provided)
+        agent_name: Filter threads by agent name (if provided)
+        start_date: Filter threads by start date (if provided)
+        end_date: Filter threads by end date (if provided)
+
+    Returns:
+        List of threads and total information if found, 403 if not auth
+
     """
     user_jwt_content = getJWT(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
@@ -81,7 +111,7 @@ def get_thread_list(
         and user_jwt_content["student_id"] != student_id
     ):
         return response(
-            False, status_code=403, message="You do not have access to this resource"
+            False, status_code=403, message="You do not have access to this resource",
         )
     query = db.query(
         Thread.thread_id,
@@ -95,15 +125,14 @@ def get_thread_list(
         Workspace,
         Thread.workspace_id == Workspace.workspace_id,
     ).filter(
-        Workspace.status != 2,
-        Thread.workspace_id == workspace_id
+        Workspace.status != WorkspaceStatus.DELETED,
+        Thread.workspace_id == workspace_id,
     )  # even the agent is deleted, the thread still exists
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
-    if student_id:
-        if student_id != "all":
-            query = query.filter(Thread.student_id == student_id)
+    if student_id and student_id != "all":
+        query = query.filter(Thread.student_id == student_id)
     if start_date:
         try:
             start_datetime = datetime.fromisoformat(start_date)
@@ -112,7 +141,7 @@ def get_thread_list(
             return response(
                 False,
                 status_code=400,
-                message="Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
+                message="Invalid start_date format. Use YYYY-MM-DD[THH:MM:SS]",
             )
     if end_date:
         try:
@@ -122,7 +151,7 @@ def get_thread_list(
             return response(
                 False,
                 status_code=400,
-                message="Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
+                message="Invalid end_date format. Use YYYY-MM-DD[THH:MM:SS]",
             )
 
     total = query.count()

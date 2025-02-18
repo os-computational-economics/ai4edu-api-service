@@ -1,22 +1,25 @@
-from typing import Any
-import jwt
-import os
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import jwt
+
+from common.EnvManager import getenv
+
+CONFIG = getenv()
 
 logger = logging.getLogger(__name__)
 
 
 def fix_key(broken_key: str):
-    """
-    Fix the broken key by removing 'n' every 64 characters, and reformatting the key
+    """Fix the broken key by removing 'n' every 64 characters, and reformatting the key
     :param broken_key:
     :return:
     """
     # Step 1: Find the header and footer
     header_start = broken_key.find("-----BEGIN")
     header_end = broken_key.find("-----", header_start + len("-----BEGIN")) + len(
-        "-----"
+        "-----",
     )
     header = broken_key[header_start:header_end]
 
@@ -45,13 +48,13 @@ def fix_key(broken_key: str):
     return fixed_key
 
 
-private_key = os.getenv("JWT_PRIVATE_KEY") or ""
+private_key = CONFIG["JWT_PRIVATE_KEY"]
 # if the key starts with a lower case n after the header, it is broken
 header_start = private_key.find("-----BEGIN")
 header_end = private_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
 if private_key[header_end] == "n":
     private_key = fix_key(private_key)
-public_key = os.getenv("JWT_PUBLIC_KEY") or ""
+public_key = CONFIG["JWT_PUBLIC_KEY"]
 # if the key starts with a lower case n after the header, it is broken
 header_start = public_key.find("-----BEGIN")
 header_end = public_key.find("-----", header_start + len("-----BEGIN")) + len("-----")
@@ -77,8 +80,8 @@ def jwt_generator(
         "student_id": student_id,
         "workspace_role": workspace_role,
         "system_admin": system_admin,
-        "iat": datetime.now(tz=timezone.utc),
-        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
+        "iat": datetime.now(tz=UTC),
+        "exp": datetime.now(tz=UTC) + timedelta(minutes=30),
     }
     return jwt.encode(payload, private_key, algorithm=algorithm)
 
@@ -89,12 +92,12 @@ def parse_token(jwt_token: str) -> dict[str, Any]:
         return {"success": False, "status_code": 401000, "message": "Token missing"}
     try:
         decoded: dict[str, Any] = jwt.decode(
-            jwt_token, public_key, algorithms=[algorithm]
+            jwt_token, public_key, algorithms=[algorithm],
         )
         return {"success": True, "status_code": 200, "message": "", "data": decoded}
     except jwt.ExpiredSignatureError:
-        logger.error(f"Token has expired")
+        logger.error("Token has expired")
         return {"success": False, "status_code": 401001, "message": "Token has expired"}
     except jwt.InvalidTokenError:
-        logger.error(f"Invalid Token")
+        logger.error("Invalid Token")
         return {"success": False, "status_code": 401002, "message": "Invalid token"}

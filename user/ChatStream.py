@@ -1,24 +1,25 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: ChatStream.py
+"""@file: ChatStream.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 2/29/24 15:14
 """
 import json
+import uuid
 from typing import Any
+
+from anthropic._client import Anthropic as AnthropicClient
+from openai._client import OpenAI as OpenAIClient
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
-from common.Messages import Message, MessageHistory
-from user.TtsStream import TtsStream
-from common.MessageStorageHandler import MessageStorageHandler
+
 from common.AgentPromptHandler import AgentPromptHandler
-import uuid
-from openai._client import OpenAI as OpenAIClient
-from anthropic._client import Anthropic as AnthropicClient
+from common.EnvManager import Config
+from common.Messages import Message, MessageHistory
+from common.MessageStorageHandler import MessageStorageHandler
 from user.LangChainHelper import chat_stream_with_retrieve
+from user.TtsStream import TtsStream
 
 
 class ChatStreamModel(BaseModel):
@@ -47,8 +48,8 @@ class ChatStreamResponse(BaseModel):
 
 
 class ChatStream:
-    """
-    ChatStream: AI chat with OpenAI/Anthropic, streams the output via server-sent events.
+
+    """ChatStream: AI chat with OpenAI/Anthropic, streams the output via server-sent events.
     Using this class requires passing in the full messages history, and the provider (openai or anthropic).
     """
 
@@ -57,9 +58,9 @@ class ChatStream:
         requested_provider: str,
         openai_client: OpenAIClient,
         anthropic_client: AnthropicClient,
+        CONFIG: Config,
     ):
-        """
-        Initialize ChatStream with necessary clients and parameters.
+        """Initialize ChatStream with necessary clients and parameters.
         :param requested_provider: The AI provider to use (openai or anthropic).
         :param openai_client: OpenAI client for OpenAI API.
         :param anthropic_client: Anthropic client for Anthropic API.
@@ -92,15 +93,16 @@ class ChatStream:
         self.tts_session_id: str = str(uuid.uuid4())
         "The session id for Deepgram Text to Speech"
 
-        self.tts: TtsStream = TtsStream(self.tts_session_id)
+        self.tts: TtsStream = TtsStream(self.tts_session_id, CONFIG=CONFIG)
         "The TTS stream for Deepgram Text to Speech"
 
-        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler()
+        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler(CONFIG=CONFIG)
         "The message storage handler for storing messages for this chat"
 
+        self.CONFIG: Config = CONFIG
+
     def stream_chat(self, chat_stream_model: ChatStreamModel):
-        """
-        Stream chat messages from OpenAI API.
+        """Stream chat messages from OpenAI API.
         :return: A custom Server-Sent event with chat information
         """
         self.thread_id = chat_stream_model.thread_id or ""
@@ -115,21 +117,20 @@ class ChatStream:
             self.thread_id,
             self.user_id,
             "human",
-            #! Is this meant to be a string?
-            #! What if it is a:
-            #! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
+            # ! Is this meant to be a string?
+            # ! What if it is a:
+            # ! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
             lastItem["content"] or "" if "content" in lastItem else "",
         )
         #  get agent prompt
-        agent_prompt_handler = AgentPromptHandler()
+        agent_prompt_handler = AgentPromptHandler(CONFIG=self.CONFIG)
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         return EventSourceResponse(
-            self.__chat_generator(chat_stream_model.messages, agent_prompt or "")
+            self.__chat_generator(chat_stream_model.messages, agent_prompt or ""),
         )
 
     def __chat_generator(self, messages: MessageHistory, system_prompt: str):
-        """
-        Chat generator.
+        """Chat generator.
         :param messages: All previous messages
         :return:
         """
@@ -137,7 +138,7 @@ class ChatStream:
         lastMessage = messages[len(messages) - 1]
         stream = chat_stream_with_retrieve(
             self.thread_id,
-            #! Assumes users are only able to send text messages
+            # ! Assumes users are only able to send text messages
             str(lastMessage["content"]) if "content" in lastMessage else "",
             self.retrieval_namespace,
             system_prompt,
@@ -162,7 +163,7 @@ class ChatStream:
                     ) in sentence_ender:  # if the chunk contains a sentence ender
                         if ender in new_text:
                             chunk_buffer, chunk_id = self.__process_chunking(
-                                ender, new_text, chunk_buffer, chunk_id
+                                ender, new_text, chunk_buffer, chunk_id,
                             )
                             break
                     else:  # if the chunk does not contain a sentence ender
@@ -175,7 +176,7 @@ class ChatStream:
                         "source": all_sources,
                         "tts_session_id": self.tts_session_id,
                         "tts_max_chunk_id": chunk_id,
-                    }
+                    },
                 )
             elif text_chunk[0] == "source":
                 source_text = text_chunk[1]
@@ -186,11 +187,11 @@ class ChatStream:
                         "source": all_sources,
                         "tts_session_id": self.tts_session_id,
                         "tts_max_chunk_id": chunk_id,
-                    }
+                    },
                 )
         # put the finished response into the database (AI message)
         msg_id = self.message_storage_handler.put_message(
-            self.thread_id, self.user_id, self.requested_provider, response_text
+            self.thread_id, self.user_id, self.requested_provider, response_text,
         )
         print("Latest response:", response_text, "msg_id:", msg_id)
         # Process any remaining text in the chunk_buffer after the stream has finished
@@ -205,7 +206,7 @@ class ChatStream:
                     "tts_session_id": self.tts_session_id,
                     "tts_max_chunk_id": chunk_id,
                     "msg_id": msg_id,
-                }
+                },
             )
         yield json.dumps(
             {
@@ -214,14 +215,13 @@ class ChatStream:
                 "tts_session_id": self.tts_session_id,
                 "tts_max_chunk_id": chunk_id,
                 "msg_id": msg_id,
-            }
+            },
         )
 
     def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[ChatCompletionMessageParam]
+        self, messages: list[ChatCompletionMessageParam],
     ):
-        """
-        OpenAI chat generator.
+        """OpenAI chat generator.
         :param messages:
         :return:
         """
@@ -236,10 +236,9 @@ class ChatStream:
                     yield new_text
 
     def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[Message]
+        self, messages: list[Message],
     ):
-        """
-        Anthropic chat generator.
+        """Anthropic chat generator.
         :param messages:
         :return:
         """
@@ -262,10 +261,9 @@ class ChatStream:
                     yield text
 
     def __process_chunking(
-        self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int
+        self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int,
     ):
-        """
-        Process the chunking.
+        """Process the chunking.
         :param sentence_ender:
         :param new_text:
         :param chunk_buffer:
@@ -281,15 +279,14 @@ class ChatStream:
         return chunk_buffer, chunk_id
 
     def __messages_processor(  # pyright: ignore[reportUnusedFunction]
-        self, messages: MessageHistory
+        self, messages: MessageHistory,
     ):
-        """
-        Process the message.
+        """Process the message.
         :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}
         :return:
         """
         #  get agent prompt
-        agent_prompt_handler = AgentPromptHandler()
+        agent_prompt_handler = AgentPromptHandler(CONFIG=self.CONFIG)
         agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
         messages_list: list[Message] = []
         if agent_prompt:
@@ -299,7 +296,7 @@ class ChatStream:
                 {
                     "role": "system",
                     "content": "You are a teaching assistant for the Computational Economics Course. Make sure you sound like someone talking, not writing. Use contractions, and try to be conversational. You should not say very long paragraphs. As someone who is talking, you should be giving short, quick messages. No long paragraphs, No long paragraphs, please.",
-                }
+                },
             ]
         for key in sorted(messages.keys()):
             messages_list.append(messages[key])

@@ -1,16 +1,15 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: SttApiKey.py
+"""@file: SttApiKey.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 3/22/24 00:29
 """
-import os
 from typing import Any, Literal
 
 import requests
 from pydantic import BaseModel
+
+from common.EnvManager import Config
 
 
 class SttApiKeyResponse(BaseModel):
@@ -20,19 +19,18 @@ class SttApiKeyResponse(BaseModel):
 
 
 class SttApiKey:
-    """
-    SttApiKey: Generate a new API key for Deepgram Speech-to-Text.
+
+    """SttApiKey: Generate a new API key for Deepgram Speech-to-Text.
     This key will be sent to the user for use in the client-side.
     The only scope is "usage:write".
     """
 
-    def __init__(self):
-        self.DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
-        self.DEEPGRAM_PROJECT_ID = os.getenv("DEEPGRAM_PROJECT_ID")
+    def __init__(self, CONFIG: Config):
+        self.DEEPGRAM_API_KEY: str = CONFIG["DEEPGRAM_API_KEY"]
+        self.DEEPGRAM_PROJECT_ID: str = CONFIG["DEEPGRAM_PROJECT_ID"]
 
     def generate_key(self):
-        """
-        Generate a new API key for the user.
+        """Generate a new API key for the user.
         :return:
         """
         url = f"https://api.deepgram.com/v1/projects/{self.DEEPGRAM_PROJECT_ID}/keys"

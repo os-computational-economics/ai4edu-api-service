@@ -1,27 +1,28 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: TtsStream.py
+"""@file: TtsStream.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 3/1/24 19:30
 """
-import requests
 import os
+
+import requests
+
+from common.EnvManager import Config
 
 
 class TtsStream:
-    """
-    TtsStream: Text-to-Speech streaming with Deepgram API.
+
+    """TtsStream: Text-to-Speech streaming with Deepgram API.
     """
 
     # Define the API endpoint
-    URL = "https://api.deepgram.com/v1/speak?model=aura-asteria-en"
-    TTS_AUDIO_CACHE_FOLDER = "volume_cache/tts_audio_cache"
+    URL: str = "https://api.deepgram.com/v1/speak?model=aura-asteria-en"
+    TTS_AUDIO_CACHE_FOLDER: str = "volume_cache/tts_audio_cache"
 
-    def __init__(self, tts_session_id: str):
-        self.API_KEY = os.getenv("DEEPGRAM_API_KEY")
-        self.tts_session_id = tts_session_id
+    def __init__(self, tts_session_id: str, CONFIG: Config):
+        self.API_KEY: str = CONFIG["DEEPGRAM_API_KEY"]
+        self.tts_session_id: str = tts_session_id
 
     def stream_tts(self, text: str, chunk_id: str):
         # Define the headers

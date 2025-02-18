@@ -1,13 +1,17 @@
+# Copyright (c) 2024.
+"""Endpoints associated with access"""
+
 import logging
 from typing import Annotated
-from common.JWTValidator import getJWT
-from migrations.models import User, UserWorkspace
 
 from fastapi import APIRouter, Depends, Request
-from utils.response import response
-
 from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
+
+from common.JWTValidator import getJWT
+from migrations.models import User, UserWorkspace
 from migrations.session import get_db
+from utils.response import Response, response
 
 logger = logging.getLogger(__name__)
 
@@ -21,28 +25,32 @@ def get_user_list(
     page: int = 1,
     page_size: int = 10,
     workspace_id: str = "all",
-):
-    """
-    Get a list of all users with pagination.
-    :param request: Request object
-    :param db: Database session
-    :param page: Page number.
-    :param page_size: Number of users per page.
-    :param workspace_id: Workspace ID, "all" for all workspaces
-    """
+) -> Response | JSONResponse:
+    """Get a list of all users with pagination.
 
+    Args:
+        request: Request object
+        db: Database session
+        page: Page number.
+        page_size: Number of users per page.
+        workspace_id: Workspace ID, "all" for all workspaces
+
+    Returns:
+        Response: A list of users
+
+    """
     user_jwt_content = getJWT(request.state)
 
     if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
         return response(
-            False, status_code=403, message="You do not have access to this resource"
+            False, status_code=403, message="You do not have access to this resource",
         )
     if (
         user_jwt_content["workspace_role"].get(workspace_id, None) is None
         and not user_jwt_content["system_admin"]
     ):
         return response(
-            False, status_code=403, message="You do not have access to this resource"
+            False, status_code=403, message="You do not have access to this resource",
         )
 
     is_teacher_or_admin = False

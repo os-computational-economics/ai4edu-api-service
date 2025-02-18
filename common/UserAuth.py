@@ -1,17 +1,16 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: UserAuth.py.py
+"""@file: UserAuth.py.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 5/21/24 17:23
 """
+import logging
 import uuid
 from datetime import datetime, timedelta
-from migrations.models import RefreshTokenValue, User, RefreshToken, UserValue
+
+from migrations.models import RefreshToken, RefreshTokenValue, User, UserValue
 from migrations.session import get_db
 from utils.token_utils import jwt_generator
-import logging
 
 
 class UserAuth:
@@ -19,8 +18,7 @@ class UserAuth:
         self.db = None
 
     def user_login(self, student_id: str, user_info: dict[str, str]) -> int | bool:
-        """
-        login the user when sso authentication is successful
+        """Login the user when sso authentication is successful
         :param student_id: school specific student id
         :param user_info: user info from sso
         :return: user_id if login successful, False otherwise
@@ -65,7 +63,7 @@ class UserAuth:
             token = uuid.uuid4()
             token_id = uuid.uuid4()
             expire_at = datetime.now() + timedelta(
-                days=15
+                days=15,
             )  # refresh token expires in 15 days
             refresh_token = RefreshToken(
                 token_id=token_id,
@@ -84,8 +82,7 @@ class UserAuth:
             return False
 
     def gen_access_token(self, refresh_token: str) -> str | bool:
-        """
-        Generate access token from refresh token.
+        """Generate access token from refresh token.
         :param refresh_token: refresh token
         :return: access token if refresh token is valid, False otherwise
         """
@@ -108,7 +105,7 @@ class UserAuth:
                 last_name = user.last_name
                 student_id = user.student_id
                 system_admin = user.system_admin
-                #! MAY RETURN DELETED WORKSPACES!!
+                # ! MAY RETURN DELETED WORKSPACES!!
                 # TODO: Do sync with json format workspace_role in ai_users table
                 workspace_role = user.workspace_role
                 email = user.email
@@ -137,8 +134,7 @@ class UserAuth:
             return False
 
     def user_logout_all_devices(self, user_id: int) -> bool:
-        """
-        Logout user from all devices.
+        """Logout user from all devices.
         :param user_id: user id
         :return: True if logout successful, False otherwise
         """

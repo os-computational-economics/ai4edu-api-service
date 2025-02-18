@@ -1,20 +1,18 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: Threads.py
+"""@file: Threads.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 4/16/24 12:14
 """
-import uuid
 import logging
+import uuid
+
+from fastapi import Request
 
 from common.JWTValidator import getJWT
-from utils.response import response
-from migrations.models import Thread
-from migrations.models import Agent
+from migrations.models import Agent, Thread
 from migrations.session import get_db
-from fastapi import Request
+from utils.response import response
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +25,7 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
         user_id = user_jwt_content["user_id"]
         student_id = user_jwt_content["student_id"]
         workspace_role = user_jwt_content["workspace_role"]
-        is_user_in_workspace: bool = not not workspace_role.get(workspace_id, False)
+        is_user_in_workspace: bool = bool(workspace_role.get(workspace_id, False))
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
             return response(False, {}, "User is not in workspace")
@@ -52,5 +50,5 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
             return response(True, {"thread_id": thread_id})
         except Exception as e:
             db.rollback()
-            logger.error(f"Failed to create new thread: {str(e)}")
+            logger.error(f"Failed to create new thread: {e!s}")
             return response(False, {}, "Failed to create new thread")

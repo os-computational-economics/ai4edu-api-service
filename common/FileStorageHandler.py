@@ -1,42 +1,42 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: FileStorageHandler.py
+"""@file: FileStorageHandler.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 3/22/24 21:05
 """
-import os
 import json
-from typing import Any
-import boto3
-from botocore.exceptions import ClientError
-from botocore.config import Config
-from dotenv import load_dotenv
-import uuid
 import logging
+import os
+import uuid
+from typing import Any
+
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from mypy_boto3_s3.client import S3Client
 from redis import Redis
 from sqlalchemy.orm import Session
-from migrations.session import get_db
+
+from common.EnvManager import Config as Con
 from migrations.models import File, FileValue
+from migrations.session import get_db
 
 logger = logging.getLogger(__name__)
 
 
 class FileStorageHandler:
-    LOCAL_FOLDER = "./volume_cache/"
-    BUCKET_NAME = "ai4edu-storage"
-    S3_FOLDER = "ai4edu_data/"
-    REDIS_CACHE_EXPIRY = 60 * 60 * 24  # 24 hours in seconds
+    LOCAL_FOLDER: str = "./volume_cache/"
+    BUCKET_NAME: str = "ai4edu-storage"
+    S3_FOLDER: str = "ai4edu_data/"
+    REDIS_CACHE_EXPIRY: int = 60 * 60 * 24  # 24 hours in seconds
 
-    def __init__(self):
-        _ = load_dotenv()
-        self.s3_client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
-            "s3", region_name="us-east-2", config=Config(signature_version="s3v4")
+    def __init__(self, CONFIG: Con):
+        self.s3_client: S3Client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
+            "s3", region_name="us-east-2", config=Config(signature_version="s3v4"),
         )
         self.db: Session | None = None
-        self.redis_client = Redis(
-            host=os.getenv("REDIS_ADDRESS") or "localhost",
+        self.redis_client: Redis[str] = Redis(
+            host=CONFIG["REDIS_ADDRESS"],
             port=6379,
             # protocol=3,
             decode_responses=True,
@@ -75,7 +75,7 @@ class FileStorageHandler:
             "created_at": file_obj.created_at.isoformat(),
         }
         _ = self.redis_client.setex(
-            cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data)
+            cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data),
         )
 
     def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:
@@ -85,8 +85,7 @@ class FileStorageHandler:
         return json.loads(cached_data) if cached_data else None
 
     def get_file(self, file_id: str) -> str | None:
-        """
-        Get the content of a file from the local cache or S3 bucket.
+        """Get the content of a file from the local cache or S3 bucket.
         :param file_id: The ID of the file.
         :return: The local path of the file, or None if the file is not found.
         """
@@ -120,7 +119,7 @@ class FileStorageHandler:
             logger.error(f"File not found: {file_id}")
             return None
         except Exception as e:
-            logger.error(f"Error retrieving file: {str(e)}")
+            logger.error(f"Error retrieving file: {e!s}")
             return None
 
     def put_file(
@@ -131,8 +130,7 @@ class FileStorageHandler:
         file_type: str,
         chunking_separator: str,
     ) -> str | None:
-        """
-        Store a file locally and upload it to the S3 bucket.
+        """Store a file locally and upload it to the S3 bucket.
         :param file_obj: A file-like object containing the file data.
         :param file_name: The original name of the file.
         :param file_desc: A description of the file.
@@ -151,13 +149,13 @@ class FileStorageHandler:
             with open(local_path, "wb") as local_file:
                 _ = local_file.write(file_obj)
         except Exception as e:
-            logger.error(f"Error saving file locally: {str(e)}")
+            logger.error(f"Error saving file locally: {e!s}")
             return None
 
         # Upload to S3
         s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
         upload_status = self.__upload_file(
-            self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type
+            self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type,
         )
 
         if upload_status:
@@ -180,7 +178,7 @@ class FileStorageHandler:
 
                 return str(file_id)
             except Exception as e:
-                logger.error(f"Error saving file metadata to database: {str(e)}")
+                logger.error(f"Error saving file metadata to database: {e!s}")
                 self._get_db().rollback()
                 return None
         else:
@@ -188,8 +186,7 @@ class FileStorageHandler:
             return None
 
     def get_presigned_url(self, file_id: str, expiration: int = 3600) -> str | None:
-        """
-        Generate a presigned URL for a file in the S3 bucket.
+        """Generate a presigned URL for a file in the S3 bucket.
         :param file_id: The ID of the file.
         :param expiration: The expiration time of the URL in seconds.
         :return: The presigned URL, or None if the file is not found.
@@ -219,11 +216,11 @@ class FileStorageHandler:
         except Exception as e:
             # rollback the transaction if an error occurs
             self._get_db().rollback()
-            logger.error(f"Error generating presigned URL: {str(e)}")
+            logger.error(f"Error generating presigned URL: {e!s}")
             return None
 
     def __upload_file(
-        self, bucket: str, local_path: str, object_name: str, content_type: str = ""
+        self, bucket: str, local_path: str, object_name: str, content_type: str = "",
     ) -> bool:
         try:
             if content_type:
@@ -241,7 +238,7 @@ class FileStorageHandler:
         return True
 
     def __download_file(
-        self, bucket_name: str, object_name: str, local_path: str
+        self, bucket_name: str, object_name: str, local_path: str,
     ) -> bool:
         self._ensure_directory_exists(local_path)
         try:

@@ -1,37 +1,38 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: models.py.py
+"""@file: models.py.py
 @author: Jerry(Ruihuang)Yang
 @email: rxy216@case.edu
 @time: 3/16/24 23:48
 """
+
 from datetime import datetime
-from typing import Any, Literal, override
-from sqlalchemy.ext.declarative import declarative_base
+from enum import IntEnum
+from typing import Any, Literal, TypeAlias, override
+from uuid import UUID
+
 from sqlalchemy import (
+    JSON,
+    UUID,
+    Boolean,
     Column,
     DateTime,
-    String,
-    Integer,
-    func,
-    MetaData,
-    Boolean,
-    UUID,
     ForeignKey,
-    JSON,
-    UniqueConstraint,
+    Integer,
+    MetaData,
     PrimaryKeyConstraint,
+    String,
     Text,
+    UniqueConstraint,
+    func,
 )
-from enum import IntEnum
+from sqlalchemy.ext.declarative import declarative_base
 
 
 class BaseType:
-    def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny]
+    def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny, reportExplicitAny]
         return super().__init__(**kwargs)
 
-    metadata = MetaData
+    metadata: TypeAlias = MetaData
 
 
 Base: type[BaseType] = declarative_base(metadata=MetaData(schema="public"))
@@ -39,7 +40,7 @@ metadata = Base.metadata
 
 
 class Agent(Base):
-    __tablename__ = "ai_agents"
+    __tablename__: str = "ai_agents"
 
     agent_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
@@ -49,7 +50,7 @@ class Agent(Base):
     updated_at = Column(DateTime, default=func.now(), nullable=False)
     voice = Column(Boolean, default=False, nullable=False)
     status = Column(
-        Integer, default=1, nullable=False
+        Integer, default=1, nullable=False,
     )  # 1-active, 0-inactive, 2-deleted
     allow_model_choice = Column(Boolean, default=True, nullable=False)
     model = Column(String(16))
@@ -60,6 +61,11 @@ class Agent(Base):
         return f"Agent id: {self.agent_id}, name: {self.agent_name}, creator: {self.creator}, status: {self.status}, model: {self.model}"
 
 
+class AgentStatus(IntEnum):
+    ACTIVE = 1
+    INACTIVE = 0
+    DELETED = 2
+
 class AgentValue:
     agent_id: str = ""
     created_at: datetime = datetime.now()
@@ -68,7 +74,7 @@ class AgentValue:
     creator: str = ""
     updated_at: datetime = datetime.now()
     voice: bool = False
-    status: int = 1
+    status: AgentStatus = AgentStatus.ACTIVE
     allow_model_choice: bool = True
     model: str = ""
     agent_files: dict[str, Any] = {}
@@ -85,7 +91,7 @@ class Thread(Base):
     student_id = Column(String(16))
     created_at = Column(DateTime, default=func.now(), nullable=False)
     agent_id = Column(
-        UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False,
     )
     user_id = Column(Integer, nullable=False)
     workspace_id = Column(String(16), nullable=False)
@@ -198,7 +204,7 @@ class Workspace(Base):
     workspace_id = Column(String(16), primary_key=True, nullable=False)
     workspace_name = Column(String(64), unique=True, nullable=False)
     status = Column(
-        Integer, default=1, nullable=False
+        Integer, default=1, nullable=False,
     )  # 1-active, 0-inactive, 2-deleted
     school_id = Column(Integer, default=0, nullable=False)
     workspace_password = Column(String(128), nullable=False)
