@@ -10,7 +10,6 @@ from openai.types.chat import ChatCompletionMessageParam
 
 
 class ConversationalStream(TypedDict):
-
     """Simple class to represent a stream of messages."""
 
     answer: str

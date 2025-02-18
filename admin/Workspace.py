@@ -34,7 +34,6 @@ router = APIRouter()
 
 
 class WorkspaceCreate(BaseModel):
-
     """A Class describing the object sent to create a new workspace."""
 
     workspace_id: str
@@ -44,7 +43,6 @@ class WorkspaceCreate(BaseModel):
 
 
 class WorkspaceUpdateStatus(BaseModel):
-
     """A Class describing the object sent to update the status of a workspace."""
 
     workspace_id: str
@@ -52,7 +50,6 @@ class WorkspaceUpdateStatus(BaseModel):
 
 
 class StudentJoinWorkspace(BaseModel):
-
     """A Class describing the object sent to join a workspace as a student."""
 
     workspace_id: str
@@ -60,7 +57,6 @@ class StudentJoinWorkspace(BaseModel):
 
 
 class UserRoleUpdate(BaseModel):
-
     """A Class describing the object sent to update a user role in a workspace."""
 
     user_id: int
@@ -89,7 +85,9 @@ def create_workspace(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         new_workspace = Workspace(
@@ -104,7 +102,9 @@ def create_workspace(
     except IntegrityError:
         db.rollback()
         return response(
-            False, status_code=400, message="Workspace with this name already exists",
+            False,
+            status_code=400,
+            message="Workspace with this name already exists",
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
@@ -132,7 +132,8 @@ def set_workspace_status(
     # Get JWT and user workspace role for authentication
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
-        update_workspace.workspace_id, None,
+        update_workspace.workspace_id,
+        None,
     )
 
     # Disallow non-admin users and users who are not teachers of the workspace
@@ -146,7 +147,6 @@ def set_workspace_status(
 
     # If the user is authorized, update the workspace according to the given status
     try:
-
         # Attempt to find workspace. If it can't be found, return a 404 exception
         workspace: WorkspaceValue | None = (
             db.query(Workspace)
@@ -190,7 +190,9 @@ def delete_workspace(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         query: WorkspaceValue = (
@@ -236,7 +238,9 @@ def add_users_via_csv(
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         # Read the file to detect encoding
@@ -266,7 +270,9 @@ def add_users_via_csv(
                 continue  # Skip this row if it already exists
 
             user_workspace = UserWorkspace(
-                student_id=student_id, workspace_id=workspace_id, role="pending",
+                student_id=student_id,
+                workspace_id=workspace_id,
+                role="pending",
             )
             db.add(user_workspace)
             db.commit()
@@ -274,8 +280,8 @@ def add_users_via_csv(
         return response(True, message="Users added via CSV successfully")
     except Exception as e:
         logger.error(
-            "Error adding users via CSV: Please make sure you" +
-                " save the roster as a CSV file and try again",
+            "Error adding users via CSV: Please make sure you"
+            + " save the roster as a CSV file and try again",
         )
         db.rollback()
         return response(False, status_code=500, message=str(e))
@@ -312,8 +318,9 @@ def student_join_workspace(
 
         workspace: WorkspaceValue = (
             db.query(Workspace)
-            .filter(Workspace.workspace_id == join_workspace.workspace_id,
-                    Workspace.status == WorkspaceStatus.ACTIVE,
+            .filter(
+                Workspace.workspace_id == join_workspace.workspace_id,
+                Workspace.status == WorkspaceStatus.ACTIVE,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
@@ -332,12 +339,16 @@ def student_join_workspace(
 
         if not user_workspace:
             return response(
-                False, status_code=404, message="Not authorized to join this workspace",
+                False,
+                status_code=404,
+                message="Not authorized to join this workspace",
             )
 
         if user_workspace.role != "pending":
             return response(
-                False, status_code=400, message="User already in this workspace",
+                False,
+                status_code=400,
+                message="User already in this workspace",
             )
 
         user_workspace.role = "student"
@@ -372,11 +383,14 @@ def delete_user_from_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
-        user_role_update.workspace_id, None,
+        user_role_update.workspace_id,
+        None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         user: UserValue | None = (
@@ -402,7 +416,9 @@ def delete_user_from_workspace(
 
         if not user_workspace:
             return response(
-                False, status_code=404, message="User not in this workspace",
+                False,
+                status_code=404,
+                message="User not in this workspace",
             )
 
         db.delete(user_workspace)
@@ -436,11 +452,14 @@ def set_user_role(
     """
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
-        user_role_update.workspace_id, None,
+        user_role_update.workspace_id,
+        None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         user: UserValue | None = (
@@ -466,7 +485,9 @@ def set_user_role(
 
         if not user_workspace:
             return response(
-                False, status_code=404, message="User not in this workspace",
+                False,
+                status_code=404,
+                message="User not in this workspace",
             )
 
         user_workspace.role = user_role_update.role
@@ -500,7 +521,9 @@ def set_user_role_with_student_id(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         user: UserValue | None = (
@@ -567,19 +590,22 @@ def get_workspace_list(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     try:
         offset = (page - 1) * page_size
-        workspaces = (db
-            .query(Workspace)
+        workspaces = (
+            db.query(Workspace)
             .filter(Workspace.status != WorkspaceStatus.DELETED)
             .order_by(desc(Workspace.status))
             .offset(offset)
-            .limit(page_size).all()
+            .limit(page_size)
+            .all()
         )
-        total_workspaces = (db
-            .query(Workspace)
+        total_workspaces = (
+            db.query(Workspace)
             .filter(Workspace.status != WorkspaceStatus.DELETED)
             .count()
         )

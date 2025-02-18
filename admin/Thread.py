@@ -27,7 +27,6 @@ message_handler = MessageStorageHandler(config=CONFIG)
 
 
 class ThreadListQuery(BaseModel):
-
     """Unused."""
 
     user_id: str | None = None
@@ -40,7 +39,6 @@ class ThreadListQuery(BaseModel):
 
 
 class ThreadContent(BaseModel):
-
     """Unused."""
 
     thread_id: str
@@ -68,7 +66,8 @@ def get_thread_by_id(thread_id: UUID) -> Response | JSONResponse:
         # Sort the messages by 'created_at' time in descending order
         sorted_messages = sorted(thread_messages, key=lambda x: x.created_at)
         return response(
-            True, data={"thread_id": thread_id, "messages": sorted_messages},
+            True,
+            data={"thread_id": thread_id, "messages": sorted_messages},
         )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
@@ -111,22 +110,28 @@ def get_thread_list(
         and user_jwt_content["student_id"] != student_id
     ):
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
-    query = db.query(
-        Thread.thread_id,
-        Thread.user_id,
-        Thread.created_at,
-        Thread.agent_id,
-        Thread.agent_name,
-        Thread.workspace_id,
-        Thread.student_id,
-    ).join(
-        Workspace,
-        Thread.workspace_id == Workspace.workspace_id,
-    ).filter(
-        Workspace.status != WorkspaceStatus.DELETED,
-        Thread.workspace_id == workspace_id,
+    query = (
+        db.query(
+            Thread.thread_id,
+            Thread.user_id,
+            Thread.created_at,
+            Thread.agent_id,
+            Thread.agent_name,
+            Thread.workspace_id,
+            Thread.student_id,
+        )
+        .join(
+            Workspace,
+            Thread.workspace_id == Workspace.workspace_id,
+        )
+        .filter(
+            Workspace.status != WorkspaceStatus.DELETED,
+            Thread.workspace_id == workspace_id,
+        )
     )  # even the agent is deleted, the thread still exists
 
     if agent_name:

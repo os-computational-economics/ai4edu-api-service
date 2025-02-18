@@ -43,14 +43,18 @@ def get_user_list(
 
     if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
     if (
         user_jwt_content["workspace_role"].get(workspace_id, None) is None
         and not user_jwt_content["system_admin"]
     ):
         return response(
-            False, status_code=403, message="You do not have access to this resource",
+            False,
+            status_code=403,
+            message="You do not have access to this resource",
         )
 
     is_teacher_or_admin = False

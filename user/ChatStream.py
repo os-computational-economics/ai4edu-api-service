@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Tools for handling chat streams"""
+
 import json
 import uuid
 from collections.abc import Iterator
@@ -20,7 +21,6 @@ from user.TtsStream import TtsStream
 
 
 class ChatStreamModel(BaseModel):
-
     """Chat stream parameters."""
 
     dynamic_auth_code: str
@@ -34,7 +34,6 @@ class ChatStreamModel(BaseModel):
 
 
 class ChatSingleCallResponse(BaseModel):
-
     """Response for a single call chat. (unused)"""
 
     status: Literal["success", "fail"]  # "success" or "fail"
@@ -44,7 +43,6 @@ class ChatSingleCallResponse(BaseModel):
 
 
 class ChatStreamResponse(BaseModel):
-
     """Response for a chat stream. (unused)"""
 
     status: Literal["success", "fail"]  # "success" or "fail"
@@ -54,7 +52,6 @@ class ChatStreamResponse(BaseModel):
 
 
 class ChatStream:
-
     """AI chat with OpenAI/Anthropic, streams responses by server-sent events.
 
     Using this class requires passing in the full messages history, and the provider
@@ -150,7 +147,9 @@ class ChatStream:
         )
 
     def __chat_generator(
-        self, messages: MessageHistory, system_prompt: str,
+        self,
+        messages: MessageHistory,
+        system_prompt: str,
     ) -> Iterator[str]:
         """Chat generator.
 
@@ -191,7 +190,10 @@ class ChatStream:
                     ) in sentence_ender:  # if the chunk contains a sentence ender
                         if ender in new_text:
                             chunk_buffer, chunk_id = self.__process_chunking(
-                                ender, new_text, chunk_buffer, chunk_id,
+                                ender,
+                                new_text,
+                                chunk_buffer,
+                                chunk_id,
                             )
                             break
                     else:  # if the chunk does not contain a sentence ender
@@ -219,7 +221,10 @@ class ChatStream:
                 )
         # put the finished response into the database (AI message)
         msg_id = self.message_storage_handler.put_message(
-            self.thread_id, self.user_id, self.requested_provider, response_text,
+            self.thread_id,
+            self.user_id,
+            self.requested_provider,
+            response_text,
         )
         print("Latest response:", response_text, "msg_id:", msg_id)
         # Process any remaining text in the chunk_buffer after the stream has finished
@@ -247,7 +252,8 @@ class ChatStream:
         )
 
     def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[ChatCompletionMessageParam],
+        self,
+        messages: list[ChatCompletionMessageParam],
     ) -> Iterator[str]:
         """OpenAI chat generator.
 
@@ -269,7 +275,8 @@ class ChatStream:
                     yield new_text
 
     def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[Message],
+        self,
+        messages: list[Message],
     ) -> Iterator[str]:
         """Anthropic chat generator.
 
@@ -284,10 +291,7 @@ class ChatStream:
         system_message = messages.pop(0)
         if system_message["role"] == "system":
             system_message_content = system_message["content"]
-        [
-            m.update({"content": str(m.get("content", ""))})
-            for m in messages
-        ]
+        [m.update({"content": str(m.get("content", ""))}) for m in messages]
         with self.anthropic_client.messages.stream(
             system=system_message_content,
             max_tokens=2048,
@@ -299,7 +303,11 @@ class ChatStream:
                     yield text
 
     def __process_chunking(
-        self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int,
+        self,
+        sentence_ender: str,
+        new_text: str,
+        chunk_buffer: str,
+        chunk_id: int,
     ) -> tuple[str, int]:
         """Process the chunking.
 
@@ -322,7 +330,8 @@ class ChatStream:
         return chunk_buffer, chunk_id
 
     def __messages_processor(  # pyright: ignore[reportUnusedFunction]
-        self, messages: MessageHistory,
+        self,
+        messages: MessageHistory,
     ) -> list[Message]:
         """Process the message.
 

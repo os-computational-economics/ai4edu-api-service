@@ -123,7 +123,9 @@ def parse_token(jwt_token: str) -> dict[str, Any]:  # pyright: ignore[reportExpl
         return {"success": False, "status_code": 401000, "message": "Token missing"}
     try:
         decoded: dict[str, Any] = jwt.decode(  # pyright: ignore[reportExplicitAny]
-            jwt_token, public_key, algorithms=[algorithm],
+            jwt_token,
+            public_key,
+            algorithms=[algorithm],
         )
         return {"success": True, "status_code": 200, "message": "", "data": decoded}
     except jwt.ExpiredSignatureError:

@@ -30,7 +30,6 @@ CONFIG = getenv()
 
 
 class BaseType:
-
     """Base class for SQLAlchemy models."""
 
     def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny, reportExplicitAny]  # noqa: ANN401
@@ -45,13 +44,14 @@ metadata = Base.metadata
 
 
 class Agent(Base):
-
     """Agent model."""
 
     __tablename__: Literal["ai_agents"] = "ai_agents"
 
     agent_id: Column[UUIDType] = Column(
-        UUID(as_uuid=True), primary_key=True, nullable=False,
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
     )
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     agent_name: Column[str] = Column(String(255), nullable=False)
@@ -60,7 +60,9 @@ class Agent(Base):
     updated_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     voice: Column[bool] = Column(Boolean, default=False, nullable=False)
     status: Column[int] = Column(
-        Integer, default=1, nullable=False,
+        Integer,
+        default=1,
+        nullable=False,
     )  # 1-active, 0-inactive, 2-deleted
     allow_model_choice: Column[bool] = Column(Boolean, default=True, nullable=False)
     model: Column[str] = Column(String(16))
@@ -73,7 +75,6 @@ class Agent(Base):
 
 
 class AgentStatus(IntEnum):
-
     """Enum for agent status."""
 
     ACTIVE = 1
@@ -82,7 +83,6 @@ class AgentStatus(IntEnum):
 
 
 class AgentValue:
-
     """Python representation of an Agent row"""
 
     agent_id: str = ""
@@ -99,25 +99,27 @@ class AgentValue:
 
 
 class AgentTeacherResponse(AgentValue):
-
     """Teacher override for system prompt"""
 
     system_prompt: str = ""
 
 
 class Thread(Base):
-
     """Thread model. Represents a conversation between a student and an AI agent."""
 
     __tablename__: Literal["ai_threads"] = "ai_threads"
 
     thread_id: Column[UUIDType] = Column(
-        UUID(as_uuid=True), primary_key=True, nullable=False,
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
     )
     student_id: Column[str] = Column(String(16))
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     agent_id: Column[UUIDType] = Column(
-        UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False,
+        UUID(as_uuid=True),
+        ForeignKey("ai_agents.agent_id"),
+        nullable=False,
     )
     user_id: Column[int] = Column(Integer, nullable=False)
     workspace_id: Column[str] = Column(String(16), nullable=False)
@@ -130,7 +132,6 @@ class Thread(Base):
 
 
 class ThreadValue:
-
     """Python representation of a Thread row"""
 
     thread_id: str = ""
@@ -143,7 +144,6 @@ class ThreadValue:
 
 
 class User(Base):
-
     """User model."""
 
     __tablename__: Literal["ai_users"] = "ai_users"
@@ -165,7 +165,6 @@ class User(Base):
 
 
 class UserValue:
-
     """Python representation of a User row"""
 
     user_id: int = 0
@@ -181,16 +180,19 @@ class UserValue:
 
 
 class RefreshToken(Base):
-
     """RefreshToken model"""
 
     __tablename__: Literal["ai_refresh_tokens"] = "ai_refresh_tokens"
 
     token_id: Column[UUIDType] = Column(
-        UUID(as_uuid=True), primary_key=True, nullable=False,
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
     )
     user_id: Column[int] = Column(
-        Integer, ForeignKey("ai_users.user_id"), nullable=False,
+        Integer,
+        ForeignKey("ai_users.user_id"),
+        nullable=False,
     )
     token: Column[UUIDType] = Column(UUID(as_uuid=True), nullable=False, unique=True)
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
@@ -206,7 +208,6 @@ class RefreshToken(Base):
 
 
 class RefreshTokenValue:
-
     """Python representation of a RefreshToken row"""
 
     token_id: str = ""
@@ -218,13 +219,14 @@ class RefreshTokenValue:
 
 
 class File(Base):
-
     """File model."""
 
     __tablename__: Literal["ai_files"] = "ai_files"
 
     file_id: Column[UUIDType] = Column(
-        UUID(as_uuid=True), primary_key=True, nullable=False,
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
     )
     file_name: Column[str] = Column(String, nullable=False)
     file_desc: Column[str] = Column(String)
@@ -241,7 +243,6 @@ class File(Base):
 
 
 class FileValue:
-
     """Python representation of a File row"""
 
     file_id: str = ""
@@ -255,7 +256,6 @@ class FileValue:
 
 
 class Workspace(Base):
-
     """Workspace model."""
 
     __tablename__: Literal["ai_workspaces"] = "ai_workspaces"
@@ -263,7 +263,9 @@ class Workspace(Base):
     workspace_id: Column[str] = Column(String(16), primary_key=True, nullable=False)
     workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
     status: Column[int] = Column(
-        Integer, default=1, nullable=False,
+        Integer,
+        default=1,
+        nullable=False,
     )  # 1-active, 0-inactive, 2-deleted
     school_id: Column[int] = Column(Integer, default=0, nullable=False)
     workspace_password: Column[str] = Column(String(128), nullable=False)
@@ -275,7 +277,6 @@ class Workspace(Base):
 
 
 class WorkspaceStatus(IntEnum):
-
     """Enum for workspace status."""
 
     ACTIVE = 1
@@ -284,7 +285,6 @@ class WorkspaceStatus(IntEnum):
 
 
 class WorkspaceValue:
-
     """Python representation of a Workspace row"""
 
     workspace_id: str = ""
@@ -295,7 +295,6 @@ class WorkspaceValue:
 
 
 class UserWorkspace(Base):
-
     """Users in Workspaces many to many model."""
 
     __tablename__: Literal["ai_user_workspace"] = "ai_user_workspace"
@@ -318,7 +317,6 @@ class UserWorkspace(Base):
 
 
 class UserWorkspaceValue:
-
     """Python representation of a UserWorkspace row"""
 
     user_id: int = 0
@@ -330,7 +328,6 @@ class UserWorkspaceValue:
 
 
 class UserFeedback(Base):
-
     """Feedback model."""
 
     __tablename__: Literal["ai_feedback"] = "ai_feedback"
@@ -346,7 +343,6 @@ class UserFeedback(Base):
 
 
 class UserFeedbackValue:
-
     """Python representation of a UserFeedback row"""
 
     feedback_id: int = 0

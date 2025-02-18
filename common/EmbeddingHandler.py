@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """A collection of utility functions for processing file embeddings"""
+
 from langchain.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -60,7 +61,10 @@ def embed_file(
                 },
             )
         _ = PineconeVectorStore.from_documents(
-            pages, embeddings, index_name=index_name, namespace=namespace,
+            pages,
+            embeddings,
+            index_name=index_name,
+            namespace=namespace,
         )
         return True
     print("Unsupported file type")

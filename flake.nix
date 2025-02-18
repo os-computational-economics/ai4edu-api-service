@@ -141,7 +141,7 @@
             projectRootFile = "flake.nix";
             programs = {
               alejandra.enable = true;
-              black.enable = true;
+              ruff-format.enable = true;
               toml-sort.enable = true;
               yamlfmt.enable = true;
               mdformat.enable = true;

@@ -42,7 +42,8 @@ from user.TtsStream import TtsStream
 from utils.response import Response, response
 
 logging.basicConfig(
-    level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s",
+    level=logging.INFO,
+    format="%(levelname)s:     %(name)s - %(message)s",
 )
 
 DEV_PREFIX = "/dev"
@@ -97,10 +98,12 @@ app.include_router(AccessRouter, prefix=f"{URL_PATHS['current_prod_admin']}/acce
 
 # Admin WorkspaceRouter
 app.include_router(
-    WorkspaceRouter, prefix=f"{URL_PATHS['current_dev_admin']}/workspace",
+    WorkspaceRouter,
+    prefix=f"{URL_PATHS['current_dev_admin']}/workspace",
 )
 app.include_router(
-    WorkspaceRouter, prefix=f"{URL_PATHS['current_prod_admin']}/workspace",
+    WorkspaceRouter,
+    prefix=f"{URL_PATHS['current_prod_admin']}/workspace",
 )
 
 # system authorization middleware before CORS middleware, so it executes after CORS
@@ -164,7 +167,10 @@ async def stream_chat(chat_stream_model: ChatStreamModel) -> EventSourceResponse
 
     """
     chat_instance = ChatStream(
-        chat_stream_model.provider, openai_client, anthropic_client, config=CONFIG,
+        chat_stream_model.provider,
+        openai_client,
+        anthropic_client,
+        config=CONFIG,
     )
     return chat_instance.stream_chat(chat_stream_model)
 
@@ -185,7 +191,9 @@ def delete_file_after_delay(file_path: Path, delay: float) -> None:
 @app.get(f"{URL_PATHS['current_dev_user']}/get_tts_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_tts_file")
 async def get_tts_file(
-    tts_session_id: str, chunk_id: str, background_tasks: BackgroundTasks,
+    tts_session_id: str,
+    chunk_id: str,
+    background_tasks: BackgroundTasks,
 ) -> FileResponse:
     """ENDPOINT: /user/get_tts_file
 
@@ -210,7 +218,9 @@ async def get_tts_file(
     if Path.is_file(p):
         # Add the delete_file_after_delay function as a background task
         background_tasks.add_task(
-            delete_file_after_delay, p, 60,
+            delete_file_after_delay,
+            p,
+            60,
         )  # 60 seconds delay
         return FileResponse(path=file_location, media_type="audio/mpeg")
     raise HTTPException(status_code=404, detail="File not found")
@@ -280,10 +290,13 @@ async def upload_file(
 
         if file_id is None:
             return response(
-                success=False, message="Failed to upload file", status_code=500,
+                success=False,
+                message="Failed to upload file",
+                status_code=500,
             )
         return response(
-            success=True, data={"file_id": file_id, "file_name": file.filename},
+            success=True,
+            data={"file_id": file_id, "file_name": file.filename},
         )
     except Exception as e:
         logging.error(f"Failed to upload file: {e!s}")
@@ -311,7 +324,9 @@ async def get_presigned_url_for_file(file_id: str) -> Response | JSONResponse:
     url = file_storage.get_presigned_url(file_id)
     if url is None:
         return response(
-            success=False, message="Failed to generate presigned URL", status_code=500,
+            success=False,
+            message="Failed to generate presigned URL",
+            status_code=500,
         )
     return response(success=True, data={"url": url})
 
@@ -335,14 +350,18 @@ def generate_token(request: Request) -> Response | JSONResponse:
     tokens = extract_token(request.headers.get("Authorization", ""))
     if tokens["refresh_token"] is None:
         return response(
-            success=False, message="No refresh token provided", status_code=401,
+            success=False,
+            message="No refresh token provided",
+            status_code=401,
         )
     auth = UserAuth(config=CONFIG)
     access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
         return response(success=True, data={"access_token": access_token})
     return response(
-        success=False, message="Failed to generate access token", status_code=401,
+        success=False,
+        message="Failed to generate access token",
+        status_code=401,
     )
 
 
@@ -421,9 +440,16 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
     # open file and read as bytes
     with Path.open(Path("./volume_cache/test.txt"), "rb") as f:
         file_content = f.read()
-        s3_test_put_file_id = file_storage.put_file(
-            file_content, "success-" + formatted_time, "desc", "text/plain", "",
-        ) or "fail"
+        s3_test_put_file_id = (
+            file_storage.put_file(
+                file_content,
+                "success-" + formatted_time,
+                "desc",
+                "text/plain",
+                "",
+            )
+            or "fail"
+        )
 
     s3_test_get_file_path = "fail"
     if s3_test_put_file_id != "fail":
@@ -441,14 +467,16 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
         # TODO: create an error if failed instead of continuing with bad data
         or ""
     )
-    test_msg_get_content = str(getattr(
-        message.get_message(test_thread_id, created_at),
-        "content",
-        "fail",
-    ))
-    test_thread_get_content = " ".join(
-        i.content for i in message.get_thread(test_thread_id)
-    ) or "fail"
+    test_msg_get_content = str(
+        getattr(
+            message.get_message(test_thread_id, created_at),
+            "content",
+            "fail",
+        )
+    )
+    test_thread_get_content = (
+        " ".join(i.content for i in message.get_thread(test_thread_id)) or "fail"
+    )
 
     return {
         "sys-info": {

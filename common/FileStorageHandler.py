@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class FileStorageHandler:
-
     """Class for retrieving and storing files"""
 
     # ! Make these environment variables
@@ -39,7 +38,9 @@ class FileStorageHandler:
 
         """
         self.s3_client: S3Client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
-            "s3", region_name="us-east-2", config=Config(signature_version="s3v4"),
+            "s3",
+            region_name="us-east-2",
+            config=Config(signature_version="s3v4"),
         )
         self.db: Session | None = None
         self.redis_client: Redis[str] = Redis(
@@ -93,7 +94,9 @@ class FileStorageHandler:
             "created_at": file_obj.created_at.isoformat(),
         }
         _ = self.redis_client.setex(
-            cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data),
+            cache_key,
+            self.REDIS_CACHE_EXPIRY,
+            json.dumps(cache_data),
         )
 
     def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:  # pyright: ignore[reportExplicitAny]
@@ -191,7 +194,10 @@ class FileStorageHandler:
         # Upload to S3
         s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
         upload_status = self.__upload_file(
-            self.BUCKET_NAME, local_path, s3_object_name, content_type=file_type,
+            self.BUCKET_NAME,
+            local_path,
+            s3_object_name,
+            content_type=file_type,
         )
 
         if upload_status:
@@ -260,7 +266,11 @@ class FileStorageHandler:
             return None
 
     def __upload_file(
-        self, bucket: str, local_path: str, object_name: str, content_type: str = "",
+        self,
+        bucket: str,
+        local_path: str,
+        object_name: str,
+        content_type: str = "",
     ) -> bool:
         """Upload a file to the specified S3 bucket.
 
@@ -290,7 +300,10 @@ class FileStorageHandler:
         return True
 
     def __download_file(
-        self, bucket_name: str, object_name: str, local_path: str,
+        self,
+        bucket_name: str,
+        object_name: str,
+        local_path: str,
     ) -> bool:
         """Download a file from the specified S3 bucket.
 

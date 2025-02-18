@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class AgentPromptHandler:
-
     """Class for accessing and updating agent prompts in the database."""
 
     DYNAMODB_TABLE_NAME: str = "ai4edu_agent_prompt"

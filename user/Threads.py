@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Create a new thread"""
+
 import logging
 import uuid
 
@@ -15,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 def new_thread(
-    request: Request, agent_id: str, workspace_id: str,
+    request: Request,
+    agent_id: str,
+    workspace_id: str,
 ) -> Response | JSONResponse | None:
     """Creates a newe thread with the given agent_id and workspace_id
 

@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Deepgram abstractions"""
+
 from typing import Any, Literal
 
 import requests
@@ -9,7 +10,6 @@ from common.EnvManager import Config
 
 
 class SttApiKeyResponse(BaseModel):
-
     """Response from Deepgram API for API key generation."""
 
     status: Literal["success", "fail"]  # "success" or "fail"
@@ -18,7 +18,6 @@ class SttApiKeyResponse(BaseModel):
 
 
 class SttApiKey:
-
     """SttApiKey: Generate a new API key for Deepgram Speech-to-Text.
 
     This key will be sent to the user for use in the client-side.

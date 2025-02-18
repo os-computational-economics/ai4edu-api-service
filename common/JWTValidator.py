@@ -13,7 +13,6 @@ CONFIG = getenv()
 
 
 class UserJWTContent(TypedDict):
-
     """Structure representing the parsed JWT content"""
 
     user_id: int
@@ -87,13 +86,12 @@ def parse_jwt(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None: 
             ),
             workspace_role={
                 i: str(
-                        user_jwt_content["workspace_role"][
-                            i
-                        ],  # pyright: ignore[reportAny]
-                    )
-                    for i in user_jwt_content[  # pyright: ignore[reportAny]
-                        "workspace_role"
-                    ]},
+                    user_jwt_content["workspace_role"][i],  # pyright: ignore[reportAny]
+                )
+                for i in user_jwt_content[  # pyright: ignore[reportAny]
+                    "workspace_role"
+                ]
+            },
             system_admin=bool(user_jwt_content["system_admin"]),  # pyright: ignore[reportAny]
             email=str(user_jwt_content["email"]),  # pyright: ignore[reportAny]
             iat=datetime.fromtimestamp(

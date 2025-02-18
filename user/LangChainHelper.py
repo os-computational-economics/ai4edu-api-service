@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Abstractions for various AI models"""
+
 import time
 from collections.abc import Iterable, Iterator
 from enum import StrEnum
@@ -59,7 +60,10 @@ if index_name not in pc.list_indexes().names():
 
 embeddings = OpenAIEmbeddings(api_key=SecretStr(OPENAI_API_KEY))
 llm = ChatOpenAI(
-    temperature=0, api_key=SecretStr(OPENAI_API_KEY), model="gpt-4o", streaming=True,
+    temperature=0,
+    api_key=SecretStr(OPENAI_API_KEY),
+    model="gpt-4o",
+    streaming=True,
 )
 llm2 = ChatAnthropic(
     temperature=0,
@@ -72,7 +76,6 @@ llm2 = ChatAnthropic(
 
 
 class Provider(StrEnum):
-
     """List of providers"""
 
     openai = "openai"
@@ -80,7 +83,9 @@ class Provider(StrEnum):
 
 
 def get_session_history(
-    *, thread_id: str, history_from_request: MessageHistory,
+    *,
+    thread_id: str,
+    history_from_request: MessageHistory,
 ) -> BaseChatMessageHistory:
     """Get session history from thread_id
 
@@ -137,7 +142,9 @@ def chat_stream_with_retrieve(
 
     """
     vectorstore = PineconeVectorStore.from_existing_index(
-        index_name, embeddings, namespace=retrieval_namespace,
+        index_name,
+        embeddings,
+        namespace=retrieval_namespace,
     )
     retriever: RetrieverLike = vectorstore.as_retriever()
 
@@ -149,14 +156,12 @@ def chat_stream_with_retrieve(
     standalone question which can be understood without the chat history. \
     Do NOT answer the question, just reformulate it if needed and otherwise \
     return it as is."""
-    contextualize_q_prompt = (
-        ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
-            [
-                ("system", contextualize_q_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ],
-        )
+    contextualize_q_prompt = ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
+        [
+            ("system", contextualize_q_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ],
     )
 
     if history_from_request is None:
@@ -175,22 +180,22 @@ def chat_stream_with_retrieve(
     {system_prompt}\
     {{context}}"""
 
-    qa_prompt = (
-        ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
-            [
-                ("system", qa_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ],
-        )
+    qa_prompt = ChatPromptTemplate.from_messages(  # pyright: ignore[reportUnknownMemberType]
+        [
+            ("system", qa_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ],
     )
 
     question_answer_chain = create_stuff_documents_chain(
-        llm2 if llm_for_answer == Provider.anthropic else llm, qa_prompt,
+        llm2 if llm_for_answer == Provider.anthropic else llm,
+        qa_prompt,
     )
 
     rag_chain: Runnable[
-        MessagesOrDictWithMessages, MessagesOrDictWithMessages | str | BaseMessage,
+        MessagesOrDictWithMessages,
+        MessagesOrDictWithMessages | str | BaseMessage,
     ] = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
     conversational_rag_chain = RunnableWithMessageHistory(
@@ -221,16 +226,14 @@ def chat_stream_with_retrieve(
 
     print("Latest question: ", question)
 
-    rag_stream: Iterator[ConversationalStream] = (
-        conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
-            {"input": question},
-            config={
-                "configurable": {
-                    "thread_id": thread_id,
-                    "history_from_request": history_from_request,
-                },
+    rag_stream: Iterator[ConversationalStream] = conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
+        {"input": question},
+        config={
+            "configurable": {
+                "thread_id": thread_id,
+                "history_from_request": history_from_request,
             },
-        )
+        },
     )
 
     for chunk in rag_stream:

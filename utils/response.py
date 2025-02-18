@@ -11,7 +11,6 @@ Data = dict[str, Any] | AgentValue  # pyright: ignore[reportExplicitAny]
 
 
 class Response(TypedDict):
-
     """Response structure for API responses."""
 
     status: int

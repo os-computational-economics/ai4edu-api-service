@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Text to speech tools"""
+
 import os
 
 import requests
@@ -8,7 +9,6 @@ from common.EnvManager import Config
 
 
 class TtsStream:
-
     """TtsStream: Text-to-Speech streaming with Deepgram API."""
 
     # Define the API endpoint

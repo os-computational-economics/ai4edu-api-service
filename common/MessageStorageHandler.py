@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Managed the storage of messages in DynamoDB."""
+
 import logging
 import time
 
@@ -14,7 +15,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Message(BaseModel):
-
     """The message object. created_at will not be passed in when creating the object.
 
     Args:
@@ -36,7 +36,6 @@ class Message(BaseModel):
 
 
 class MessageStorageHandler:
-
     """Handle the storage of messages in DynamoDB."""
 
     DYNAMODB_TABLE_NAME: str = "ai4edu_chat_msg"
@@ -52,7 +51,11 @@ class MessageStorageHandler:
         self.table: Table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
 
     def put_message(
-        self, thread_id: str, user_id: str, role: str, content: str,
+        self,
+        thread_id: str,
+        user_id: str,
+        role: str,
+        content: str,
     ) -> str | None:
         """Put the message into the database.
 
@@ -101,9 +104,7 @@ class MessageStorageHandler:
             response = self.table.get_item(
                 Key={"thread_id": thread_id, "created_at": created_at},
             )
-            item = response[
-                "Item"
-            ]  # pyright: ignore[reportTypedDictNotRequiredAccess] This is okay because we are in a try-catch
+            item = response["Item"]  # pyright: ignore[reportTypedDictNotRequiredAccess] This is okay because we are in a try-catch
             return Message(**item)  # pyright: ignore[reportArgumentType] Same here
         except Exception as e:
             print(f"Error getting the message from the database: {e}")

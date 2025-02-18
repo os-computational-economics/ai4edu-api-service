@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Class for managing user authentication and authorization and multi-device support"""
+
 import logging
 import uuid
 from datetime import datetime, timedelta
@@ -14,7 +15,6 @@ from utils.token_utils import jwt_generator
 
 
 class UserAuth:
-
     """Manages user authentication and authorization and multi-device support"""
 
     def __init__(self, config: Config) -> None:
@@ -119,10 +119,8 @@ class UserAuth:
                 .filter(RefreshToken.token == refresh_token)
                 .first()
             )  # pyright: ignore[reportAssignmentType]
-            if (refresh_token_obj and
-                refresh_token_obj.expire_at
-                >
-                datetime.now(tz=ZoneInfo(self.config["TIMEZONE"]))
+            if refresh_token_obj and refresh_token_obj.expire_at > datetime.now(
+                tz=ZoneInfo(self.config["TIMEZONE"])
             ):
                 # refresh token is valid, get user info
                 user_id = refresh_token_obj.user_id
@@ -178,8 +176,8 @@ class UserAuth:
                 self.db.query(RefreshToken)
                 .filter(
                     RefreshToken.user_id == user_id,
-                    RefreshToken.expire_at >
-                    datetime.now(tz=ZoneInfo(self.config["TIMEZONE"])),
+                    RefreshToken.expire_at
+                    > datetime.now(tz=ZoneInfo(self.config["TIMEZONE"])),
                 )
                 .all()
             )  # pyright: ignore[reportAssignmentType]

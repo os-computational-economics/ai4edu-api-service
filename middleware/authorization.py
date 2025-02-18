@@ -1,5 +1,6 @@
 # Copyright (c) 2024.
 """Toools for authorizing access to endpoints."""
+
 import logging
 from typing import TypedDict, override
 
@@ -16,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class Tokens(TypedDict):
-
     """An object containing access and refresh tokens."""
 
     access_token: str | None
@@ -55,7 +55,9 @@ def extract_token(auth_header: str) -> Tokens:
 
 
 def has_access(
-    endpoint_access_map: AccessMap, user_access: Role, current_path: str,
+    endpoint_access_map: AccessMap,
+    user_access: Role,
+    current_path: str,
 ) -> bool:
     """Check if the user has access to the specified endpoint.
 
@@ -150,12 +152,13 @@ def extract_role(access_token_load: UserJWTContent | None) -> Role:
 
 
 class AuthorizationMiddleware(BaseHTTPMiddleware):
-
     """A middleware for authorizing access to endpoints."""
 
     @override
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint,
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
     ) -> Response | JSONResponse:
         """Check if the user has access to the specified endpoint.
 

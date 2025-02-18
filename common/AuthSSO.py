@@ -6,7 +6,7 @@ from xml.etree.ElementTree import Element  # noqa: S405
 
 import requests
 from defusedxml.ElementTree import (
-    fromstring,  # pylint: ignore[reportUnknownVariableType]
+    fromstring,  # pyright: ignore[reportUnknownVariableType]
 )
 from fastapi.responses import RedirectResponse
 
@@ -15,7 +15,6 @@ from common.UserAuth import UserAuth
 
 
 class AuthSSO:
-
     """Class for handling SSO in production."""
 
     def __init__(self, ticket: str, came_from: str, config: Config) -> None:
@@ -47,9 +46,7 @@ class AuthSSO:
             "ticket": self.ticket,
             "service": f"https://{self.DOMAIN}/v1/prod/user/sso?came_from={self.came_from}",
         }
-        if (
-            self.CURRENT_ENV in {"redis-dev-server", "redis-local-server"}
-        ):
+        if self.CURRENT_ENV in {"redis-dev-server", "redis-local-server"}:
             params = {
                 "ticket": self.ticket,
                 "service": f"https://{self.DOMAIN}/v1/dev/user/sso?came_from={self.came_from}",
