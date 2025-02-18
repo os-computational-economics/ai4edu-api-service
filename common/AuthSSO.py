@@ -26,6 +26,7 @@ class AuthSSO:
         """
         self.CURRENT_ENV: str = config["REDIS_ADDRESS"]
         self.DOMAIN: str = config["DOMAIN"]
+        self.config: Config = config
         self.student_id: str | None = None
         self.ticket: str = ticket
         self.came_from: str = came_from
@@ -59,7 +60,7 @@ class AuthSSO:
             # redirect to the come from url
             user_info = self.get_user_info_from_xml(child)
             if self.student_id:
-                user_auth = UserAuth()
+                user_auth = UserAuth(config=self.config)
                 user_id = user_auth.user_login(self.student_id, user_info)
                 refresh_token = user_auth.gen_refresh_token(user_id)
                 access_token = user_auth.gen_access_token(str(refresh_token))

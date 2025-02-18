@@ -1,24 +1,33 @@
 # Copyright (c) 2024.
-"""@file: Threads.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 4/16/24 12:14
-"""
+"""Create a new thread"""
 import logging
 import uuid
 
 from fastapi import Request
+from starlette.responses import JSONResponse
 
 from common.JWTValidator import get_jwt
 from migrations.models import Agent, Thread
 from migrations.session import get_db
-from utils.response import response
+from utils.response import Response, response
 
 logger = logging.getLogger(__name__)
 
 
-def new_thread(request: Request, agent_id: str, workspace_id: str):
+def new_thread(
+    request: Request, agent_id: str, workspace_id: str,
+) -> Response | JSONResponse | None:
+    """Creates a newe thread with the given agent_id and workspace_id
 
+    Args:
+        request: Request: FastAPI request object
+        agent_id: Agent ID
+        workspace_id: Workspace ID
+
+    Returns:
+        Response | JSONResponse | None: Response object if successful, None otherwise
+
+    """
     user_jwt_content = get_jwt(request.state)
 
     for db in get_db():
@@ -52,3 +61,5 @@ def new_thread(request: Request, agent_id: str, workspace_id: str):
             db.rollback()
             logger.error(f"Failed to create new thread: {e!s}")
             return response(False, {}, "Failed to create new thread")
+
+    return None

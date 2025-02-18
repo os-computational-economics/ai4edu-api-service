@@ -1,9 +1,5 @@
 # Copyright (c) 2024.
-"""@file: LangChainHelper.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 6/24/24 23:34
-"""
+"""Abstractions for various AI models"""
 import time
 from collections.abc import Iterable, Iterator
 from typing import Any, Literal
@@ -19,7 +15,10 @@ from langchain.chains.retrieval import (
 )
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.chat_history import (
+    BaseChatMessageHistory,
+    InMemoryChatMessageHistory,
+)
 from langchain_core.messages import BaseMessage
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
@@ -71,26 +70,26 @@ llm2 = ChatAnthropic(
 )
 
 
-# vectorstore_1 = PineconeVectorStore.from_existing_index(index_name, embeddings,
-#                                                         namespace='CSDS001-7d3c60ab-2cd1-4146-9bd2-d73c48546670-case001')
-# vectorstore_2 = PineconeVectorStore.from_existing_index(index_name, embeddings,
-#                                                         namespace='MATH001-bb2f9918-152c-4c79-b6a8-86e970992997-case003')
-#
-# retriever_1 = vectorstore_1.as_retriever()
-# retriever_2 = vectorstore_2.as_retriever()
-# merger_retriever = MergerRetriever(retrievers=[retriever_1, retriever_2])
-
-
 def get_session_history(
     *, thread_id: str, history_from_request: MessageHistory,
 ) -> BaseChatMessageHistory:
-    history = ChatMessageHistory()
+    """Get session history from thread_id
+
+    Args:
+        thread_id: The ID of the thread to retrieve
+        history_from_request: The MessageHistory object containing messages
+
+    Returns:
+        BaseChatMessageHistory: The session history
+
+    """
+    history: InMemoryChatMessageHistory = ChatMessageHistory()
     for _, message in history_from_request.items():
         if message["role"] == "user":
-            # TODO: converted to string here, although the message may contain other content instead
+            # TODO: converted to string here, although the message may contain others
             history.add_message(HumanMessage(str(message["content"])))
         elif message["role"] == "assistant":
-            # TODO: converted to string here, although the message may contain other content instead
+            # TODO: converted to string here, although the message may contain others
             # ! Additionally, AIMessages are not required to contain a content key
             history.add_message(
                 AIMessage(str(message["content"]) if "content" in message else ""),
@@ -106,6 +105,7 @@ def chat_stream_with_retrieve(
     retrieval_namespace: str,
     system_prompt: str = "You are a personalized assistant.",
     history_from_request: MessageHistory | None = None,
+    # ! Convert this to an ENUM
     llm_for_question_consolidation: str = "openai",
     llm_for_answer: str = "openai",
 ) -> (
@@ -113,14 +113,19 @@ def chat_stream_with_retrieve(
     | Iterable[tuple[Literal["source"], dict[str, Any]]]
 ):
     """Chat stream with retrieval.
-    :param thread_id: thread id of the chat.
-    :param question: the user's latest question.
-    :param retrieval_namespace: the namespace of the Pinecone index for retrieval.
-    :param system_prompt: system prompt for the chat.
-    :param history_from_request: chat history from the request. if None, will try to retrieve from the redis using thread_id.
-    :param llm_for_question_consolidation: which LLM to use for question consolidation. can be "openai" or "anthropic".
-    :param llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
-    :return: a generator that yields the chat messages.
+
+    Args:
+        thread_id: thread id of the chat.
+        question: the user's latest question.
+        retrieval_namespace: the namespace of the Pinecone index for retrieval.
+        system_prompt: system prompt for the chat.
+        history_from_request: chat history from the request. if None, get from Redis.
+        llm_for_question_consolidation: which LLM to use for question consolidation. can be "openai" or "anthropic".
+        llm_for_answer: which LLM to use for answering the question. can be "openai" or "anthropic".
+
+    Yields:
+        Chat messages.
+
     """
     vectorstore = PineconeVectorStore.from_existing_index(
         index_name, embeddings, namespace=retrieval_namespace,

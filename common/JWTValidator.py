@@ -105,6 +105,6 @@ def parse_jwt(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None: 
                 tz=ZoneInfo(CONFIG["TIMEZONE"]),
             ),
         )
-    except:
+    except Exception as _:
         return None
     return ret

@@ -1,9 +1,5 @@
 # Copyright (c) 2024.
-"""@file: endpoint_access_map.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 5/24/24 19:54
-"""
+"""Access endpoint map"""
 
 from typing import Literal
 
@@ -38,7 +34,11 @@ endpoint_access_map: AccessMap = {
     "/access/get_user_list": {"student": False, "teacher": True, "admin": True},
     # workspace endpoints
     "/workspace/create_workspace": {"student": False, "teacher": False, "admin": True},
-    "/workspace/set_workspace_status": {"student": False, "teacher": True, "admin": True},
+    "/workspace/set_workspace_status": {
+        "student": False,
+        "teacher": True,
+        "admin": True,
+    },
     "/workspace/add_users_via_csv": {"student": False, "teacher": True, "admin": True},
     "/workspace/student_join_workspace": {
         "student": True,

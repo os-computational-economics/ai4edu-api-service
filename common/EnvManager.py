@@ -30,6 +30,7 @@ Config = dict[ConfigKeys, str]
 # TODO: Add a default environment configuration here so that
 # TODO: things will not catastropically fail
 
+
 @staticmethod
 def getenv() -> Config:
     """Load environment variables into an object

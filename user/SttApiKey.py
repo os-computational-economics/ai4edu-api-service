@@ -1,9 +1,5 @@
 # Copyright (c) 2024.
-"""@file: SttApiKey.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 3/22/24 00:29
-"""
+"""Deepgram abstractions"""
 from typing import Any, Literal
 
 import requests
@@ -13,6 +9,9 @@ from common.EnvManager import Config
 
 
 class SttApiKeyResponse(BaseModel):
+
+    """Response from Deepgram API for API key generation."""
+
     status: Literal["success", "fail"]  # "success" or "fail"
     error_message: str | None = None
     key: str
@@ -21,17 +20,25 @@ class SttApiKeyResponse(BaseModel):
 class SttApiKey:
 
     """SttApiKey: Generate a new API key for Deepgram Speech-to-Text.
+
     This key will be sent to the user for use in the client-side.
     The only scope is "usage:write".
     """
 
-    def __init__(self, CONFIG: Config):
-        self.DEEPGRAM_API_KEY: str = CONFIG["DEEPGRAM_API_KEY"]
-        self.DEEPGRAM_PROJECT_ID: str = CONFIG["DEEPGRAM_PROJECT_ID"]
+    def __init__(self, config: Config) -> None:
+        """Initialize with the Deepgram API key and project ID."""
+        self.DEEPGRAM_API_KEY: str = config["DEEPGRAM_API_KEY"]
+        self.DEEPGRAM_PROJECT_ID: str = config["DEEPGRAM_PROJECT_ID"]
 
-    def generate_key(self):
+    def generate_key(self) -> tuple[str, str]:
         """Generate a new API key for the user.
-        :return:
+
+        Raises:
+            ValueError: If the API key generation fails.
+
+        Returns:
+            The API key and ID
+
         """
         url = f"https://api.deepgram.com/v1/projects/{self.DEEPGRAM_PROJECT_ID}/keys"
 
@@ -47,10 +54,10 @@ class SttApiKey:
             "Authorization": f"Token {self.DEEPGRAM_API_KEY}",
         }
 
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
 
         # load the response content as a dictionary
-        response_dict: dict[str, Any] = response.json()
+        response_dict: dict[str, Any] = response.json()  # pyright: ignore[reportExplicitAny]
 
         # extract the API key from the dictionary
         api_key: str = response_dict.get("key", "")

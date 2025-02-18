@@ -173,7 +173,7 @@ class UserValue:
     last_name: str = ""
     email: str = ""
     student_id: str = ""
-    workspace_role: dict[str, Any] = {}
+    workspace_role: dict[str, Any] = {}  # pyright: ignore[reportExplicitAny]
     system_admin: bool = False
     school_id: int = 0
     last_login: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))

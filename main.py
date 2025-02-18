@@ -29,7 +29,6 @@ from admin.AgentManager import router as AgentRouter  # noqa: N812
 from admin.Thread import router as ThreadRouter  # noqa: N812
 from admin.Workspace import router as WorkspaceRouter  # noqa: N812
 from common.AuthSSO import AuthSSO
-from common.DynamicAuth import DynamicAuth
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
 from common.MessageStorageHandler import MessageStorageHandler
@@ -38,7 +37,6 @@ from middleware.authorization import AuthorizationMiddleware, extract_token
 from user.ChatStream import ChatStream, ChatStreamModel
 from user.Feedback import router as FeedbackRouter  # noqa: N812
 from user.GetAgent import router as GetAgentRouter  # noqa: N812
-from user.SttApiKey import SttApiKey, SttApiKeyResponse
 from user.Threads import new_thread
 from user.TtsStream import TtsStream
 from utils.response import Response, response
@@ -165,11 +163,8 @@ async def stream_chat(chat_stream_model: ChatStreamModel) -> EventSourceResponse
         An EventSourceResponse with the chat stream.
 
     """
-    # auth = DynamicAuth()
-    # if not auth.verify_auth_code(chat_stream_model.dynamic_auth_code):
-    #     return ChatSingleCallResponse(status="fail", messages=[], thread_id="")
     chat_instance = ChatStream(
-        chat_stream_model.provider, openai_client, anthropic_client, CONFIG=CONFIG,
+        chat_stream_model.provider, openai_client, anthropic_client, config=CONFIG,
     )
     return chat_instance.stream_chat(chat_stream_model)
 
@@ -197,9 +192,9 @@ async def get_tts_file(
     serves the TTS audio file for the specified session id and chunk id.
 
     Args:
-        tts_session_id:
-        chunk_id:
-        background_tasks:
+        tts_session_id: Session ID for TTS
+        chunk_id: Chunk ID
+        background_tasks: Background tasks
 
     Raises:
         HTTPException: If the file does not exist
@@ -221,31 +216,6 @@ async def get_tts_file(
     raise HTTPException(status_code=404, detail="File not found")
 
 
-@app.get(f"{URL_PATHS['current_dev_user']}/get_temp_stt_auth_code")
-@app.get(f"{URL_PATHS['current_prod_user']}/get_temp_stt_auth_code")
-def get_temp_stt_auth_code(dynamic_auth_code: str) -> SttApiKeyResponse:
-    """ENDPOINT: /user/get_temp_stt_auth_code
-
-    Generates a temporary STT auth code for the user.
-
-    Args:
-        dynamic_auth_code: The dynamic auth code provided by the user.
-
-    Returns:
-        A SttApiKeyResponse containing the temporary STT auth code if the auth code is
-        valid otherwise an error message.
-
-    """
-    auth = DynamicAuth(config=CONFIG)
-    if not auth.verify_auth_code(dynamic_auth_code):
-        return SttApiKeyResponse(
-            status="fail", error_message="Invalid auth code", key="",
-        )
-    stt_key_instance = SttApiKey(CONFIG=CONFIG)
-    api_key, _ = stt_key_instance.generate_key()
-    return SttApiKeyResponse(status="success", error_message=None, key=api_key)
-
-
 @app.get(f"{URL_PATHS['current_dev_user']}/get_new_thread")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_new_thread")
 def get_new_thread(
@@ -256,6 +226,11 @@ def get_new_thread(
     """ENDPOINT: /user/get_new_thread
 
     Generates a new thread id for the user.
+
+    Args:
+        request: FastAPI request
+        agent_id: Agent ID
+        workspace_id: Workspace ID
 
     Returns:
         A new thread
@@ -276,9 +251,9 @@ async def upload_file(
     """ENDPOINT: /upload_file
 
     Args:
-        file:
-        file_desc:
-        chunking_separator:
+        file: File to be uploaded
+        file_desc: Description of the file
+        chunking_separator: String chunking separator
 
     Returns:
         A response containing the file id and file name if successful,
@@ -323,7 +298,7 @@ async def get_presigned_url_for_file(file_id: str) -> Response | JSONResponse:
     """ENDPOINT: /get_presigned_url_for_file
 
     Args:
-        file_id:
+        file_id: ID of the file to get the presigned URL for.
 
     Returns:
         A response containing the presigned URL if successful,
@@ -362,7 +337,7 @@ def generate_token(request: Request) -> Response | JSONResponse:
         return response(
             success=False, message="No refresh token provided", status_code=401,
         )
-    auth = UserAuth()
+    auth = UserAuth(config=CONFIG)
     access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
         return response(success=True, data={"access_token": access_token})

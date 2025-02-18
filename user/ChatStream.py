@@ -1,12 +1,9 @@
 # Copyright (c) 2024.
-"""@file: ChatStream.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 2/29/24 15:14
-"""
+"""Tools for handling chat streams"""
 import json
 import uuid
-from typing import Any
+from collections.abc import Generator, Iterator
+from typing import Any, Literal
 
 from anthropic._client import Anthropic as AnthropicClient
 from openai._client import OpenAI as OpenAIClient
@@ -23,6 +20,9 @@ from user.TtsStream import TtsStream
 
 
 class ChatStreamModel(BaseModel):
+
+    """Chat stream parameters."""
+
     dynamic_auth_code: str
     messages: MessageHistory
     thread_id: str | None = None
@@ -34,14 +34,20 @@ class ChatStreamModel(BaseModel):
 
 
 class ChatSingleCallResponse(BaseModel):
-    status: str  # "success" or "fail"
+
+    """Response for a single call chat. (unused)"""
+
+    status: Literal["success", "fail"]  # "success" or "fail"
     error_message: str | None = None
     messages: list[str]
     thread_id: str
 
 
 class ChatStreamResponse(BaseModel):
-    status: str  # "success" or "fail"
+
+    """Response for a chat stream. (unused)"""
+
+    status: Literal["success", "fail"]  # "success" or "fail"
     error_message: str | None = None
     messages: list[str]
     thread_id: str
@@ -49,8 +55,10 @@ class ChatStreamResponse(BaseModel):
 
 class ChatStream:
 
-    """ChatStream: AI chat with OpenAI/Anthropic, streams the output via server-sent events.
-    Using this class requires passing in the full messages history, and the provider (openai or anthropic).
+    """AI chat with OpenAI/Anthropic, streams responses by server-sent events.
+
+    Using this class requires passing in the full messages history, and the provider
+    (openai or anthropic).
     """
 
     def __init__(
@@ -58,12 +66,16 @@ class ChatStream:
         requested_provider: str,
         openai_client: OpenAIClient,
         anthropic_client: AnthropicClient,
-        CONFIG: Config,
-    ):
+        config: Config,
+    ) -> None:
         """Initialize ChatStream with necessary clients and parameters.
-        :param requested_provider: The AI provider to use (openai or anthropic).
-        :param openai_client: OpenAI client for OpenAI API.
-        :param anthropic_client: Anthropic client for Anthropic API.
+
+        Args:
+            requested_provider: The AI provider to use (openai or anthropic).
+            openai_client: OpenAI client for OpenAI API.
+            anthropic_client: Anthropic client for Anthropic API.
+            config: Environment configuration.
+
         """
         self.retrieval_namespace: str = ""
         "The Pinecone index retrieval namespace"
@@ -93,17 +105,25 @@ class ChatStream:
         self.tts_session_id: str = str(uuid.uuid4())
         "The session id for Deepgram Text to Speech"
 
-        self.tts: TtsStream = TtsStream(self.tts_session_id, CONFIG=CONFIG)
+        self.tts: TtsStream = TtsStream(self.tts_session_id, config=config)
         "The TTS stream for Deepgram Text to Speech"
 
-        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler(config=CONFIG)
+        self.message_storage_handler: MessageStorageHandler = MessageStorageHandler(
+            config=config,
+        )
         "The message storage handler for storing messages for this chat"
 
-        self.CONFIG: Config = CONFIG
+        self.CONFIG: Config = config
 
-    def stream_chat(self, chat_stream_model: ChatStreamModel):
+    def stream_chat(self, chat_stream_model: ChatStreamModel) -> EventSourceResponse:
         """Stream chat messages from OpenAI API.
-        :return: A custom Server-Sent event with chat information
+
+        Args:
+            chat_stream_model: The chat stream parameters.
+
+        Returns:
+            A custom Server-Sent event with chat information
+
         """
         self.thread_id = chat_stream_model.thread_id or ""
         self.user_id = chat_stream_model.user_id
@@ -112,7 +132,7 @@ class ChatStream:
         self.retrieval_namespace = f"{chat_stream_model.workspace_id}-{self.agent_id}"
         # messages = self.__messages_processor(chat_stream_model.messages)
         # put last message in messages into the database (human message)
-        lastItem = chat_stream_model.messages[len(chat_stream_model.messages) - 1]
+        last_item = chat_stream_model.messages[len(chat_stream_model.messages) - 1]
         _ = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
@@ -120,7 +140,7 @@ class ChatStream:
             # ! Is this meant to be a string?
             # ! What if it is a:
             # ! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
-            lastItem["content"] or "" if "content" in lastItem else "",
+            last_item["content"] or "" if "content" in last_item else "",
         )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler(config=self.CONFIG)
@@ -129,17 +149,25 @@ class ChatStream:
             self.__chat_generator(chat_stream_model.messages, agent_prompt or ""),
         )
 
-    def __chat_generator(self, messages: MessageHistory, system_prompt: str):
+    def __chat_generator(
+        self, messages: MessageHistory, system_prompt: str,
+    ) -> Generator[str, None, None]:
         """Chat generator.
-        :param messages: All previous messages
-        :return:
+
+        Args:
+            messages: All previous messages
+            system_prompt: The system prompt for the chat.
+
+        Yields:
+            A JSON-formatted string with the chat message
+
         """
         print(f"Using {self.requested_provider}")
-        lastMessage = messages[len(messages) - 1]
+        last_message = messages[len(messages) - 1]
         stream = chat_stream_with_retrieve(
             self.thread_id,
             # ! Assumes users are only able to send text messages
-            str(lastMessage["content"]) if "content" in lastMessage else "",
+            str(last_message["content"]) if "content" in last_message else "",
             self.retrieval_namespace,
             system_prompt,
             messages,
@@ -147,7 +175,7 @@ class ChatStream:
             self.requested_provider,
         )
         response_text = ""
-        all_sources: list[dict[str, Any]] = []
+        all_sources: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
         sentence_ender = [".", "?", "!"]
         chunk_buffer = ""
@@ -220,10 +248,15 @@ class ChatStream:
 
     def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
         self, messages: list[ChatCompletionMessageParam],
-    ):
+    ) -> Iterator[str]:
         """OpenAI chat generator.
-        :param messages:
-        :return:
+
+        Args:
+            messages: All previous messages
+
+        Yields:
+            A generator for the chat response
+
         """
         with self.openai_client.chat.completions.create(
             model="gpt-4o",
@@ -237,17 +270,22 @@ class ChatStream:
 
     def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
         self, messages: list[Message],
-    ):
+    ) -> Iterator[str]:
         """Anthropic chat generator.
-        :param messages:
-        :return:
+
+        Args:
+            messages: All previous messages
+
+        Yields:
+            A generator for the chat response
+
         """
         system_message_content = ""
         system_message = messages.pop(0)
         if system_message["role"] == "system":
             system_message_content = system_message["content"]
         [
-            m.update({"content": str(m["content"] if "content" in m else "")})
+            m.update({"content": str(m.get("content", ""))})
             for m in messages
         ]
         with self.anthropic_client.messages.stream(
@@ -257,18 +295,23 @@ class ChatStream:
             model="claude-3-sonnet-20240229",
         ) as stream:
             for text in stream.text_stream:
-                if text != "":
+                if text:
                     yield text
 
     def __process_chunking(
         self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int,
-    ):
+    ) -> tuple[str, int]:
         """Process the chunking.
-        :param sentence_ender:
-        :param new_text:
-        :param chunk_buffer:
-        :param chunk_id:
-        :return:
+
+        Args:
+            sentence_ender: The sentence ender.
+            new_text: The new text.
+            chunk_buffer: The current chunk buffer.
+            chunk_id: The current chunk id.
+
+        Returns:
+            The updated chunk buffer and chunk id.
+
         """
         chunk_id += 1
         new_text_split = new_text.split(sentence_ender)
@@ -280,10 +323,15 @@ class ChatStream:
 
     def __messages_processor(  # pyright: ignore[reportUnusedFunction]
         self, messages: MessageHistory,
-    ):
+    ) -> list[Message]:
         """Process the message.
-        :param messages: {0: {"role": "user", "content": "Hello, how are you?"}, 1: {"role": "assistant", "content": "I am fine, thank you."}}
-        :return:
+
+        Args:
+            messages: All previous messages
+
+        Returns:
+            The processed messages.
+
         """
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler(config=self.CONFIG)

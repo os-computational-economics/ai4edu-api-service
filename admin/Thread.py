@@ -86,7 +86,7 @@ def get_thread_list(
     agent_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-):
+) -> Response | JSONResponse:
     """List threads with pagination, filtered by agent creator.
 
     Args:

@@ -96,7 +96,7 @@ class FileStorageHandler:
             cache_key, self.REDIS_CACHE_EXPIRY, json.dumps(cache_data),
         )
 
-    def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:
+    def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:  # pyright: ignore[reportExplicitAny]
         """Retrieve cached file information from Redis.
 
         Args:
