@@ -2,6 +2,7 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-treefmt.url = "github:nixos/nixpkgs/nixos-unstable";
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
   outputs = {...} @ inputs:
@@ -12,6 +13,9 @@
           config = {
             allowUnfree = true;
           };
+        };
+        pkgs-treefmt = (import inputs.nixpkgs-treefmt) {
+          inherit system;
         };
       in {
         devShells = rec {
@@ -137,7 +141,7 @@
           default = docker-python;
         };
         formatter = let
-          treefmtconfig = inputs.treefmt-nix.lib.evalModule pkgs {
+          treefmtconfig = inputs.treefmt-nix.lib.evalModule pkgs-treefmt {
             projectRootFile = "flake.nix";
             programs = {
               alejandra.enable = true;

@@ -71,7 +71,8 @@ class Agent(Base):
     @override
     def __repr__(self) -> str:
         return f"""Agent id: {self.agent_id}, name: {self.agent_name}, creator: {
-            self.creator}, status: {self.status}, model: {self.model}"""
+            self.creator
+        }, status: {self.status}, model: {self.model}"""
 
 
 class AgentStatus(IntEnum):
@@ -132,7 +133,8 @@ class Thread(Base):
     @override
     def __repr__(self) -> str:
         return f"""Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {
-            self.created_at}, agent_id: {self.agent_id}"""
+            self.created_at
+        }, agent_id: {self.agent_id}"""
 
 
 class ThreadValue:
@@ -211,8 +213,9 @@ class RefreshToken(Base):
 
     @override
     def __repr__(self) -> str:
-        return f"""RefreshToken id: {self.token_id}, user_id: {
-            self.user_id}, token: {self.token}"""
+        return f"""RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {
+            self.token
+        }"""
 
 
 class RefreshTokenValue:
@@ -247,7 +250,8 @@ class File(Base):
     @override
     def __repr__(self) -> str:
         return f"""Files id: {self.file_id}, name: {self.file_name}, type: {
-            self.file_type}, status: {self.file_status}"""
+            self.file_type
+        }, status: {self.file_status}"""
 
 
 class FileValue:
@@ -281,7 +285,8 @@ class Workspace(Base):
     @override
     def __repr__(self) -> str:
         return f"""AIWorkspace id: {self.workspace_id}, name: {
-            self.workspace_name}, status: {self.status}, school_id: {self.school_id}"""
+            self.workspace_name
+        }, status: {self.status}, school_id: {self.school_id}"""
 
 
 class WorkspaceStatus(IntEnum):
@@ -321,7 +326,8 @@ class UserWorkspace(Base):
     @override
     def __repr__(self) -> str:
         return f"""AIUserWorkspace user_id: {self.user_id}, workspace_id: {
-            self.workspace_id}, role: {self.role}"""
+            self.workspace_id
+        }, role: {self.role}"""
 
 
 class UserWorkspaceValue:

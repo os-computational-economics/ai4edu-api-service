@@ -13,4 +13,4 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run the formatter
         run: |-
-          nix fmt -- --fail-on-change; \
+          nix fmt -- --ci --excludes "ruff.toml"; \

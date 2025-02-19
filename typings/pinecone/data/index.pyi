@@ -82,7 +82,12 @@ class Index:
             ...     {"key": "value"},
             ...     {"indices": [1, 2], "values": [0.2, 0.4]},
             ... )
-            >>> ("id1", [1.0, 2.0, 3.0], None, {"indices": [1, 2], "values": [0.2, 0.4]})
+            >>> (
+            ...     "id1",
+            ...     [1.0, 2.0, 3.0],
+            ...     None,
+            ...     {"indices": [1, 2], "values": [0.2, 0.4]},
+            ... )
             >>> ("id1", [1.0, 2.0, 3.0], {"key": "value"}), ("id2", [1.0, 2.0, 3.0])
 
         If a Vector object is used, a Vector object must be of the form
@@ -104,7 +109,10 @@ class Index:
 
         Examples:
             >>> index.upsert(
-            ...     [("id1", [1.0, 2.0, 3.0], {"key": "value"}), ("id2", [1.0, 2.0, 3.0])]
+            ...     [
+            ...         ("id1", [1.0, 2.0, 3.0], {"key": "value"}),
+            ...         ("id2", [1.0, 2.0, 3.0]),
+            ...     ]
             ... )
             >>>
             >>> index.upsert([{'id': 'id1', 'values': [1.0, 2.0, 3.0], 'metadata': {'key': 'value'}},
