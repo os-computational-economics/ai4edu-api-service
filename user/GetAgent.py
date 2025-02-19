@@ -7,9 +7,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
 from starlette.responses import JSONResponse
 
+from migrations.models import Agent, AgentStatus, AgentValue
 from migrations.session import get_db
 from utils.response import Response, response
 
@@ -39,26 +39,24 @@ def get_agent_by_id(
     """
     if not check_uuid_format(agent_id):
         return response(False, status_code=400, message="Invalid UUID format")
-    conn = db.connection()
-    # ! Fix this to not have an SQL injection vulnerability
-    result = conn.execute(
-        text("select * from ai_agents where agent_id = '" + str(agent_id) + "'"),
-    )
-    row = result.first()
-    logging.info(f"User requested agent settings: {row}")
 
-    if row is None:
+    agent: AgentValue | None = (
+        db.query(Agent).filter(Agent.agent_id == agent_id).first()
+    )  # pyright: ignore[reportAssignmentType]
+    logging.info(f"User requested agent settings: {agent}")
+
+    if agent is None:
         return response(False, status_code=404, message="Agent not found")
-    if row[7] != 1:  # the row[7] -= 1 checks if the model is not active
+    if agent.status != AgentStatus.ACTIVE:
         return response(False, status_code=404, message="Agent is inactive")
     return response(
         True,
         data={
-            "agent_name": row[2],
-            "course_id": row[3],
-            "voice": row[6],
-            "model_choice": row[8],
-            "model": row[9],
+            "agent_name": agent.agent_name,
+            "course_id": agent.workspace_id,
+            "voice": agent.voice,
+            "model_choice": agent.allow_model_choice,
+            "model": agent.model,
         },
     )
 
