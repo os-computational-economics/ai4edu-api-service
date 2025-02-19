@@ -1,7 +1,7 @@
 # Copyright (c) 2024.
 """Text to speech tools"""
 
-import os
+from pathlib import Path
 
 import requests
 
@@ -13,7 +13,7 @@ class TtsStream:
 
     # Define the API endpoint
     URL: str = "https://api.deepgram.com/v1/speak?model=aura-asteria-en"
-    TTS_AUDIO_CACHE_FOLDER: str = "volume_cache/tts_audio_cache"
+    TTS_AUDIO_CACHE_FOLDER: Path = Path("volume_cache/tts_audio_cache")
 
     def __init__(self, tts_session_id: str, config: Config) -> None:
         """Initialize the TtsStream class
@@ -49,16 +49,14 @@ class TtsStream:
         response = requests.post(self.URL, headers=headers, json=payload, timeout=30)
 
         # Check if the request was successful
+        # ! TODO: Define magics somewhere
         if response.status_code == 200:
             # check if the folder exists
-            # ! DO NOT USE os.path anymore, use Pathlib
-            if not os.path.exists(self.TTS_AUDIO_CACHE_FOLDER):
-                os.makedirs(self.TTS_AUDIO_CACHE_FOLDER)
+            Path.mkdir(self.TTS_AUDIO_CACHE_FOLDER, exist_ok=True, parents=True)
             # Save the response content to a file
-            with open(
-                f"./{self.TTS_AUDIO_CACHE_FOLDER}/{self.tts_session_id}_{chunk_id}.mp3",
-                "wb",
-            ) as f:
+            with (
+                self.TTS_AUDIO_CACHE_FOLDER / self.tts_session_id / f"{chunk_id}.mp3"
+            ).open("wb") as f:
                 _ = f.write(response.content)
             print("TTS file saved successfully.")
         else:

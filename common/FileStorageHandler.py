@@ -3,8 +3,8 @@
 
 import json
 import logging
-import os
 import uuid
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -25,9 +25,9 @@ class FileStorageHandler:
     """Class for retrieving and storing files"""
 
     # ! Make these environment variables
-    LOCAL_FOLDER: str = "./volume_cache/"
+    LOCAL_FOLDER: Path = Path("./volume_cache/")
     BUCKET_NAME: str = "ai4edu-storage"
-    S3_FOLDER: str = "ai4edu_data/"
+    S3_FOLDER: Path = Path("ai4edu_data/")
     REDIS_CACHE_EXPIRY: int = 60 * 60 * 24  # 24 hours in seconds
 
     def __init__(self, config: Con) -> None:
@@ -54,16 +54,7 @@ class FileStorageHandler:
             self.db = next(get_db())
         return self.db
 
-    @staticmethod
-    def _ensure_directory_exists(path: str) -> None:
-        """Ensure the directory of the given path exists."""
-        # if the path is a directory (ends with '/'), remove the last character
-        # TODO: migrate to Pathlib
-        directory = path[:-1] if path.endswith("/") else os.path.dirname(path)
-        if not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-
-    def _get_s3_object_name(self, file_id: str, file_ext: str) -> str:
+    def _get_s3_object_name(self, file_id: str, file_ext: str) -> Path:
         """Construct the S3 object name based on the file_id and extension.
 
         Args:
@@ -74,7 +65,7 @@ class FileStorageHandler:
             The S3 object name.
 
         """
-        return os.path.join(self.S3_FOLDER, f"{file_id}{file_ext}")
+        return self.S3_FOLDER / f"{file_id}{file_ext}"
 
     def _cache_file_info(self, file_obj: FileValue) -> None:
         """Cache file information in Redis.
@@ -99,7 +90,7 @@ class FileStorageHandler:
             json.dumps(cache_data),
         )
 
-    def _get_cached_file_info(self, file_id: str) -> dict[str, Any] | None:  # pyright: ignore[reportExplicitAny]
+    def _get_cached_file_info(self, file_id: str) -> dict[str, str] | None:
         """Retrieve cached file information from Redis.
 
         Args:
@@ -111,16 +102,21 @@ class FileStorageHandler:
         """
         cache_key = f"file_info:{file_id}"
         cached_data = str(self.redis_client.get(cache_key) or "")
-        return json.loads(cached_data) if cached_data else None
+        if not cached_data:
+            return None
+        data: dict[str, Any] = json.loads(cached_data)  # pyright: ignore[reportExplicitAny]
+        for key, value in data.items():  # pyright: ignore[reportAny]
+            data[key] = str(value)  # pyright: ignore[reportAny] Convert to string
+        return data
 
-    def get_file(self, file_id: str) -> str | None:
+    def get_file(self, file_id: str) -> Path | None:
         """Get the content of a file from the local cache or S3 bucket.
 
         Args:
             file_id: The ID of the file.
 
         Returns:
-            The content of the file as a string, or None if the file is not found.
+            Path to the file, or None if the file is not found.
 
         """
         try:
@@ -142,9 +138,10 @@ class FileStorageHandler:
 
             file_name, file_ext = file_info["file_name"], file_info["file_ext"]
 
-            local_path = os.path.join(self.LOCAL_FOLDER, str(file_id), file_name)
-            self._ensure_directory_exists(local_path)
-            if not os.path.exists(local_path):
+            local_dir = (self.LOCAL_FOLDER / str(file_id)) / file_name
+            local_path = local_dir / file_name
+            Path.mkdir(local_dir, parents=True, exist_ok=True)
+            if not local_path.exists():
                 s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
                 _ = self.__download_file(self.BUCKET_NAME, s3_object_name, local_path)
 
@@ -178,14 +175,14 @@ class FileStorageHandler:
 
         """
         file_id = uuid.uuid4()
-        file_ext = os.path.splitext(file_name)[1]
+        file_ext = Path(file_name).suffix
         try:
             # Store locally
-            local_folder = os.path.join(self.LOCAL_FOLDER, str(file_id))
-            self._ensure_directory_exists(local_folder + "/")
-            local_path = os.path.join(local_folder, file_name)
+            local_folder = self.LOCAL_FOLDER / str(file_id)
+            Path.mkdir(local_folder, parents=True, exist_ok=True)
+            local_path = local_folder / file_name
 
-            with open(local_path, "wb") as local_file:
+            with local_path.open("rw") as local_file:
                 _ = local_file.write(file_obj)
         except Exception as e:
             logger.error(f"Error saving file locally: {e!s}")
@@ -268,8 +265,8 @@ class FileStorageHandler:
     def __upload_file(
         self,
         bucket: str,
-        local_path: str,
-        object_name: str,
+        local_path: Path,
+        object_name: Path,
         content_type: str = "",
     ) -> bool:
         """Upload a file to the specified S3 bucket.
@@ -287,13 +284,13 @@ class FileStorageHandler:
         try:
             if content_type:
                 self.s3_client.upload_file(
-                    local_path,
+                    str(local_path),
                     bucket,
-                    object_name,
+                    str(object_name),
                     ExtraArgs={"ContentType": content_type},
                 )
             else:
-                self.s3_client.upload_file(local_path, bucket, object_name)
+                self.s3_client.upload_file(str(local_path), bucket, str(object_name))
         except ClientError as e:
             logger.error(f"Error uploading file to S3: {e}")
             return False
@@ -302,8 +299,8 @@ class FileStorageHandler:
     def __download_file(
         self,
         bucket_name: str,
-        object_name: str,
-        local_path: str,
+        object_name: Path,
+        local_path: Path,
     ) -> bool:
         """Download a file from the specified S3 bucket.
 
@@ -316,9 +313,10 @@ class FileStorageHandler:
             True if the file is downloaded successfully, False otherwise.
 
         """
-        self._ensure_directory_exists(local_path)
+        local_dir = local_path.parent
+        local_dir.mkdir(parents=True, exist_ok=True)
         try:
-            self.s3_client.download_file(bucket_name, object_name, local_path)
+            self.s3_client.download_file(bucket_name, str(object_name), str(local_path))
         except ClientError as e:
             logger.error(f"Error downloading file from S3: {e}")
             return False

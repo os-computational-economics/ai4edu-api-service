@@ -145,7 +145,7 @@ def create_agent(
                 _ = embed_file(
                     "namespace-test",
                     f"{agent_data.workspace_id}-{new_agent_id}",
-                    file_path,
+                    str(file_path),
                     file_id,
                     file_name,
                     "pdf",
@@ -283,7 +283,7 @@ def edit_agent(
                 _ = embed_file(
                     "namespace-test",
                     f"{update_data.workspace_id}-{update_data.agent_id}",
-                    file_path,
+                    str(file_path),
                     file_id,
                     file_name,
                     "pdf",

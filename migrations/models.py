@@ -95,7 +95,11 @@ class AgentValue:
     status: AgentStatus = AgentStatus.ACTIVE
     allow_model_choice: bool = True
     model: str = ""
-    agent_files: dict[str, str] = {}
+    agent_files: dict[str, str]
+
+    def __init__(self) -> None:
+        """Initialize workspace"""
+        self.agent_files = {}
 
 
 class AgentTeacherResponse(AgentValue):
@@ -172,11 +176,15 @@ class UserValue:
     last_name: str = ""
     email: str = ""
     student_id: str = ""
-    workspace_role: dict[str, Any] = {}  # pyright: ignore[reportExplicitAny]
+    workspace_role: dict[str, Any]  # pyright: ignore[reportExplicitAny]
     system_admin: bool = False
     school_id: int = 0
     last_login: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     create_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+
+    def __init__(self) -> None:
+        """Initialize workspace"""
+        self.workspace_role = {}
 
 
 class RefreshToken(Base):

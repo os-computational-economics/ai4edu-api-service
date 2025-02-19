@@ -453,7 +453,9 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
 
     s3_test_get_file_path = "fail"
     if s3_test_put_file_id != "fail":
-        s3_test_get_file_path = file_storage.get_file(s3_test_put_file_id) or "fail"
+        s3_test_get_file_path = (
+            str(file_storage.get_file(s3_test_put_file_id)) or "fail"
+        )
 
     # test AWS DynamoDB access
     # current timestamp

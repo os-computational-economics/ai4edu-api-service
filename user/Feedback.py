@@ -54,7 +54,7 @@ def submit_rating(
         if (rating_data.message_id and rating_data.rating in {0, 1}) or (
             not rating_data.message_id
             and rating_data.rating > 0
-            and rating_data.rating <= 5
+            and rating_data.rating <= 5  # noqa: PLR2004 This just means 5* rating, we can make this a constant if we want
         ):
             db.add(
                 UserFeedback(
