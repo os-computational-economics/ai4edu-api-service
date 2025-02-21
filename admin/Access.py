@@ -2,6 +2,7 @@
 """Endpoints associated with access"""
 
 import logging
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -11,7 +12,7 @@ from starlette.responses import JSONResponse
 from common.JWTValidator import get_jwt
 from migrations.models import User, UserWorkspace
 from migrations.session import get_db
-from utils.response import Response, response
+from utils.response import forbidden, response
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def get_user_list(
     page: int = 1,
     page_size: int = 10,
     workspace_id: str = "all",
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Get a list of all users with pagination.
 
     Args:
@@ -42,20 +43,12 @@ def get_user_list(
     user_jwt_content = get_jwt(request.state)
 
     if workspace_id == "all" and user_jwt_content["system_admin"] is not True:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     if (
         user_jwt_content["workspace_role"].get(workspace_id, None) is None
         and not user_jwt_content["system_admin"]
     ):
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
 
     is_teacher_or_admin = False
     if (
@@ -89,7 +82,9 @@ def get_user_list(
             for user in users
         ]
 
-        return response(True, data={"user_list": user_list, "total": total})
+        return response(
+            True, status=HTTPStatus.OK, data={"user_list": user_list, "total": total}
+        )
     except Exception as e:
         logger.error(f"Error fetching user list: {e}")
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))

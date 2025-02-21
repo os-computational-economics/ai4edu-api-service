@@ -7,6 +7,7 @@ from typing import Any, Literal, override
 from uuid import UUID as UUIDType  # noqa: N811
 from zoneinfo import ZoneInfo
 
+from pydantic import BaseModel
 from sqlalchemy import (
     JSON,
     UUID,
@@ -83,7 +84,7 @@ class AgentStatus(IntEnum):
     DELETED = 2
 
 
-class AgentValue:
+class AgentValue(BaseModel):
     """Python representation of an Agent row"""
 
     agent_id: str = ""
@@ -100,6 +101,7 @@ class AgentValue:
 
     def __init__(self) -> None:
         """Initialize workspace"""
+        super().__init__()
         self.agent_files = {}
 
 

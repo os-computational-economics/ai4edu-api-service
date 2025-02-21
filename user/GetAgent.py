@@ -2,6 +2,7 @@
 """Gets an agent by its ID"""
 
 import logging
+from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
@@ -11,7 +12,7 @@ from starlette.responses import JSONResponse
 
 from migrations.models import Agent, AgentStatus, AgentValue
 from migrations.session import get_db
-from utils.response import Response, response
+from utils.response import response
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ router = APIRouter()
 def get_agent_by_id(
     agent_id: str,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Get the settings of an agent by its ID
 
     Args:
@@ -38,7 +39,9 @@ def get_agent_by_id(
 
     """
     if not check_uuid_format(agent_id):
-        return response(False, status_code=400, message="Invalid UUID format")
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Invalid UUID format"
+        )
 
     agent: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == agent_id).first()
@@ -46,11 +49,12 @@ def get_agent_by_id(
     logging.info(f"User requested agent settings: {agent}")
 
     if agent is None:
-        return response(False, status_code=404, message="Agent not found")
+        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent not found")
     if agent.status != AgentStatus.ACTIVE:
-        return response(False, status_code=404, message="Agent is inactive")
+        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent is inactive")
     return response(
         True,
+        status=HTTPStatus.OK,
         data={
             "agent_name": agent.agent_name,
             "course_id": agent.workspace_id,

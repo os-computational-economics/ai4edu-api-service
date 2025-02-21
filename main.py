@@ -5,6 +5,7 @@ import logging
 import time
 import uuid
 from datetime import datetime
+from http import HTTPStatus
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -39,7 +40,7 @@ from user.Feedback import router as FeedbackRouter  # noqa: N812
 from user.GetAgent import router as GetAgentRouter  # noqa: N812
 from user.Threads import new_thread
 from user.TtsStream import TtsStream
-from utils.response import Response, response
+from utils.response import response
 
 logging.basicConfig(
     level=logging.INFO,
@@ -139,7 +140,7 @@ app.add_middleware(
 
 @app.get(f"{URL_PATHS['current_dev_user']}/sso")
 @app.get(f"{URL_PATHS['current_prod_user']}/sso")
-async def sso(ticket: str, came_from: str) -> RedirectResponse | None:
+async def sso(ticket: str, came_from: str) -> RedirectResponse:
     """ENDPOINT: /user/sso
 
     Args:
@@ -232,7 +233,7 @@ def get_new_thread(
     request: Request,
     agent_id: str,
     workspace_id: str,
-) -> Response | JSONResponse | None:
+) -> JSONResponse:
     """ENDPOINT: /user/get_new_thread
 
     Generates a new thread id for the user.
@@ -257,7 +258,7 @@ async def upload_file(
     file: UploadFile | None,
     file_desc: str | None = None,
     chunking_separator: str | None = None,
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """ENDPOINT: /upload_file
 
     Args:
@@ -271,7 +272,9 @@ async def upload_file(
 
     """
     if file is None:
-        return response(success=False, message="No file provided", status_code=400)
+        return response(
+            success=False, message="No file provided", status=HTTPStatus.BAD_REQUEST
+        )
     try:
         # Read the file content
         file_content = await file.read()
@@ -292,22 +295,27 @@ async def upload_file(
             return response(
                 success=False,
                 message="Failed to upload file",
-                status_code=500,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
         return response(
             success=True,
+            status=HTTPStatus.OK,
             data={"file_id": file_id, "file_name": file.filename},
         )
     except Exception as e:
         logging.error(f"Failed to upload file: {e!s}")
-    return response(success=False, message="unable to upload file", status_code=500)
+    return response(
+        success=False,
+        message="unable to upload file",
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_prod_admin']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_dev_user']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_presigned_url_for_file")
-async def get_presigned_url_for_file(file_id: str) -> Response | JSONResponse:
+async def get_presigned_url_for_file(file_id: str) -> JSONResponse:
     """ENDPOINT: /get_presigned_url_for_file
 
     Args:
@@ -320,22 +328,24 @@ async def get_presigned_url_for_file(file_id: str) -> Response | JSONResponse:
     """
     file_id = file_id or ""
     if not file_id:
-        return response(success=False, message="No file ID provided", status_code=400)
+        return response(
+            success=False, message="No file ID provided", status=HTTPStatus.BAD_REQUEST
+        )
     url = file_storage.get_presigned_url(file_id)
     if url is None:
         return response(
             success=False,
             message="Failed to generate presigned URL",
-            status_code=500,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
-    return response(success=True, data={"url": url})
+    return response(success=True, status=HTTPStatus.OK, data={"url": url})
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_dev_user']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_user']}/generate_access_token")
-def generate_token(request: Request) -> Response | JSONResponse:
+def generate_token(request: Request) -> JSONResponse:
     """ENDPOINT: /generate_access_token
 
     Generates a temporary STT auth code for the user.
@@ -352,16 +362,18 @@ def generate_token(request: Request) -> Response | JSONResponse:
         return response(
             success=False,
             message="No refresh token provided",
-            status_code=401,
+            status=HTTPStatus.UNAUTHORIZED,
         )
     auth = UserAuth(config=CONFIG)
     access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
-        return response(success=True, data={"access_token": access_token})
+        return response(
+            success=True, status=HTTPStatus.OK, data={"access_token": access_token}
+        )
     return response(
         success=False,
         message="Failed to generate access token",
-        status_code=401,
+        status=HTTPStatus.UNAUTHORIZED,
     )
 
 
@@ -369,14 +381,14 @@ def generate_token(request: Request) -> Response | JSONResponse:
 @app.get(f"{URL_PATHS['current_prod_admin']}/ping")
 @app.get(f"{URL_PATHS['current_dev_user']}/ping")
 @app.get(f"{URL_PATHS['current_prod_user']}/ping")
-async def ping() -> Response | JSONResponse:
+async def ping() -> JSONResponse:
     """ENDPOINT: /ping
 
     Returns:
         A response with "pong"
 
     """
-    return response(success=True, message="pong")
+    return response(success=True, status=HTTPStatus.OK, message="pong")
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/ai4edu_testing")

@@ -45,8 +45,8 @@ services:
       - ./db:/docker-entrypoint-initdb.d:ro
       # If you want to use an external database viewer, uncomment the following "ports" section.
       # NOTE: This will cause port conflicts if you have a local PostgreSQL server running.
-    #    ports:
-    #      - 5432:5432
+    # ports:
+    #   - 5432:5432
 
     expose:
       - 5432

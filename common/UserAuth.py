@@ -119,9 +119,9 @@ class UserAuth:
                 .filter(RefreshToken.token == refresh_token)
                 .first()
             )  # pyright: ignore[reportAssignmentType]
-            if refresh_token_obj and refresh_token_obj.expire_at > datetime.now(
-                tz=ZoneInfo(self.config["TIMEZONE"])
-            ):
+            if refresh_token_obj and refresh_token_obj.expire_at.astimezone(
+                ZoneInfo(self.config["TIMEZONE"])
+            ) > datetime.now(tz=ZoneInfo(self.config["TIMEZONE"])):
                 # refresh token is valid, get user info
                 user_id = refresh_token_obj.user_id
                 user: UserValue = (

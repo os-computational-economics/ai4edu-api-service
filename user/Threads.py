@@ -3,6 +3,7 @@
 
 import logging
 import uuid
+from http import HTTPStatus
 
 from fastapi import Request
 from starlette.responses import JSONResponse
@@ -10,7 +11,7 @@ from starlette.responses import JSONResponse
 from common.JWTValidator import get_jwt
 from migrations.models import Agent, Thread
 from migrations.session import get_db
-from utils.response import Response, response
+from utils.response import response
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def new_thread(
     request: Request,
     agent_id: str,
     workspace_id: str,
-) -> Response | JSONResponse | None:
+) -> JSONResponse:
     """Creates a newe thread with the given agent_id and workspace_id
 
     Args:
@@ -28,7 +29,7 @@ def new_thread(
         workspace_id: Workspace ID
 
     Returns:
-        Response | JSONResponse | None: Response object if successful, None otherwise
+        Response object if successful, None otherwise
 
     """
     user_jwt_content = get_jwt(request.state)
@@ -40,12 +41,16 @@ def new_thread(
         is_user_in_workspace: bool = bool(workspace_role.get(workspace_id, False))
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
-            return response(False, {}, "User is not in workspace")
+            return response(
+                False, status=HTTPStatus.FORBIDDEN, message="User is not in workspace"
+            )
         thread_id = str(uuid.uuid4())
         agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             logger.error(f"Agent not found: {agent_id}")
-            return response(False, {}, "Agent not found")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, data={}, message="Agent not found"
+            )
         thread = Thread(
             thread_id=thread_id,
             user_id=user_id,
@@ -59,10 +64,18 @@ def new_thread(
         try:
             db.commit()
             logger.info(f"New thread created: {thread_id}")
-            return response(True, {"thread_id": thread_id})
+            return response(True, status=HTTPStatus.OK, data={"thread_id": thread_id})
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create new thread: {e!s}")
-            return response(False, {}, "Failed to create new thread")
+            return response(
+                False,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message="Failed to create new thread",
+            )
 
-    return None
+    return response(
+        False,
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        message="An unknown error occurred",
+    )

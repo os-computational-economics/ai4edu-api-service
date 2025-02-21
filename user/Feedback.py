@@ -1,6 +1,7 @@
 # Copyright (c) 2024.
 """Tools for handling user feedback"""
 
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -13,7 +14,7 @@ from common.JWTValidator import get_jwt
 from migrations.models import UserFeedback
 from migrations.session import get_db
 from user.GetAgent import check_uuid_format
-from utils.response import Response, response
+from utils.response import response
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ def submit_rating(
     request: Request,
     rating_data: RatingData,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Gets the settings of an agent by its ID
 
     Args:
@@ -45,7 +46,9 @@ def submit_rating(
 
     """
     if not check_uuid_format(rating_data.thread_id):
-        return response(False, status_code=400, message="Invalid UUID format")
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Invalid UUID format"
+        )
     user_jwt_content = get_jwt(request.state)
 
     try:
@@ -67,13 +70,19 @@ def submit_rating(
                 ),
             )
             db.commit()
-            return response(True)
-        return response(False, message="Invalid rating value")
+            return response(True, status=HTTPStatus.OK)
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Invalid rating value"
+        )
     except ValueError:
-        return response(False, message="Rating value was non-integer")
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Rating value was non-integer"
+        )
     except IntegrityError:
         db.rollback()
-        return response(False, message="Could not submit feedback")
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Could not submit feedback"
+        )
     except Exception as e:
         db.rollback()
-        return response(False, message=str(e))
+        return response(False, status=HTTPStatus.BAD_REQUEST, message=str(e))

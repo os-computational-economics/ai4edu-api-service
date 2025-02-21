@@ -4,6 +4,7 @@
 import csv
 import io
 import logging
+from http import HTTPStatus
 from typing import Annotated
 
 import chardet
@@ -26,7 +27,7 @@ from migrations.models import (
     WorkspaceValue,
 )
 from migrations.session import get_db
-from utils.response import Response, response
+from utils.response import forbidden, response
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def create_workspace(
     request: Request,
     workspace: WorkspaceCreate,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Create a new workspace record in the database.
 
     Args:
@@ -84,11 +85,7 @@ def create_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         new_workspace = Workspace(
             workspace_id=workspace.workspace_id,
@@ -98,18 +95,20 @@ def create_workspace(
         )
         db.add(new_workspace)
         db.commit()
-        return response(True, message="Workspace created successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="Workspace created successfully"
+        )
     except IntegrityError:
         db.rollback()
         return response(
             False,
-            status_code=400,
+            status=HTTPStatus.BAD_REQUEST,
             message="Workspace with this name already exists",
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/set_workspace_status")
@@ -117,7 +116,7 @@ def set_workspace_status(
     request: Request,
     update_workspace: WorkspaceUpdateStatus,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Sets the status of a workspace in the database to enabled, disabled, or deleted
 
     Args:
@@ -141,7 +140,7 @@ def set_workspace_status(
     if not user_jwt_content["system_admin"] and user_workspace_role != "teacher":
         return response(
             False,
-            status_code=403,
+            status=HTTPStatus.FORBIDDEN,
             message="You may not change the status of this workspace",
         )
 
@@ -155,19 +154,23 @@ def set_workspace_status(
         )  # pyright: ignore[reportAssignmentType]
 
         if not workspace:
-            return response(False, status_code=404, message="Failed to find workspace")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, message="Failed to find workspace"
+            )
 
         # Update the workspace status in the database, report success to the user
         workspace.status = WorkspaceStatus(update_workspace.workspace_status)
         db.commit()
 
-        return response(True, message="Successfully updated workspace status")
+        return response(
+            True, status=HTTPStatus.OK, message="Successfully updated workspace status"
+        )
 
     # Report intermittent or external error
     except Exception as e:
         logger.error(f"Error changing workspace status: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/delete_workspace/{workspace}")
@@ -175,7 +178,7 @@ def delete_workspace(
     request: Request,
     workspace: str,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Delete a workspace from the database
 
     Args:
@@ -189,28 +192,30 @@ def delete_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         query: WorkspaceValue = (
             db.query(Workspace).filter(Workspace.workspace_id == workspace).one()
         )  # pyright: ignore[reportAssignmentType]
         query.status = WorkspaceStatus.DELETED
         db.commit()
-        return response(True, message="Workspace deleted successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="Workspace deleted successfully"
+        )
     except NoResultFound:
         db.rollback()
-        return response(False, status_code=400, message="Workspace not found")
+        return response(
+            False, status=HTTPStatus.BAD_REQUEST, message="Workspace not found"
+        )
     except MultipleResultsFound:
         db.rollback()
-        return response(False, status_code=500, message="Database is broken")
+        return response(
+            False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message="Database is broken"
+        )
     except Exception as e:
         logger.error(f"Error deleting workspace: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/add_users_via_csv")
@@ -219,7 +224,7 @@ def add_users_via_csv(
     workspace_id: str,
     db: Annotated[Session, Depends(get_db)],
     file: UploadFile | None = None,  # pyright: ignore[reportRedeclaration]
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Add users to a workspace from a CSV file
 
     Args:
@@ -237,11 +242,7 @@ def add_users_via_csv(
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         # Read the file to detect encoding
         raw_content = file.file.read()
@@ -277,14 +278,16 @@ def add_users_via_csv(
             db.add(user_workspace)
             db.commit()
 
-        return response(True, message="Users added via CSV successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="Users added via CSV successfully"
+        )
     except Exception as e:
         logger.error(
             "Error adding users via CSV: Please make sure you"
             + " save the roster as a CSV file and try again",
         )
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/student_join_workspace")
@@ -292,7 +295,7 @@ def student_join_workspace(
     request: Request,
     join_workspace: StudentJoinWorkspace,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Joins a student to a workspace
 
     Args:
@@ -314,7 +317,9 @@ def student_join_workspace(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(False, status_code=404, message="User not found")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            )
 
         workspace: WorkspaceValue = (
             db.query(Workspace)
@@ -326,7 +331,9 @@ def student_join_workspace(
         )  # pyright: ignore[reportAssignmentType]
 
         if join_workspace.password != workspace.workspace_password:
-            return response(False, status_code=400, message="Failed to join workspace")
+            return response(
+                False, status=HTTPStatus.BAD_REQUEST, message="Failed to join workspace"
+            )
 
         user_workspace: UserWorkspaceValue | None = (
             db.query(UserWorkspace)
@@ -340,14 +347,14 @@ def student_join_workspace(
         if not user_workspace:
             return response(
                 False,
-                status_code=404,
+                status=HTTPStatus.NOT_FOUND,
                 message="Not authorized to join this workspace",
             )
 
         if user_workspace.role != "pending":
             return response(
                 False,
-                status_code=400,
+                status=HTTPStatus.BAD_REQUEST,
                 message="User already in this workspace",
             )
 
@@ -357,11 +364,13 @@ def student_join_workspace(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(True, message="User added to workspace successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="User added to workspace successfully"
+        )
     except Exception as e:
         logger.error(f"Error adding user to workspace: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/delete_user_from_workspace")
@@ -369,7 +378,7 @@ def delete_user_from_workspace(
     request: Request,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Deletes a user from a workspace
 
     Args:
@@ -387,11 +396,7 @@ def delete_user_from_workspace(
         None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         user: UserValue | None = (
             db.query(User)
@@ -402,7 +407,9 @@ def delete_user_from_workspace(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(False, status_code=404, message="User not found")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            )
 
         user_workspace: UserWorkspaceValue | None = (
             db.query(UserWorkspace)
@@ -417,7 +424,7 @@ def delete_user_from_workspace(
         if not user_workspace:
             return response(
                 False,
-                status_code=404,
+                status=HTTPStatus.NOT_FOUND,
                 message="User not in this workspace",
             )
 
@@ -426,11 +433,15 @@ def delete_user_from_workspace(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(True, message="User deleted from workspace successfully")
+        return response(
+            True,
+            status=HTTPStatus.OK,
+            message="User deleted from workspace successfully",
+        )
     except Exception as e:
         logger.error(f"Error deleting user from workspace: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/set_user_role")
@@ -438,7 +449,7 @@ def set_user_role(
     request: Request,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Sets the role of a user in a workspace
 
     Args:
@@ -456,11 +467,7 @@ def set_user_role(
         None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         user: UserValue | None = (
             db.query(User)
@@ -471,7 +478,9 @@ def set_user_role(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(False, status_code=404, message="User not found")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            )
 
         user_workspace: UserWorkspaceValue | None = (
             db.query(UserWorkspace)
@@ -486,7 +495,7 @@ def set_user_role(
         if not user_workspace:
             return response(
                 False,
-                status_code=404,
+                status=HTTPStatus.NOT_FOUND,
                 message="User not in this workspace",
             )
 
@@ -494,11 +503,13 @@ def set_user_role(
         user.workspace_role[user_role_update.workspace_id] = user_role_update.role
         db.commit()
 
-        return response(True, message="User role updated successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="User role updated successfully"
+        )
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.post("/set_user_role_with_student_id")
@@ -506,7 +517,7 @@ def set_user_role_with_student_id(
     request: Request,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Set any user to any role in any workspace, even if not in that workspace
 
     Args:
@@ -520,11 +531,7 @@ def set_user_role_with_student_id(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         user: UserValue | None = (
             db.query(User)
@@ -532,7 +539,9 @@ def set_user_role_with_student_id(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(False, status_code=404, message="User not found")
+            return response(
+                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            )
 
         user_workspace: UserWorkspaceValue | None = (
             db.query(UserWorkspace)
@@ -561,11 +570,13 @@ def set_user_role_with_student_id(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(True, message="User role updated successfully")
+        return response(
+            True, status=HTTPStatus.OK, message="User role updated successfully"
+        )
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
         db.rollback()
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
 @router.get("/get_workspace_list")
@@ -574,7 +585,7 @@ def get_workspace_list(
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-) -> Response | JSONResponse:
+) -> JSONResponse:
     """Returns a list of workspaces with pagination
 
     Args:
@@ -589,11 +600,7 @@ def get_workspace_list(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return response(
-            False,
-            status_code=403,
-            message="You do not have access to this resource",
-        )
+        return forbidden()
     try:
         offset = (page - 1) * page_size
         workspaces = (
@@ -620,6 +627,7 @@ def get_workspace_list(
         ]
         return response(
             True,
+            status=HTTPStatus.OK,
             data={
                 "workspace_list": workspace_list,
                 "total": total_workspaces,
@@ -629,4 +637,4 @@ def get_workspace_list(
         )
     except Exception as e:
         logger.error(f"Error fetching workspace list: {e}")
-        return response(False, status_code=500, message=str(e))
+        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))

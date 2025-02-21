@@ -131,7 +131,9 @@
                   yarl
                 ]))
               openssl
-              postman
+              bruno
+              pkgs-treefmt.bruno-cli
+              openapi-generator-cli
               dig
               ruff
               basedpyright
