@@ -170,6 +170,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
             A response or a JSON response indicating the result of the authorization
 
         """
+        # ! Add blanket ban for anyone trying to access /admin URLs
         path = extract_actual_path(request.url.path)
         print("path", path)
         if path in whitelist:

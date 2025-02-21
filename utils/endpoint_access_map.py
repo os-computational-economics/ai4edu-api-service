@@ -73,4 +73,6 @@ endpoint_access_map: AccessMap = {
     "/upload_file": {"student": True, "teacher": True, "admin": True},
     "/get_presigned_url_for_file": {"student": True, "teacher": True, "admin": True},
     "/ping": {"student": True, "teacher": True, "admin": True},
+    "/docs": {"student": False, "teacher": False, "admin": True},
+    "/openapi.json": {"student": False, "teacher": False, "admin": True},
 }
