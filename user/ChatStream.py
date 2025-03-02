@@ -217,50 +217,6 @@ class ChatStream:
             }
         )
 
-    def __openai_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[ChatCompletionMessageParam]
-    ):
-        """
-        OpenAI chat generator.
-        :param messages:
-        :return:
-        """
-        with self.openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            stream=True,
-        ) as stream:
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    new_text = chunk.choices[0].delta.content
-                    yield new_text
-
-    def __anthropic_chat_generator(  # pyright: ignore[reportUnusedFunction]
-        self, messages: list[Message]
-    ):
-        """
-        Anthropic chat generator.
-        :param messages:
-        :return:
-        """
-        system_message_content = ""
-        system_message = messages.pop(0)
-        if system_message["role"] == "system":
-            system_message_content = system_message["content"]
-        [
-            m.update({"content": str(m["content"] if "content" in m else "")})
-            for m in messages
-        ]
-        with self.anthropic_client.messages.stream(
-            system=system_message_content,
-            max_tokens=2048,
-            messages=messages,  # pyright: ignore[reportArgumentType]
-            model="claude-3-sonnet-20240229",
-        ) as stream:
-            for text in stream.text_stream:
-                if text != "":
-                    yield text
-
     def __process_chunking(
         self, sentence_ender: str, new_text: str, chunk_buffer: str, chunk_id: int
     ):
