@@ -9,7 +9,7 @@
 import csv
 import io
 import logging
-from typing import Annotated
+from typing import Annotated, List
 import chardet
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Request
 from sqlalchemy import desc, func
@@ -192,7 +192,7 @@ def restore_workspace_roles(
 
     try:
         # Get the previous workspace roles from the "ai_user_workspace" table
-        user_workspaces: list[UserWorkspaceValue] = (
+        user_workspaces: List[UserWorkspace] = (
             db.query(UserWorkspace)
             .filter(UserWorkspace.workspace_id == workspace.workspace_id)
             .all()
@@ -201,13 +201,14 @@ def restore_workspace_roles(
         # For each workspace id, add the associated role back to the associated user id
         for user_workspace in user_workspaces:
 
-            user: UserValue = (
+            user: UserValue | None = (
                 db.query(User).filter(User.user_id == user_workspace.user_id).first()
-            )
+            )  # pyright: ignore[reportAssignmentType] User could be None
 
             # If the user exists, then re-add the role
             if user:
-                user.workspace_role[user_workspace.workspace_id] = user_workspace.role
+                workspace_id_str = str(user_workspace.workspace_id)
+                user.workspace_role[workspace_id_str] = user_workspace.role
                 flag_modified(user, "workspace_role")
             else:
                 logger.info(
@@ -391,7 +392,6 @@ def delete_user_from_workspace(
             db.query(User)
             .filter(
                 User.user_id == user_role_update.user_id,
-                User.student_id == user_role_update.student_id,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
@@ -402,7 +402,6 @@ def delete_user_from_workspace(
             db.query(UserWorkspace)
             .filter(
                 UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
                 UserWorkspace.workspace_id == user_role_update.workspace_id,
             )
             .first()
@@ -421,58 +420,6 @@ def delete_user_from_workspace(
         return response(True, message="User deleted from workspace successfully")
     except Exception as e:
         logger.error(f"Error deleting user from workspace: {e}")
-        db.rollback()
-        return response(False, status_code=500, message=str(e))
-
-
-@router.post("/set_user_role")
-def set_user_role(
-    request: Request,
-    user_role_update: UserRoleUpdate,
-    db: Annotated[Session, Depends(get_db)],
-):
-    user_jwt_content = getJWT(request.state)
-    user_workspace_role = user_jwt_content["workspace_role"].get(
-        user_role_update.workspace_id, None
-    )
-    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return response(
-            False, status_code=403, message="You do not have access to this resource"
-        )
-    try:
-        user: UserValue | None = (
-            db.query(User)
-            .filter(
-                User.user_id == user_role_update.user_id,
-                User.student_id == user_role_update.student_id,
-            )
-            .first()
-        )  # pyright: ignore[reportAssignmentType]
-        if not user:
-            return response(False, status_code=404, message="User not found")
-
-        user_workspace: UserWorkspaceValue | None = (
-            db.query(UserWorkspace)
-            .filter(
-                UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
-                UserWorkspace.workspace_id == user_role_update.workspace_id,
-            )
-            .first()
-        )  # pyright: ignore[reportAssignmentType]
-
-        if not user_workspace:
-            return response(
-                False, status_code=404, message="User not in this workspace"
-            )
-
-        user_workspace.role = user_role_update.role
-        user.workspace_role[user_role_update.workspace_id] = user_role_update.role
-        db.commit()
-
-        return response(True, message="User role updated successfully")
-    except Exception as e:
-        logger.error(f"Error setting user role: {e}")
         db.rollback()
         return response(False, status_code=500, message=str(e))
 
