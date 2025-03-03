@@ -22,7 +22,7 @@ class RatingData(BaseModel):
 
 @router.post("/rating")
 def submit_rating(
-        request: Request, rating_data: RatingData, db: Annotated[Session, Depends(get_db)]
+    request: Request, rating_data: RatingData, db: Annotated[Session, Depends(get_db)]
 ):
     """
     This function gets the settings of an agent by its ID
@@ -38,7 +38,9 @@ def submit_rating(
         rating_data.rating = int(rating_data.rating)
 
         if (rating_data.message_id and rating_data.rating in [0, 1]) or (
-                not rating_data.message_id and rating_data.rating > 0 and rating_data.rating <= 5
+            not rating_data.message_id
+            and rating_data.rating > 0
+            and rating_data.rating <= 5
         ):
             db.add(
                 UserFeedback(

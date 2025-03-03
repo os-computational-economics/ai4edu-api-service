@@ -69,7 +69,7 @@ llm = ChatOpenAI(
 llm2 = ChatAnthropic(
     temperature=0,
     api_key=SecretStr(ANTHROPIC_API_KEY),
-    model_name="claude-3-5-sonnet-20241022",
+    model_name="claude-3-7-sonnet-latest",
     streaming=True,
     timeout=None,
     stop=None,
@@ -101,7 +101,9 @@ def get_session_history(
                 AIMessage(str(message["content"]) if "content" in message else "")
             )
     # print the current timestamp in ISO string format
-    print(f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}")
+    print(
+        f"Thread ID: {thread_id}, Current Time UTC: {time.strftime('%Y-%m-%dT%H:%M:%S')}"
+    )
     return history
 
 

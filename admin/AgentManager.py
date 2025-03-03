@@ -271,12 +271,15 @@ def list_agents(
         return response(
             False, status_code=403, message="You do not have access to this resource"
         )
-    query = db.query(Agent).join(
-        Workspace,
-        Agent.workspace_id == Workspace.workspace_id,
-    ).filter(
-        Agent.workspace_id == workspace_id, Agent.status != 2,
-        Workspace.status != 2
+    query = (
+        db.query(Agent)
+        .join(
+            Workspace,
+            Agent.workspace_id == Workspace.workspace_id,
+        )
+        .filter(
+            Agent.workspace_id == workspace_id, Agent.status != 2, Workspace.status != 2
+        )
     )  # exclude deleted agents
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
