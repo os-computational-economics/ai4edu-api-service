@@ -36,7 +36,7 @@ class Message(BaseModel):
 
 
 class MessageStorageHandler:
-    DYNAMODB_TABLE_NAME = "ai4edu_chat_msg"
+    DYNAMODB_TABLE_NAME = "ai4edu_chat_msg_prod" if os.getenv("POSTGRES_DB") == "ai4edu_prod" else "ai4edu_chat_msg_dev"
 
     def __init__(self):
         self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
