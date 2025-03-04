@@ -189,7 +189,7 @@
           compose = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "start-compose.sh" ''
-              ${pkgs.docker-compose}/bin/docker-compose up --build
+              ${pkgs.podman-compose}/bin/podman-compose up --build --force-recreate
             ''}/bin/start-compose.sh";
           };
           default = compose;

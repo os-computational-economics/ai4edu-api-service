@@ -8,9 +8,9 @@ from http import HTTPStatus
 from typing import Annotated
 
 import chardet
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, UploadFile
 from pydantic import BaseModel
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -61,7 +61,6 @@ class UserRoleUpdate(BaseModel):
     """A Class describing the object sent to update a user role in a workspace."""
 
     user_id: int
-    student_id: str
     workspace_id: str
     role: str  # student, teacher, pending
 
@@ -116,6 +115,7 @@ def set_workspace_status(
     request: Request,
     update_workspace: WorkspaceUpdateStatus,
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> JSONResponse:
     """Sets the status of a workspace in the database to enabled, disabled, or deleted
 
@@ -123,6 +123,7 @@ def set_workspace_status(
         request: FastAPI request object
         update_workspace: WorkspaceUpdateStatus containing workspace details, new status
         db: SQLAlchemy database session
+        background_tasks: FastAPI background tasks object for asynchronous tasks
 
     Returns:
         Success message or 404 if workspace not found
@@ -162,6 +163,12 @@ def set_workspace_status(
         workspace.status = WorkspaceStatus(update_workspace.workspace_status)
         db.commit()
 
+        # Sync user workspace cache
+        if update_workspace.workspace_status == WorkspaceStatus.INACTIVE:
+            background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+        else:
+            background_tasks.add_task(restore_workspace_roles, db, update_workspace)
+
         return response(
             True, status=HTTPStatus.OK, message="Successfully updated workspace status"
         )
@@ -171,6 +178,89 @@ def set_workspace_status(
         logger.error(f"Error changing workspace status: {e}")
         db.rollback()
         return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+
+
+def remove_workspace_roles(
+    db: Annotated[Session, Depends(get_db)], workspace: WorkspaceUpdateStatus
+) -> None:
+    """When a workspace is deactivated, remove workspace roles from users
+
+    Args:
+        db: SQLAlchemy database session
+        workspace: WorkspaceUpdateStatus containing workspace details
+
+    """
+    try:
+        # Get all users to change workspace values for
+        users_to_modify: list[UserValue] = (
+            db.query(User)
+            .filter(
+                func.json_extract_path_text(
+                    User.workspace_role, workspace.workspace_id
+                ).isnot(None)
+            )
+            .all()
+        )  # pyright: ignore[reportAssignmentType]
+
+        # Remove the workspace role from each associated user
+        for user in users_to_modify:
+            del user.workspace_role[workspace.workspace_id]
+            flag_modified(user, "workspace_role")
+
+        # Commit the changes
+        db.commit()
+        logger.info("Removed workspace roles from user entries")
+
+    except Exception as e:
+        logger.error(f"Error removing workspace roles: {e}")
+        db.rollback()
+
+# !TODO: Return status code
+
+
+def restore_workspace_roles(
+    db: Annotated[Session, Depends(get_db)],
+    workspace: WorkspaceUpdateStatus,
+) -> None:
+    """When a workspace is reactivated, restore workspace roles to users
+
+    Args:
+        db: SQLAlchemy database session
+        workspace: WorkspaceUpdateStatus containing workspace details
+
+    """
+    try:
+        # Get the previous workspace roles from the "ai_user_workspace" table
+        user_workspaces: list[UserWorkspace] = (
+            db.query(UserWorkspace)
+            .filter(UserWorkspace.workspace_id == workspace.workspace_id)
+            .all()
+        )
+
+        # For each workspace id, add the associated role back to the associated user id
+        for user_workspace in user_workspaces:
+
+            user: UserValue | None = (
+                db.query(User).filter(User.user_id == user_workspace.user_id).first()
+            )  # pyright: ignore[reportAssignmentType] User could be None
+
+            # If the user exists, then re-add the role
+            if user:
+                workspace_id_str = str(user_workspace.workspace_id)
+                user.workspace_role[workspace_id_str] = user_workspace.role
+                flag_modified(user, "workspace_role")
+            else:
+                logger.info(
+                    "User does not exist in ai_users table, skipping this user..."
+                )
+
+        # Commit any changes to the database, log a successful operation
+        db.commit()
+        logger.info("Restored workspace roles for associated user entries")
+
+    except Exception as e:
+        logger.error(f"Error restoring workspace roles: {e}")
+        db.rollback()
 
 
 @router.post("/delete_workspace/{workspace}")
@@ -402,7 +492,6 @@ def delete_user_from_workspace(
             db.query(User)
             .filter(
                 User.user_id == user_role_update.user_id,
-                User.student_id == user_role_update.student_id,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
@@ -415,7 +504,6 @@ def delete_user_from_workspace(
             db.query(UserWorkspace)
             .filter(
                 UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
                 UserWorkspace.workspace_id == user_role_update.workspace_id,
             )
             .first()
@@ -444,76 +532,8 @@ def delete_user_from_workspace(
         return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
 
 
-@router.post("/set_user_role")
-def set_user_role(
-    request: Request,
-    user_role_update: UserRoleUpdate,
-    db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
-    """Sets the role of a user in a workspace
-
-    Args:
-        request: FastAPI request object
-        user_role_update: UserRoleUpdate containing user, workspace ID, and new role
-        db: SQLAlchemy database session
-
-    Returns:
-        Success message or 404 if user or not found
-
-    """
-    user_jwt_content = get_jwt(request.state)
-    user_workspace_role = user_jwt_content["workspace_role"].get(
-        user_role_update.workspace_id,
-        None,
-    )
-    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return forbidden()
-    try:
-        user: UserValue | None = (
-            db.query(User)
-            .filter(
-                User.user_id == user_role_update.user_id,
-                User.student_id == user_role_update.student_id,
-            )
-            .first()
-        )  # pyright: ignore[reportAssignmentType]
-        if not user:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="User not found"
-            )
-
-        user_workspace: UserWorkspaceValue | None = (
-            db.query(UserWorkspace)
-            .filter(
-                UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
-                UserWorkspace.workspace_id == user_role_update.workspace_id,
-            )
-            .first()
-        )  # pyright: ignore[reportAssignmentType]
-
-        if not user_workspace:
-            return response(
-                False,
-                status=HTTPStatus.NOT_FOUND,
-                message="User not in this workspace",
-            )
-
-        user_workspace.role = user_role_update.role
-        user.workspace_role[user_role_update.workspace_id] = user_role_update.role
-        db.commit()
-
-        return response(
-            True, status=HTTPStatus.OK, message="User role updated successfully"
-        )
-    except Exception as e:
-        logger.error(f"Error setting user role: {e}")
-        db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
-
-
-@router.post("/set_user_role_with_student_id")
-def set_user_role_with_student_id(
+@router.post("/set_user_role_with_user_id")
+def set_user_role_with_user_id(
     request: Request,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
@@ -534,9 +554,7 @@ def set_user_role_with_student_id(
         return forbidden()
     try:
         user: UserValue | None = (
-            db.query(User)
-            .filter(User.student_id == user_role_update.student_id)
-            .first()
+            db.query(User).filter(User.user_id == user_role_update.user_id).first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
             return response(
@@ -547,7 +565,6 @@ def set_user_role_with_student_id(
             db.query(UserWorkspace)
             .filter(
                 UserWorkspace.user_id == user.user_id,
-                UserWorkspace.student_id == user_role_update.student_id,
                 UserWorkspace.workspace_id == user_role_update.workspace_id,
             )
             .first()

@@ -15,8 +15,8 @@ services:
       context: .
     volumes:
       - ./ai4edu_api_volume_local:/app/volume_cache:rw
-    ports:
-      - 8000:5000
+    expose:
+      - 5000
     secrets:
       - ai4edu-secret
     networks:
@@ -29,8 +29,8 @@ services:
     container_name: redis-stack
     volumes:
       - rds-data:/data:rw
-    ports:
-      - 8001:8001
+    expose:
+      - 8001
     networks:
       - localnet
   db:
@@ -77,6 +77,9 @@ services:
     env_file: ./.env
     environment:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: true
+    expose:
+      - 80
+      - 443
     ports:
       - 80:80
       - 443:443
