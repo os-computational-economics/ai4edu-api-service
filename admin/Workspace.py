@@ -215,6 +215,7 @@ def remove_workspace_roles(
         logger.error(f"Error removing workspace roles: {e}")
         db.rollback()
 
+
 # !TODO: Return status code
 
 
@@ -239,7 +240,6 @@ def restore_workspace_roles(
 
         # For each workspace id, add the associated role back to the associated user id
         for user_workspace in user_workspaces:
-
             user: UserValue | None = (
                 db.query(User).filter(User.user_id == user_workspace.user_id).first()
             )  # pyright: ignore[reportAssignmentType] User could be None
