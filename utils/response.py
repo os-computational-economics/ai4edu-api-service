@@ -3,19 +3,19 @@
 
 from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypedDict, TypeVar
 
+from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel
-from starlette.background import BackgroundTask
-from starlette.responses import JSONResponse
 
-from migrations.models import AgentValue
+from migrations.models import AgentValue, APIListReturn, APIListReturnPage
+from migrations.models import T as Q
 
-Data = dict[str, Any] | AgentValue  # pyright: ignore[reportExplicitAny]
+Data = dict[str, Any] | AgentValue | TypedDict  # pyright: ignore[reportExplicitAny]
 T = TypeVar("T", bound=Data | None)
 
 
-class ResponseContent(BaseModel, Generic[T]):
+class Response(BaseModel, Generic[T]):
     """Response structure for API responses."""
 
     status: HTTPStatus = HTTPStatus.OK
@@ -38,59 +38,97 @@ class ResponseContent(BaseModel, Generic[T]):
         self.success = success
 
 
-class Response(JSONResponse, Generic[T]):
-    """Typed JSONResponse Type"""
+class Responses(Generic[T]):
+    """Class for generating FastAPI responses."""
 
-    def __init__(
-        self,
-        content: ResponseContent[T],
-        status_code: HTTPStatus,
-        headers: Mapping[str, str] | None = None,
-        media_type: str | None = None,
-        background: BackgroundTask | None = None,
-    ) -> None:
-        """Initializes a JSON response object"""
-        super().__init__(
-            content.model_dump(), status_code, headers, media_type, background
+    @staticmethod
+    def forbidden(
+        response_obj: FastAPIResponse,
+        data: T = None,
+    ) -> Response[T]:
+        """Sets the default no-access response
+
+        Returns:
+            No-access JSON response
+
+        """
+        return Responses[T].response(
+            response_obj,
+            success=False,
+            data=data,
+            message="You do not have access to this resource",
+            status=HTTPStatus.FORBIDDEN,
         )
 
+    @staticmethod
+    def forbidden_list(
+        response_obj: FastAPIResponse,
+        data: APIListReturn[Q] | None = None,
+    ) -> Response[APIListReturn[Q]]:
+        """Sets the default no-access response for a list
 
-def forbidden() -> Response[None]:
-    """Sets the default no-access response
+        Args:
+            response_obj: FastAPIResponse to update.
+            data: List of data to return in case of success.
 
-    Returns:
-        No-access JSON response
+        Returns:
+            No-access JSON response for a list
 
-    """
-    return response(
-        success=False,
-        message="You do not have access to this resource",
-        status=HTTPStatus.FORBIDDEN,
-    )
+        """
+        ret_data: APIListReturn[Q] = data if data else {"items": [], "total": 0}
+        return Responses[APIListReturn[Q]].forbidden(response_obj, data=ret_data)
 
+    @staticmethod
+    def forbidden_list_page(
+        response_obj: FastAPIResponse,
+        data: APIListReturnPage[Q] | None = None,
+    ) -> Response[APIListReturnPage[Q]]:
+        """Sets the default no-access response for a list
 
-def response(
-    success: bool,
-    status: HTTPStatus,
-    data: T = None,
-    message: str = "Success",
-) -> Response[T]:
-    """Generates a response for FastAPI
+        Args:
+            response_obj: FastAPIResponse to update.
+            data: List of data to return in case of success.
 
-    Args:
-        success: Indicates if the request was successful.
-        data: The payload to return in case of success.
-        message: Optional message describing the success or the reason for error.
-        status: HTTP status code to use for errors.
+        Returns:
+            No-access JSON response for a list
 
-    Returns:
-        A JSONResponse if fail, or response if success.
+        """
+        ret_data: APIListReturnPage[Q] = (
+            data if data else {"items": [], "total": 0, "page": 0, "page_size": 0}
+        )
+        return Responses[APIListReturnPage[Q]].forbidden(response_obj, data=ret_data)
 
-    """
-    return_status = HTTPStatus.OK if success else status
-    return Response[T](
-        content=ResponseContent(
+    @staticmethod
+    def response(
+        response_obj: FastAPIResponse,
+        success: bool,
+        status: HTTPStatus | None,
+        data: T = None,
+        message: str = "Success",
+        headers: Mapping[str, str] | None = None,
+    ) -> Response[T]:
+        """Generates a response for FastAPI
+
+        Args:
+            response_obj: The FastAPI response object to update.
+            success: Indicates if the request was successful.
+            data: The payload to return in case of success.
+            message: Optional message describing the success or the reason for error.
+            status: HTTP status code to use for errors.
+            headers: Optional headers to include in the response.
+
+        Returns:
+            A JSONResponse if fail, or response if success.
+
+        """
+        return_status = (
+            status
+            if status
+            else (HTTPStatus.OK if success else HTTPStatus.INTERNAL_SERVER_ERROR)
+        )
+        response_obj.status_code = return_status
+        if headers:
+            response_obj.headers.update(headers)
+        return Response[T](
             status=return_status, success=success, data=data, message=message
-        ),
-        status_code=return_status,
-    )
+        )

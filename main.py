@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
+from typing import TypedDict
 from zoneinfo import ZoneInfo
 
 from anthropic import Anthropic
@@ -17,13 +18,16 @@ from fastapi import (
     Request,
     UploadFile,
 )
+from fastapi import (
+    Response as FastAPIResponse,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 from sse_starlette.sse import EventSourceResponse
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse
+from starlette.responses import FileResponse, RedirectResponse
 
 from admin.Access import router as AccessRouter  # noqa: N812
 from admin.AgentManager import router as AgentRouter  # noqa: N812
@@ -31,16 +35,16 @@ from admin.Thread import router as ThreadRouter  # noqa: N812
 from admin.Workspace import router as WorkspaceRouter  # noqa: N812
 from common.AuthSSO import AuthSSO
 from common.EnvManager import getenv
-from common.FileStorageHandler import FileStorageHandler
+from common.FileStorageHandler import FileReturn, FileStorageHandler
 from common.MessageStorageHandler import MessageStorageHandler
 from common.UserAuth import UserAuth
 from middleware.authorization import AuthorizationMiddleware, extract_token
 from user.ChatStream import ChatStream, ChatStreamModel
 from user.Feedback import router as FeedbackRouter  # noqa: N812
 from user.GetAgent import router as GetAgentRouter  # noqa: N812
-from user.Threads import new_thread
+from user.Threads import ThreadReturn, new_thread
 from user.TtsStream import TtsStream
-from utils.response import response
+from utils.response import Response, Responses
 
 logging.basicConfig(
     level=logging.INFO,
@@ -231,15 +235,17 @@ async def get_tts_file(
 @app.get(f"{URL_PATHS['current_prod_user']}/get_new_thread")
 def get_new_thread(
     request: Request,
+    response: FastAPIResponse,
     agent_id: str,
     workspace_id: str,
-) -> JSONResponse:
+) -> Response[ThreadReturn]:
     """ENDPOINT: /user/get_new_thread
 
     Generates a new thread id for the user.
 
     Args:
         request: FastAPI request
+        response: FastAPI response
         agent_id: Agent ID
         workspace_id: Workspace ID
 
@@ -247,7 +253,7 @@ def get_new_thread(
         A new thread
 
     """
-    return new_thread(request, agent_id, workspace_id)
+    return new_thread(request, response, agent_id, workspace_id)
 
 
 @app.post(f"{URL_PATHS['current_dev_admin']}/upload_file")
@@ -255,13 +261,15 @@ def get_new_thread(
 @app.post(f"{URL_PATHS['current_dev_user']}/upload_file")
 @app.post(f"{URL_PATHS['current_prod_user']}/upload_file")
 async def upload_file(
+    response: FastAPIResponse,
     file: UploadFile | None,
     file_desc: str | None = None,
     chunking_separator: str | None = None,
-) -> JSONResponse:
+) -> Response[FileReturn]:
     """ENDPOINT: /upload_file
 
     Args:
+        response: FastAPI response
         file: File to be uploaded
         file_desc: Description of the file
         chunking_separator: String chunking separator
@@ -272,8 +280,12 @@ async def upload_file(
 
     """
     if file is None:
-        return response(
-            success=False, message="No file provided", status=HTTPStatus.BAD_REQUEST
+        return Responses[FileReturn].response(
+            response,
+            success=False,
+            data={"file_id": "", "file_name": ""},
+            message="No file provided",
+            status=HTTPStatus.BAD_REQUEST,
         )
     try:
         # Read the file content
@@ -292,33 +304,47 @@ async def upload_file(
         )
 
         if file_id is None:
-            return response(
+            return Responses[FileReturn].response(
+                response,
                 success=False,
+                data={"file_id": "", "file_name": ""},
                 message="Failed to upload file",
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
-        return response(
+        return Responses[FileReturn].response(
+            response,
             success=True,
             status=HTTPStatus.OK,
-            data={"file_id": file_id, "file_name": file.filename},
+            data={"file_id": file_id, "file_name": file.filename or ""},
         )
     except Exception as e:
         logging.error(f"Failed to upload file: {e!s}")
-    return response(
+    return Responses[FileReturn].response(
+        response,
         success=False,
+        data={"file_id": "", "file_name": ""},
         message="unable to upload file",
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
+
+
+class URLReturn(TypedDict):
+    """Response containing a Presigned URL."""
+
+    url: str
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_prod_admin']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_dev_user']}/get_presigned_url_for_file")
 @app.get(f"{URL_PATHS['current_prod_user']}/get_presigned_url_for_file")
-async def get_presigned_url_for_file(file_id: str) -> JSONResponse:
+async def get_presigned_url_for_file(
+    response: FastAPIResponse, file_id: str
+) -> Response[URLReturn]:
     """ENDPOINT: /get_presigned_url_for_file
 
     Args:
+        response: FastAPI response
         file_id: ID of the file to get the presigned URL for.
 
     Returns:
@@ -328,24 +354,41 @@ async def get_presigned_url_for_file(file_id: str) -> JSONResponse:
     """
     file_id = file_id or ""
     if not file_id:
-        return response(
-            success=False, message="No file ID provided", status=HTTPStatus.BAD_REQUEST
+        return Responses[URLReturn].response(
+            response,
+            success=False,
+            data={"url": ""},
+            message="No file ID provided",
+            status=HTTPStatus.BAD_REQUEST,
         )
     url = file_storage.get_presigned_url(file_id)
     if url is None:
-        return response(
+        return Responses[URLReturn].response(
+            response,
             success=False,
+            data={"url": ""},
             message="Failed to generate presigned URL",
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
-    return response(success=True, status=HTTPStatus.OK, data={"url": url})
+    return Responses[URLReturn].response(
+        response, success=True, status=HTTPStatus.OK, data={"url": url}
+    )
+
+
+class TokenResponse(TypedDict):
+    """Response containing an Access Token."""
+
+    access_token: str
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_admin']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_dev_user']}/generate_access_token")
 @app.get(f"{URL_PATHS['current_prod_user']}/generate_access_token")
-def generate_token(request: Request) -> JSONResponse:
+def generate_token(
+    request: Request,
+    response: FastAPIResponse,
+) -> Response[TokenResponse]:
     """ENDPOINT: /generate_access_token
 
     Generates a temporary STT auth code for the user.
@@ -359,19 +402,26 @@ def generate_token(request: Request) -> JSONResponse:
     """
     tokens = extract_token(request.headers.get("Authorization", ""))
     if tokens["refresh_token"] is None:
-        return response(
+        return Responses[TokenResponse].response(
+            response,
             success=False,
+            data={"access_token": ""},
             message="No refresh token provided",
             status=HTTPStatus.UNAUTHORIZED,
         )
     auth = UserAuth(config=CONFIG)
     access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
-        return response(
-            success=True, status=HTTPStatus.OK, data={"access_token": access_token}
+        return Responses[TokenResponse].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"access_token": str(access_token)},
         )
-    return response(
+    return Responses[TokenResponse].response(
+        response,
         success=False,
+        data={"access_token": ""},
         message="Failed to generate access token",
         status=HTTPStatus.UNAUTHORIZED,
     )
@@ -381,14 +431,19 @@ def generate_token(request: Request) -> JSONResponse:
 @app.get(f"{URL_PATHS['current_prod_admin']}/ping")
 @app.get(f"{URL_PATHS['current_dev_user']}/ping")
 @app.get(f"{URL_PATHS['current_prod_user']}/ping")
-async def ping() -> JSONResponse:
+async def ping(response: FastAPIResponse) -> Response[None]:
     """ENDPOINT: /ping
+
+    Args:
+        response: FastAPI response
 
     Returns:
         A response with "pong"
 
     """
-    return response(success=True, status=HTTPStatus.OK, message="pong")
+    return Responses[None].response(
+        response, success=True, status=HTTPStatus.OK, message="pong"
+    )
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/ai4edu_testing")

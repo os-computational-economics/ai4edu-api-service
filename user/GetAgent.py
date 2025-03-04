@@ -7,12 +7,12 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from fastapi import Response as FastAPIResponse
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
 
-from migrations.models import Agent, AgentStatus, AgentValue
+from migrations.models import Agent, AgentReturn, AgentStatus, AgentValue
 from migrations.session import get_db
-from utils.response import response
+from utils.response import Response, Responses
 
 router = APIRouter()
 
@@ -25,12 +25,14 @@ router = APIRouter()
 
 @router.get("/get/{agent_id}")
 def get_agent_by_id(
+    response: FastAPIResponse,
     agent_id: str,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[AgentReturn]:
     """Get the settings of an agent by its ID
 
     Args:
+        response: The FastAPI response object
         agent_id: The ID of the agent
         db: The database session
 
@@ -39,8 +41,18 @@ def get_agent_by_id(
 
     """
     if not check_uuid_format(agent_id):
-        return response(
-            False, status=HTTPStatus.BAD_REQUEST, message="Invalid UUID format"
+        return Responses[AgentReturn].response(
+            response,
+            False,
+            data={
+                "agent_name": "",
+                "course_id": "",
+                "voice": False,
+                "model_choice": False,
+                "model": "",
+            },
+            status=HTTPStatus.BAD_REQUEST,
+            message="Invalid UUID format",
         )
 
     agent: AgentValue | None = (
@@ -49,11 +61,36 @@ def get_agent_by_id(
     logging.info(f"User requested agent settings: {agent}")
 
     if agent is None:
-        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent not found")
+        return Responses[AgentReturn].response(
+            response,
+            success=False,
+            data={
+                "agent_name": "",
+                "course_id": "",
+                "voice": False,
+                "model_choice": False,
+                "model": "",
+            },
+            status=HTTPStatus.NOT_FOUND,
+            message="Agent not found",
+        )
     if agent.status != AgentStatus.ACTIVE:
-        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent is inactive")
-    return response(
-        True,
+        return Responses[AgentReturn].response(
+            response,
+            success=False,
+            data={
+                "agent_name": "",
+                "course_id": "",
+                "voice": False,
+                "model_choice": False,
+                "model": "",
+            },
+            status=HTTPStatus.NOT_FOUND,
+            message="Agent is inactive",
+        )
+    return Responses[AgentReturn].response(
+        response,
+        success=True,
         status=HTTPStatus.OK,
         data={
             "agent_name": agent.agent_name,

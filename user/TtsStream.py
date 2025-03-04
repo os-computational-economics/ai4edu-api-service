@@ -1,6 +1,7 @@
 # Copyright (c) 2024.
 """Text to speech tools"""
 
+from http import HTTPStatus
 from pathlib import Path
 
 import requests
@@ -50,7 +51,7 @@ class TtsStream:
 
         # Check if the request was successful
         # ! TODO: Define magics somewhere
-        if response.status_code == 200:
+        if response.status_code == HTTPStatus.OK:
             # check if the folder exists
             Path.mkdir(self.TTS_AUDIO_CACHE_FOLDER, exist_ok=True, parents=True)
             # Save the response content to a file

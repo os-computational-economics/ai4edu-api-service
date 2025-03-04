@@ -19,6 +19,7 @@ class UserJWTContent(TypedDict):
     first_name: str
     last_name: str
     student_id: str
+    # !TODO: Type check the workspace role type
     workspace_role: dict[str, str]
     system_admin: bool
     email: str

@@ -9,25 +9,27 @@ from typing import Annotated
 
 import chardet
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, UploadFile
+from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from starlette.responses import JSONResponse
 
 from common.JWTValidator import get_jwt
 from migrations.models import (
+    APIListReturnPage,
     User,
     UserValue,
     UserWorkspace,
     UserWorkspaceValue,
     Workspace,
+    WorkspaceReturn,
     WorkspaceStatus,
     WorkspaceValue,
 )
 from migrations.session import get_db
-from utils.response import forbidden, response
+from utils.response import Response, Responses
 
 logger = logging.getLogger(__name__)
 
@@ -68,13 +70,15 @@ class UserRoleUpdate(BaseModel):
 @router.post("/create_workspace")
 def create_workspace(
     request: Request,
+    response: FastAPIResponse,
     workspace: WorkspaceCreate,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[None]:
     """Create a new workspace record in the database.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         workspace: WorkspaceCreate object containing workspace details
         db: SQLAlchemy database session
 
@@ -84,7 +88,7 @@ def create_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[None].forbidden(response)
     try:
         new_workspace = Workspace(
             workspace_id=workspace.workspace_id,
@@ -94,33 +98,44 @@ def create_workspace(
         )
         db.add(new_workspace)
         db.commit()
-        return response(
-            True, status=HTTPStatus.OK, message="Workspace created successfully"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Workspace created successfully",
         )
     except IntegrityError:
         db.rollback()
-        return response(
-            False,
+        return Responses[None].response(
+            response,
+            success=False,
             status=HTTPStatus.BAD_REQUEST,
             message="Workspace with this name already exists",
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/set_workspace_status")
 def set_workspace_status(
     request: Request,
+    response: FastAPIResponse,
     update_workspace: WorkspaceUpdateStatus,
     db: Annotated[Session, Depends(get_db)],
     background_tasks: BackgroundTasks,
-) -> JSONResponse:
+) -> Response[None]:
     """Sets the status of a workspace in the database to enabled, disabled, or deleted
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         update_workspace: WorkspaceUpdateStatus containing workspace details, new status
         db: SQLAlchemy database session
         background_tasks: FastAPI background tasks object for asynchronous tasks
@@ -139,8 +154,9 @@ def set_workspace_status(
     # Disallow non-admin users and users who are not teachers of the workspace
     # from setting the workspace's status
     if not user_jwt_content["system_admin"] and user_workspace_role != "teacher":
-        return response(
-            False,
+        return Responses[None].response(
+            response,
+            success=False,
             status=HTTPStatus.FORBIDDEN,
             message="You may not change the status of this workspace",
         )
@@ -155,8 +171,11 @@ def set_workspace_status(
         )  # pyright: ignore[reportAssignmentType]
 
         if not workspace:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="Failed to find workspace"
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="Failed to find workspace",
             )
 
         # Update the workspace status in the database, report success to the user
@@ -169,15 +188,23 @@ def set_workspace_status(
         else:
             background_tasks.add_task(restore_workspace_roles, db, update_workspace)
 
-        return response(
-            True, status=HTTPStatus.OK, message="Successfully updated workspace status"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Successfully updated workspace status",
         )
 
     # Report intermittent or external error
     except Exception as e:
         logger.error(f"Error changing workspace status: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 def remove_workspace_roles(
@@ -266,13 +293,15 @@ def restore_workspace_roles(
 @router.post("/delete_workspace/{workspace}")
 def delete_workspace(
     request: Request,
+    response: FastAPIResponse,
     workspace: str,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[None]:
     """Delete a workspace from the database
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         workspace: str representing the workspace ID
         db: SQLAlchemy database session
 
@@ -282,43 +311,59 @@ def delete_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[None].forbidden(response)
     try:
         query: WorkspaceValue = (
             db.query(Workspace).filter(Workspace.workspace_id == workspace).one()
         )  # pyright: ignore[reportAssignmentType]
         query.status = WorkspaceStatus.DELETED
         db.commit()
-        return response(
-            True, status=HTTPStatus.OK, message="Workspace deleted successfully"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Workspace deleted successfully",
         )
     except NoResultFound:
         db.rollback()
-        return response(
-            False, status=HTTPStatus.BAD_REQUEST, message="Workspace not found"
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.BAD_REQUEST,
+            message="Workspace not found",
         )
     except MultipleResultsFound:
         db.rollback()
-        return response(
-            False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message="Database is broken"
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message="Database is broken",
         )
     except Exception as e:
         logger.error(f"Error deleting workspace: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/add_users_via_csv")
 def add_users_via_csv(
     request: Request,
+    response: FastAPIResponse,
     workspace_id: str,
     db: Annotated[Session, Depends(get_db)],
     file: UploadFile | None = None,  # pyright: ignore[reportRedeclaration]
-) -> JSONResponse:
+) -> Response[None]:
     """Add users to a workspace from a CSV file
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         workspace_id: str representing the workspace ID
         db: SQLAlchemy database session
         file: UploadFile representing the CSV file
@@ -332,7 +377,7 @@ def add_users_via_csv(
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[None].forbidden(response)
     try:
         # Read the file to detect encoding
         raw_content = file.file.read()
@@ -368,8 +413,11 @@ def add_users_via_csv(
             db.add(user_workspace)
             db.commit()
 
-        return response(
-            True, status=HTTPStatus.OK, message="Users added via CSV successfully"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Users added via CSV successfully",
         )
     except Exception as e:
         logger.error(
@@ -377,19 +425,23 @@ def add_users_via_csv(
             + " save the roster as a CSV file and try again",
         )
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response, False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e)
+        )
 
 
 @router.post("/student_join_workspace")
 def student_join_workspace(
     request: Request,
+    response: FastAPIResponse,
     join_workspace: StudentJoinWorkspace,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[None]:
     """Joins a student to a workspace
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         join_workspace: StudentJoinWorkspace object containing workspace details
         db: SQLAlchemy database session
 
@@ -407,8 +459,11 @@ def student_join_workspace(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found",
             )
 
         workspace: WorkspaceValue = (
@@ -421,8 +476,11 @@ def student_join_workspace(
         )  # pyright: ignore[reportAssignmentType]
 
         if join_workspace.password != workspace.workspace_password:
-            return response(
-                False, status=HTTPStatus.BAD_REQUEST, message="Failed to join workspace"
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.BAD_REQUEST,
+                message="Failed to join workspace",
             )
 
         user_workspace: UserWorkspaceValue | None = (
@@ -435,15 +493,17 @@ def student_join_workspace(
         )  # pyright: ignore[reportAssignmentType]
 
         if not user_workspace:
-            return response(
-                False,
+            return Responses[None].response(
+                response,
+                success=False,
                 status=HTTPStatus.NOT_FOUND,
                 message="Not authorized to join this workspace",
             )
 
         if user_workspace.role != "pending":
-            return response(
-                False,
+            return Responses[None].response(
+                response,
+                success=False,
                 status=HTTPStatus.BAD_REQUEST,
                 message="User already in this workspace",
             )
@@ -454,25 +514,35 @@ def student_join_workspace(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(
-            True, status=HTTPStatus.OK, message="User added to workspace successfully"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="User added to workspace successfully",
         )
     except Exception as e:
         logger.error(f"Error adding user to workspace: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/delete_user_from_workspace")
 def delete_user_from_workspace(
     request: Request,
+    response: FastAPIResponse,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[None]:
     """Deletes a user from a workspace
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         user_role_update: UserRoleUpdate object containing user details and workspace ID
         db: SQLAlchemy database session
 
@@ -486,7 +556,7 @@ def delete_user_from_workspace(
         None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[None].forbidden(response)
     try:
         user: UserValue | None = (
             db.query(User)
@@ -496,8 +566,11 @@ def delete_user_from_workspace(
             .first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found",
             )
 
         user_workspace: UserWorkspaceValue | None = (
@@ -510,8 +583,9 @@ def delete_user_from_workspace(
         )  # pyright: ignore[reportAssignmentType]
 
         if not user_workspace:
-            return response(
-                False,
+            return Responses[None].response(
+                response,
+                success=False,
                 status=HTTPStatus.NOT_FOUND,
                 message="User not in this workspace",
             )
@@ -521,27 +595,35 @@ def delete_user_from_workspace(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(
-            True,
+        return Responses[None].response(
+            response,
+            success=True,
             status=HTTPStatus.OK,
             message="User deleted from workspace successfully",
         )
     except Exception as e:
         logger.error(f"Error deleting user from workspace: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/set_user_role_with_user_id")
 def set_user_role_with_user_id(
     request: Request,
+    response: FastAPIResponse,
     user_role_update: UserRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[None]:
     """Set any user to any role in any workspace, even if not in that workspace
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         user_role_update: UserRoleUpdate containing user, workspace ID, and new role
         db: SQLAlchemy database session
 
@@ -551,14 +633,17 @@ def set_user_role_with_user_id(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[None].forbidden(response)
     try:
         user: UserValue | None = (
             db.query(User).filter(User.user_id == user_role_update.user_id).first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="User not found"
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found",
             )
 
         user_workspace: UserWorkspaceValue | None = (
@@ -587,26 +672,36 @@ def set_user_role_with_user_id(
         flag_modified(user, "workspace_role")
         db.commit()
 
-        return response(
-            True, status=HTTPStatus.OK, message="User role updated successfully"
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="User role updated successfully",
         )
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
         db.rollback()
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.get("/get_workspace_list")
 def get_workspace_list(
     request: Request,
+    response: FastAPIResponse,
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-) -> JSONResponse:
+) -> Response[APIListReturnPage[WorkspaceReturn]]:
     """Returns a list of workspaces with pagination
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         db: SQLAlchemy database session
         page: Page number (default: 1)
         page_size: Page size (default: 10)
@@ -617,23 +712,23 @@ def get_workspace_list(
     """
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"]:
-        return forbidden()
+        return Responses[WorkspaceReturn].forbidden_list_page(response)
     try:
         offset = (page - 1) * page_size
-        workspaces = (
+        workspaces: list[WorkspaceValue] = (
             db.query(Workspace)
             .filter(Workspace.status != WorkspaceStatus.DELETED)
             .order_by(desc(Workspace.status))
             .offset(offset)
             .limit(page_size)
             .all()
-        )
+        )  # pyright: ignore[reportAssignmentType]
         total_workspaces = (
             db.query(Workspace)
             .filter(Workspace.status != WorkspaceStatus.DELETED)
             .count()
         )
-        workspace_list = [
+        workspace_list: list[WorkspaceReturn] = [
             {
                 "workspace_id": workspace.workspace_id,
                 "workspace_name": workspace.workspace_name,
@@ -642,11 +737,12 @@ def get_workspace_list(
             }
             for workspace in workspaces
         ]
-        return response(
-            True,
+        return Responses[APIListReturnPage[WorkspaceReturn]].response(
+            response,
+            success=True,
             status=HTTPStatus.OK,
             data={
-                "workspace_list": workspace_list,
+                "items": workspace_list,
                 "total": total_workspaces,
                 "page": page,
                 "page_size": page_size,
@@ -654,4 +750,10 @@ def get_workspace_list(
         )
     except Exception as e:
         logger.error(f"Error fetching workspace list: {e}")
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[APIListReturnPage[WorkspaceReturn]].response(
+            response,
+            success=False,
+            data={"items": [], "total": 0, "page": 0, "page_size": 0},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )

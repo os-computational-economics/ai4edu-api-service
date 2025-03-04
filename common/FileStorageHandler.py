@@ -5,7 +5,7 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import boto3
 from botocore.config import Config
@@ -19,6 +19,13 @@ from migrations.models import File, FileValue
 from migrations.session import get_db
 
 logger = logging.getLogger(__name__)
+
+
+class FileReturn(TypedDict):
+    """Return type for file operations"""
+
+    file_id: str
+    file_name: str
 
 
 class FileStorageHandler:

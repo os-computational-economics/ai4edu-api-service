@@ -4,20 +4,28 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, TypedDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
 
 from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
-from common.MessageStorageHandler import MessageStorageHandler
-from migrations.models import Agent, Thread, ThreadValue, Workspace, WorkspaceStatus
+from common.MessageStorageHandler import Message, MessageStorageHandler
+from migrations.models import (
+    Agent,
+    APIListReturn,
+    ReturnThreadValue,
+    Thread,
+    ThreadValue,
+    Workspace,
+    WorkspaceStatus,
+)
 from migrations.session import get_db
-from utils.response import forbidden, response
+from utils.response import Response, Responses
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -48,11 +56,22 @@ class ThreadContent(BaseModel):
     agent_id: str
 
 
+class ListAgentsResponse(TypedDict):
+    """Return type for Getting Full Thread"""
+
+    thread_id: str
+    messages: list[Message]
+
+
 @router.get("/get_thread/{thread_id}")
-def get_thread_by_id(thread_id: UUID) -> JSONResponse:
+def get_thread_by_id(
+    response: FastAPIResponse,
+    thread_id: UUID,
+) -> Response[ListAgentsResponse]:
     """Fetch all entries for a specific thread by its UUID, sorted by creation time.
 
     Args:
+        response: FastAPI response object
         thread_id: UUID of the thread
 
     Returns:
@@ -60,28 +79,42 @@ def get_thread_by_id(thread_id: UUID) -> JSONResponse:
 
     """
     try:
-        thread_messages = message_handler.get_thread(str(thread_id))
+        thread_messages: list[Message] = message_handler.get_thread(str(thread_id))
         if not thread_messages:
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, message="Thread messages not found"
+            return Responses[ListAgentsResponse].response(
+                response,
+                success=False,
+                data={"thread_id": "", "messages": []},
+                status=HTTPStatus.NOT_FOUND,
+                message="Thread messages not found",
             )
 
         # Sort the messages by 'created_at' time in descending order
-        sorted_messages = sorted(thread_messages, key=lambda x: x.created_at)
-        return response(
-            True,
+        sorted_messages: list[Message] = sorted(
+            thread_messages, key=lambda x: x.created_at
+        )
+        return Responses[ListAgentsResponse].response(
+            response,
+            success=True,
             status=HTTPStatus.OK,
-            data={"thread_id": thread_id, "messages": sorted_messages},
+            data={"thread_id": str(thread_id), "messages": sorted_messages},
         )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[ListAgentsResponse].response(
+            response,
+            success=False,
+            data={"thread_id": "", "messages": []},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.get("/get_thread_list")
 def get_thread_list(
     workspace_id: str,
     request: Request,
+    response: FastAPIResponse,
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
@@ -89,16 +122,17 @@ def get_thread_list(
     agent_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> JSONResponse:
+) -> Response[APIListReturn[ReturnThreadValue]]:
     """List threads with pagination, filtered by agent creator.
 
     Args:
         workspace_id: ID of the workspace
         request: FastAPI request object
+        response: FastAPI response object
         db: SQLAlchemy database session
         page: Page number for pagination
         page_size: Number of threads per page
-        student_id: Filter threads by student ID (if provided)
+        user_id: Filter threads by student ID (if provided)
         agent_name: Filter threads by agent name (if provided)
         start_date: Filter threads by start date (if provided)
         end_date: Filter threads by end date (if provided)
@@ -110,7 +144,7 @@ def get_thread_list(
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and user_jwt_content["user_id"] != user_id:
-        return forbidden()
+        return Responses[ReturnThreadValue].forbidden_list(response)
     query = (
         db.query(
             Thread.thread_id,
@@ -142,8 +176,10 @@ def get_thread_list(
             # ! May cause issue with timezones
             query = query.filter(Thread.created_at >= start_datetime)
         except ValueError:
-            return response(
-                False,
+            return Responses[APIListReturn[ReturnThreadValue]].response(
+                response,
+                success=False,
+                data={"items": [], "total": 0},
                 status=HTTPStatus.BAD_REQUEST,
                 message="Invalid start_date format. Use YYYY-MM-DD[THH:MM:SS]",
             )
@@ -153,8 +189,10 @@ def get_thread_list(
             # ! May cause issue with timezones
             query = query.filter(Thread.created_at <= end_datetime)
         except ValueError:
-            return response(
-                False,
+            return Responses[APIListReturn[ReturnThreadValue]].response(
+                response,
+                success=False,
+                data={"items": [], "total": 0},
                 status=HTTPStatus.BAD_REQUEST,
                 message="Invalid end_date format. Use YYYY-MM-DD[THH:MM:SS]",
             )
@@ -166,7 +204,7 @@ def get_thread_list(
         .limit(page_size)
         .all()
     )  # pyright: ignore[reportAssignmentType]
-    results = [
+    results: list[ReturnThreadValue] = [
         {
             "thread_id": str(t.thread_id),
             "user_id": t.user_id,
@@ -178,6 +216,9 @@ def get_thread_list(
         }
         for t in threads
     ]
-    return response(
-        True, status=HTTPStatus.OK, data={"threads": results, "total": total}
+    return Responses[APIListReturn[ReturnThreadValue]].response(
+        response,
+        success=True,
+        status=HTTPStatus.OK,
+        data={"items": results, "total": total},
     )

@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, Literal, override
+from typing import Any, Generic, Literal, TypedDict, TypeVar, override
 from uuid import UUID as UUIDType  # noqa: N811
 from zoneinfo import ZoneInfo
 
@@ -28,6 +28,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from common.EnvManager import getenv
 
 CONFIG = getenv()
+
+
+WorkspaceRole = Literal["student", "teacher", "admin"]
+WorkspaceRoles = dict[str, WorkspaceRole]
 
 
 class BaseType:
@@ -105,6 +109,16 @@ class AgentValue(BaseModel):
         self.agent_files = {}
 
 
+class AgentReturn(TypedDict):
+    """Dictionary representation of an Agent row"""
+
+    agent_name: str
+    course_id: str
+    voice: bool
+    model_choice: bool
+    model: str
+
+
 class AgentTeacherResponse(AgentValue):
     """Teacher override for system prompt"""
 
@@ -151,6 +165,18 @@ class ThreadValue:
     agent_name: str = ""
 
 
+class ReturnThreadValue(TypedDict):
+    """Dictionary representation of a Thread row"""
+
+    thread_id: str
+    student_id: str
+    created_at: str
+    agent_id: str
+    user_id: int
+    workspace_id: str
+    agent_name: str
+
+
 class User(Base):
     """User model."""
 
@@ -189,6 +215,17 @@ class UserValue:
     def __init__(self) -> None:
         """Initialize workspace"""
         self.workspace_role = {}
+
+
+class UserReturn(TypedDict):
+    """Dictionary representation of a User row"""
+
+    user_id: int
+    email: str
+    first_name: str
+    last_name: str
+    student_id: str
+    workspace_role: WorkspaceRoles
 
 
 class RefreshToken(Base):
@@ -309,6 +346,15 @@ class WorkspaceValue:
     workspace_password: str = ""
 
 
+class WorkspaceReturn(TypedDict):
+    """Dictionary representation of a Workspace row"""
+
+    workspace_id: str
+    workspace_name: str
+    status: WorkspaceStatus
+    school_id: int
+
+
 class UserWorkspace(Base):
     """Users in Workspaces many to many model."""
 
@@ -369,3 +415,21 @@ class UserFeedbackValue:
     rating_format: Literal[2, 5, 10] = 2
     rating: int = 0
     comments: str = ""
+
+
+data = dict[str, str] | TypedDict | BaseModel
+T = TypeVar("T", bound=data)
+
+
+class APIListReturn(TypedDict, Generic[T]):
+    """Generic API response for list of objects"""
+
+    items: list[T]
+    total: int
+
+
+class APIListReturnPage(APIListReturn[T]):
+    """API response for list of objects with metadata"""
+
+    page: int
+    page_size: int

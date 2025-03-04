@@ -4,27 +4,36 @@
 import logging
 import uuid
 from http import HTTPStatus
+from typing import TypedDict
 
 from fastapi import Request
-from starlette.responses import JSONResponse
+from fastapi import Response as FastAPIResponse
 
 from common.JWTValidator import get_jwt
 from migrations.models import Agent, Thread
 from migrations.session import get_db
-from utils.response import response
+from utils.response import Response, Responses
 
 logger = logging.getLogger(__name__)
 
 
+class ThreadReturn(TypedDict):
+    """Thread return type"""
+
+    thread_id: str
+
+
 def new_thread(
     request: Request,
+    response: FastAPIResponse,
     agent_id: str,
     workspace_id: str,
-) -> JSONResponse:
+) -> Response[ThreadReturn]:
     """Creates a newe thread with the given agent_id and workspace_id
 
     Args:
         request: Request: FastAPI request object
+        response: FastAPI response object
         agent_id: Agent ID
         workspace_id: Workspace ID
 
@@ -41,15 +50,23 @@ def new_thread(
         is_user_in_workspace: bool = bool(workspace_role.get(workspace_id, False))
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
-            return response(
-                False, status=HTTPStatus.FORBIDDEN, message="User is not in workspace"
+            return Responses[ThreadReturn].response(
+                response,
+                success=False,
+                data={"thread_id": ""},
+                status=HTTPStatus.FORBIDDEN,
+                message="User is not in workspace",
             )
         thread_id = str(uuid.uuid4())
         agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             logger.error(f"Agent not found: {agent_id}")
-            return response(
-                False, status=HTTPStatus.NOT_FOUND, data={}, message="Agent not found"
+            return Responses[ThreadReturn].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                data={"thread_id": ""},
+                message="Agent not found",
             )
         thread = Thread(
             thread_id=thread_id,
@@ -64,18 +81,27 @@ def new_thread(
         try:
             db.commit()
             logger.info(f"New thread created: {thread_id}")
-            return response(True, status=HTTPStatus.OK, data={"thread_id": thread_id})
+            return Responses[ThreadReturn].response(
+                response,
+                success=True,
+                status=HTTPStatus.OK,
+                data={"thread_id": thread_id},
+            )
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create new thread: {e!s}")
-            return response(
-                False,
+            return Responses[ThreadReturn].response(
+                response,
+                success=False,
+                data={"thread_id": ""},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 message="Failed to create new thread",
             )
 
-    return response(
-        False,
+    return Responses[ThreadReturn].response(
+        response,
+        success=False,
+        data={"thread_id": ""},
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
         message="An unknown error occurred",
     )

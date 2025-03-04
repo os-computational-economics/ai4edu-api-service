@@ -4,14 +4,14 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, TypedDict
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
+from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
 
 from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
@@ -23,11 +23,12 @@ from migrations.models import (
     AgentStatus,
     AgentTeacherResponse,
     AgentValue,
+    APIListReturn,
     Workspace,
     WorkspaceStatus,
 )
 from migrations.session import get_db
-from utils.response import forbidden, response
+from utils.response import Response, Responses
 
 logger = logging.getLogger(__name__)
 CONFIG = getenv()
@@ -88,16 +89,24 @@ class AgentResponse(BaseModel):
     system_prompt: str
 
 
+class AddAgentResponse(TypedDict):
+    """A dictionary representing the response to add an agent."""
+
+    agent_id: str
+
+
 @router.post("/add_agent")
 def create_agent(
     request: Request,
+    response: FastAPIResponse,
     agent_data: AgentCreate,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[AddAgentResponse]:
     """Create a new agent record in the database.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         agent_data: AgentCreate object containing new agent
         db: SQLAlchemy database session
 
@@ -112,7 +121,7 @@ def create_agent(
         != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return forbidden()
+        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
     new_agent_id = uuid4()
     new_agent = Agent(
         agent_id=new_agent_id,
@@ -158,27 +167,38 @@ def create_agent(
         logger.info(
             f"Inserted new agent: {new_agent.agent_id} - {new_agent.agent_name}",
         )
-        return response(
-            True, status=HTTPStatus.OK, data={"agent_id": str(new_agent.agent_id)}
+        return Responses[AddAgentResponse].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"agent_id": str(new_agent.agent_id)},
         )
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to insert new agent: {e}")
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[AddAgentResponse].response(
+            response,
+            success=False,
+            data={"agent_id": ""},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/delete_agent")
 def delete_agent(
     request: Request,
+    response: FastAPIResponse,
     delete_data: AgentDelete,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[AddAgentResponse]:
     """Delete an existing agent record in the database by marking it as status=2.
 
     Will not actually delete the record or prompt from the database.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         delete_data: AgentDelete object containing agent_id and workspace_id
         db: SQLAlchemy database session
 
@@ -197,37 +217,54 @@ def delete_agent(
         user_jwt_content["workspace_role"].get(ws_id, None) != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return forbidden()
+        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
     agent_to_delete: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     )  # pyright: ignore[reportAssignmentType]
     if not agent_to_delete:
         logger.error(f"Agent not found: {delete_data.agent_id}")
-        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent not found")
+        return Responses[AddAgentResponse].response(
+            response,
+            success=False,
+            data={"agent_id": ""},
+            status=HTTPStatus.NOT_FOUND,
+            message="Agent not found",
+        )
     try:
         # mark the agent as deleted by setting the status to 2
         agent_to_delete.status = AgentStatus.DELETED
         db.commit()
         logger.info(f"Deleted agent: {delete_data.agent_id}")
-        return response(
-            True, status=HTTPStatus.OK, data={"agent_id": str(delete_data.agent_id)}
+        return Responses[AddAgentResponse].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"agent_id": str(delete_data.agent_id)},
         )
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete agent: {e}")
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[AddAgentResponse].response(
+            response,
+            success=False,
+            data={"agent_id": ""},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.post("/update_agent")
 def edit_agent(
     request: Request,
+    response: FastAPIResponse,
     update_data: AgentUpdate,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[AddAgentResponse]:
     """Update an existing agent record in the database.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         update_data: AgentUpdate object with agent id, workspace id, updated fields
         db: SQLAlchemy database session
 
@@ -241,13 +278,19 @@ def edit_agent(
         != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return forbidden()
+        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
     agent_to_update: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
     )  # pyright: ignore[reportAssignmentType]
     if not agent_to_update:
         logger.error(f"Agent not found: {update_data.agent_id}")
-        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent not found")
+        return Responses[AddAgentResponse].response(
+            response,
+            success=False,
+            data={"agent_id": ""},
+            status=HTTPStatus.NOT_FOUND,
+            message="Agent not found",
+        )
 
     # Update the agent fields if provided
     # ! TODO: Fix this block of if statements
@@ -297,27 +340,38 @@ def edit_agent(
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
-        return response(
-            True, status=HTTPStatus.OK, data={"agent_id": str(agent_to_update.agent_id)}
+        return Responses[AddAgentResponse].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"agent_id": str(agent_to_update.agent_id)},
         )
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update agent: {e}")
-        return response(False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e))
+        return Responses[AddAgentResponse].response(
+            response,
+            success=False,
+            data={"agent_id": ""},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.get("/agents")
 def list_agents(
     request: Request,
+    response: FastAPIResponse,
     workspace_id: str,
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-) -> JSONResponse:
+) -> Response[APIListReturn[AgentTeacherResponse]]:
     """List agents with pagination.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         workspace_id: Workspace ID to filter agents by
         db: SQLAlchemy database session
         page: Page number for pagination
@@ -330,7 +384,7 @@ def list_agents(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_role is None:
-        return forbidden()
+        return Responses[AgentTeacherResponse].forbidden_list(response)
     query = (
         db.query(Agent)
         .join(
@@ -346,31 +400,36 @@ def list_agents(
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
-    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
+    agents: list[AgentTeacherResponse] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
     # get the prompt for each agent
     if user_role == "teacher":
-        agent_ret: list[AgentTeacherResponse] = agents  # pyright: ignore[reportAssignmentType]
-        for agent in agent_ret:
+        for agent in agents:
             agent.system_prompt = (
                 agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
             )
-        agents = agent_ret  # pyright: ignore[reportAssignmentType]
     else:
         for agent in agents:
             agent.agent_files = {}
-    return response(True, status=HTTPStatus.OK, data={"agents": agents, "total": total})
+    return Responses[APIListReturn[AgentTeacherResponse]].response(
+        response,
+        success=True,
+        status=HTTPStatus.OK,
+        data={"items": agents, "total": total},
+    )
 
 
 @router.get("/agent/{agent_id}")
 def get_agent_by_id(
     request: Request,
+    response: FastAPIResponse,
     agent_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-) -> JSONResponse:
+) -> Response[AgentValue]:
     """Fetch an agent by its UUID.
 
     Args:
         request: FastAPI request object
+        response: FastAPI response object
         agent_id: Agent UUID to fetch
         db: SQLAlchemy database session
 
@@ -384,13 +443,21 @@ def get_agent_by_id(
         .first()
     )  # pyright: ignore[reportAssignmentType] exclude deleted agents
     if agent is None:
-        return response(False, status=HTTPStatus.NOT_FOUND, message="Agent not found")
+        return Responses[AgentValue].response(
+            response,
+            success=False,
+            data=AgentValue(),
+            status=HTTPStatus.NOT_FOUND,
+            message="Agent not found",
+        )
     agent_workspace = agent.workspace_id
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
-        return forbidden()
+        return Responses[AgentValue].forbidden(response, data=AgentValue())
     # if user_role != "teacher":
     #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here
-    return response(True, status=HTTPStatus.OK, data=agent)
+    return Responses[AgentValue].response(
+        response, success=True, status=HTTPStatus.OK, data=agent
+    )
