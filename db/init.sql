@@ -25,7 +25,7 @@ create table ai_agents
             primary key,
     created_at         timestamp default now()      not null,
     agent_name         varchar(255)                 not null,
-    workspace_id       varchar(31),
+    workspace_id       uuid                         not null,
     creator            varchar(16),
     updated_at         timestamp default now()      not null,
     voice              boolean   default false      not null,
@@ -59,19 +59,20 @@ comment on column ai_files.file_status is ' 0 is deleted';
 
 create table ai_users
 (
-    user_id        serial
+    user_id         serial
         constraint ai_users_pk
             unique,
-    first_name     varchar(60)           not null,
-    last_name      varchar(60)           not null,
-    email          varchar(150)          not null
+    first_name      varchar(60)           not null,
+    last_name       varchar(60)           not null,
+    email           varchar(150)          not null
         unique,
-    student_id     varchar(20)           not null,
-    workspace_role json                  not null,
-    school_id      integer               not null,
-    last_login     timestamp,
-    create_at      timestamp,
-    system_admin   boolean default false not null,
+    student_id      varchar(20)           not null,
+    workspace_role  json                  not null,
+    school_id       integer               not null,
+    last_login      timestamp,
+    create_at       timestamp,
+    system_admin    boolean default false not null,
+    workspace_admin boolean default false not null,
     primary key (user_id, email)
 );
 
@@ -100,33 +101,40 @@ create table ai_threads
         constraint ai_threads_ai_agents_agent_id_fk
             references ai_agents,
     user_id      integer     default 1                         not null,
-    workspace_id varchar(16) default 'wsom'::character varying not null,
+    workspace_id uuid                                          not null,
     agent_name   varchar(256)
 );
 
 create table ai_user_workspace
 (
     user_id      integer,
-    workspace_id varchar(16)                                      not null,
+    workspace_id uuid                                             not null,
     role         varchar(16) default 'pending'::character varying not null,
     created_at   timestamp   default now()                        not null,
     updated_at   timestamp,
     student_id   varchar(16)                                      not null,
     constraint ai_user_workspace_pk
-        primary key (workspace_id, student_id)
+        primary key (workspace_id, user_id)
 );
 
 create table ai_workspaces
 (
-    workspace_id       varchar(16)           not null
+    workspace_id        uuid                 not null
         constraint ai_workspaces_pk
             primary key,
-    workspace_name     varchar(64)           not null
+    workspace_name      varchar(64)          not null
         constraint ai_workspaces_pk_2
             unique,
+    workspace_prompt    text,
+    workspace_comment   text,
+    created_by integer                       not null
+        references ai_users(user_id),
+    workspace_join_code varchar(6)           not null
+        unique
+            constraint valid_join_code
+                check (join_code similar to '[0-9]{6}'),
     status             integer default 1     not null,
     school_id          integer default 0     not null,
-    workspace_password varchar(128)          not null
 );
 
 create table ai_feedback

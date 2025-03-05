@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     String,
     Integer,
+    Text,
     func,
     MetaData,
     Boolean,
@@ -44,7 +45,7 @@ class Agent(Base):
     agent_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     agent_name = Column(String(255), nullable=False)
-    workspace_id = Column(String(31))
+    workspace_id = Column(UUID(as_uuid=True), nullable=False)
     creator = Column(String(16))
     updated_at = Column(DateTime, default=func.now(), nullable=False)
     voice = Column(Boolean, default=False, nullable=False)
@@ -88,7 +89,7 @@ class Thread(Base):
         UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False
     )
     user_id = Column(Integer, nullable=False)
-    workspace_id = Column(String(16), nullable=False)
+    workspace_id = Column(UUID(as_uuid=True), nullable=False)
     agent_name = Column(String(255), nullable=False)
 
     @override
@@ -115,10 +116,11 @@ class User(Base):
     email = Column(String(150), nullable=False, unique=True)
     student_id = Column(String(20), nullable=False, unique=True)
     workspace_role = Column(JSON, nullable=False)
-    system_admin = Column(Boolean, default=False, nullable=False)
     school_id = Column(Integer, nullable=False)
     last_login = Column(DateTime)
     create_at = Column(DateTime)
+    system_admin = Column(Boolean, default=False, nullable=False)
+    workspace_admin: Any = Column(Boolean, default=False, nullable=False)
 
     @override
     def __repr__(self):
@@ -133,6 +135,7 @@ class UserValue:
     student_id: str = ""
     workspace_role: dict[str, Any] = {}
     system_admin: bool = False
+    workspace_admin: bool = False
     school_id: int = 0
     last_login: datetime = datetime.now()
     create_at: datetime = datetime.now()
@@ -195,13 +198,16 @@ class FileValue:
 class Workspace(Base):
     __tablename__ = "ai_workspaces"
 
-    workspace_id = Column(String(16), primary_key=True, nullable=False)
+    workspace_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     workspace_name = Column(String(64), unique=True, nullable=False)
+    workspace_prompt: Any = Column(Text(), nullable=True)
+    workspace_comment: Any = Column(Text(), nullable=True)
+    created_by: Any = Column(UUID(as_uuid=True), nullable=False)
+    workspace_join_code: Any = Column(String(6), nullable=False)
     status = Column(
         Integer, default=1, nullable=False
     )  # 1-active, 0-inactive, 2-deleted
     school_id = Column(Integer, default=0, nullable=False)
-    workspace_password = Column(String(128), nullable=False)
 
     @override
     def __repr__(self):
@@ -217,6 +223,10 @@ class WorkspaceStatus(IntEnum):
 class WorkspaceValue:
     workspace_id: str = ""
     workspace_name: str = ""
+    workspace_prompt: str = ""
+    workspace_comment: str = ""
+    created_by: str = ""
+    workspace_join_code: str = ""
     status: WorkspaceStatus = WorkspaceStatus.ACTIVE
     school_id: int = 0
     workspace_password: str = ""
@@ -233,7 +243,7 @@ class UserWorkspace(Base):
     student_id = Column(String(16), nullable=False)
 
     __table_args__ = (
-        PrimaryKeyConstraint("workspace_id", "student_id", name="ai_user_workspace_pk"),
+        PrimaryKeyConstraint("workspace_id", "user_id", name="ai_user_workspace_pk"),
     )
 
     @override
