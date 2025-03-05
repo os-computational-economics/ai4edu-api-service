@@ -104,5 +104,10 @@ UPDATE ai_workspaces AS w
         3
     );
 
+-- set workspace_admin to true for users who are creators
+UPDATE ai_users
+    SET workspace_admin=true
+        WHERE user_id IN (SELECT DISTINCT created_by FROM ai_workspaces WHERE created_by IS NOT NULL);
+
 -- commit the changes
 COMMIT;
