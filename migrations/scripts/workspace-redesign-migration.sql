@@ -26,17 +26,27 @@ UPDATE ai_agents AS a
         SELECT w.new_workspace_id FROM ai_workspaces AS w 
         WHERE w.workspace_id=a.workspace_id);
 
+-- update workspace_id references inside ai_users.workspace_role JSON field
+UPDATE ai_users
+    SET workspace_role = COALESCE((
+        SELECT json_object_agg(w.new_workspace_id::TEXT, old_role.value)
+        FROM ai_users u,
+            json_each_text(u.workspace_role) AS old_role
+        JOIN ai_workspaces w ON w.workspace_id::TEXT = old_role.key
+        WHERE u.user_id = ai_users.user_id
+    ), '{}'::json);
+
 -- swap columns in all relevant tables
 ALTER TABLE ai_workspaces DROP CONSTRAINT ai_workspaces_pk;
 ALTER TABLE ai_workspaces RENAME COLUMN workspace_id TO old_workspace_id;
 ALTER TABLE ai_workspaces RENAME COLUMN new_workspace_id TO workspace_id;
-ALTER TABLE ai_workspaces ADD PRIMARY KEY (workspace_id);
+ALTER TABLE ai_workspaces ADD CONSTRAINT ai_workspaces_pk PRIMARY KEY (workspace_id);
 
 ALTER TABLE ai_user_workspace DROP CONSTRAINT ai_user_workspace_pk;
 ALTER TABLE ai_user_workspace RENAME COLUMN workspace_id TO old_workspace_id;
 ALTER TABLE ai_user_workspace RENAME COLUMN new_workspace_id TO workspace_id;
 -- note: the user_id is being replaced with the student_id in the pk as student_id is being phased out
-ALTER TABLE ai_user_workspace ADD PRIMARY KEY (workspace_id);
+ALTER TABLE ai_user_workspace ADD CONSTRAINT ai_user_workspace_pk PRIMARY KEY (workspace_id, user_id);
 
 ALTER TABLE ai_threads RENAME COLUMN workspace_id TO old_workspace_id;
 ALTER TABLE ai_threads RENAME COLUMN new_workspace_id TO workspace_id;
