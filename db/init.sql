@@ -132,7 +132,7 @@ create table ai_workspaces
     workspace_join_code varchar(6)           not null
         unique
             constraint valid_join_code
-                check (join_code similar to '[0-9]{6}'),
+                check (workspace_join_code similar to '[0-9]{6}'),
     status             integer default 1     not null,
     school_id          integer default 0     not null
 );
