@@ -134,7 +134,7 @@ create table ai_workspaces
             constraint valid_join_code
                 check (join_code similar to '[0-9]{6}'),
     status             integer default 1     not null,
-    school_id          integer default 0     not null,
+    school_id          integer default 0     not null
 );
 
 create table ai_feedback
