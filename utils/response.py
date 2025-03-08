@@ -36,21 +36,18 @@ T = TypeVar("T", bound=ResponseData | None)
 class Response(BaseModel, Generic[T]):
     """Response structure for API responses."""
 
-    status: HTTPStatus = HTTPStatus.OK
     data: T | None = None
     message: str = ""
     success: bool = True
 
     def __init__(
         self,
-        status: HTTPStatus = HTTPStatus.OK,
         data: T | None = None,
         message: str = "",
         success: bool = True,
     ) -> None:
         """Initializes a Response object."""
         super().__init__()
-        self.status = status
         self.data = data
         self.message = message
         self.success = success
@@ -147,6 +144,4 @@ class Responses(Generic[T]):
         response_obj.status_code = return_status
         if headers:
             response_obj.headers.update(headers)
-        return Response[T](
-            status=return_status, success=success, data=data, message=message
-        )
+        return Response[T](success=success, data=data, message=message)
