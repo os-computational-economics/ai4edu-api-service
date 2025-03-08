@@ -38,7 +38,7 @@ class Message(BaseModel):
 class MessageStorageHandler:
     """Handle the storage of messages in DynamoDB."""
 
-    DYNAMODB_TABLE_NAME: str = "ai4edu_chat_msg"
+    dynamodb_table_name: str = ""
 
     def __init__(self, config: Config) -> None:
         """Initialize the MessageStorageHandler."""
@@ -48,7 +48,8 @@ class MessageStorageHandler:
             aws_access_key_id=config["AWS_ACCESS_KEY_ID_DYNAMODB"],
             aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY_DYNAMODB"],
         )
-        self.table: Table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
+        self.dynamodb_table_name = config["DYNAMODB_NAME"]
+        self.table: Table = self.dynamodb.Table(self.dynamodb_table_name)
 
     def put_message(
         self,

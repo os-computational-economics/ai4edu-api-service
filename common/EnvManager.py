@@ -20,7 +20,7 @@ ConfigKeys = Literal[
     "AWS_SECRET_ACCESS_KEY_DYNAMODB",
     "DOMAIN",
     "TIMEZONE",
-    "DATABASE_SALT",
+    "DYNAMODB_NAME",
 ]
 
 VARS: list[ConfigKeys] = list(get_args(ConfigKeys))
