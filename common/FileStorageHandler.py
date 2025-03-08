@@ -62,6 +62,8 @@ class FileStorageHandler:
             "s3",
             region_name="us-east-2",
             config=Config(signature_version="s3v4"),
+            aws_access_key_id=config["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY"],
         )
         self.db: Session | None = None
         self.redis_client: Redis[str] = Redis(
@@ -203,7 +205,7 @@ class FileStorageHandler:
             Path.mkdir(local_folder, parents=True, exist_ok=True)
             local_path = local_folder / file_name
 
-            with local_path.open("rw") as local_file:
+            with local_path.open("wb") as local_file:
                 _ = local_file.write(file_obj)
         except Exception as e:
             logger.error(f"Error saving file locally: {e!s}")

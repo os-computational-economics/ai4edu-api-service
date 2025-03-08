@@ -3,8 +3,7 @@
 
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, Literal, TypedDict
-from typing_extensions import override
+from typing import Any, Literal, TypedDict, override
 from uuid import UUID as UUIDType  # noqa: N811
 from zoneinfo import ZoneInfo
 
