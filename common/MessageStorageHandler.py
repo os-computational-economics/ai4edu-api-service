@@ -72,6 +72,8 @@ class MessageStorageHandler:
 
         Returns:
             The ID of the message. If the operation fails, return None.
+            Note: The ID of the message is the first 8 characters of the thread_id#unix timestamp in milliseconds when the message is created.
+            Example: 3cd331fc#1741413462489
 
         """
         try:
