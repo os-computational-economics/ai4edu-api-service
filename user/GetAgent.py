@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends
 from fastapi import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
-from migrations.models import Agent, AgentReturn, AgentStatus, AgentValue
+from migrations.models import Agent, AgentReturn, AgentStatus, AgentValue, agent_return
 from migrations.session import get_db
 from utils.response import Response, Responses
 
@@ -44,13 +44,7 @@ def get_agent_by_id(
         return Responses[AgentReturn].response(
             response,
             False,
-            data={
-                "agent_name": "",
-                "course_id": "",
-                "voice": False,
-                "model_choice": False,
-                "model": "",
-            },
+            data=agent_return(),
             status=HTTPStatus.BAD_REQUEST,
             message="Invalid UUID format",
         )
@@ -64,13 +58,7 @@ def get_agent_by_id(
         return Responses[AgentReturn].response(
             response,
             success=False,
-            data={
-                "agent_name": "",
-                "course_id": "",
-                "voice": False,
-                "model_choice": False,
-                "model": "",
-            },
+            data=agent_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -78,13 +66,7 @@ def get_agent_by_id(
         return Responses[AgentReturn].response(
             response,
             success=False,
-            data={
-                "agent_name": "",
-                "course_id": "",
-                "voice": False,
-                "model_choice": False,
-                "model": "",
-            },
+            data=agent_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent is inactive",
         )
@@ -92,13 +74,7 @@ def get_agent_by_id(
         response,
         success=True,
         status=HTTPStatus.OK,
-        data={
-            "agent_name": agent.agent_name,
-            "course_id": agent.workspace_id,
-            "voice": agent.voice,
-            "model_choice": agent.allow_model_choice,
-            "model": agent.model,
-        },
+        data=agent_return(agent),
     )
 
 

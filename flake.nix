@@ -17,6 +17,111 @@
         pkgs-treefmt = (import inputs.nixpkgs-treefmt) {
           inherit system;
         };
+        py = pkgs.python3.withPackages (python-pkgs:
+          with python-pkgs; [
+            aiohttp
+            aiosignal
+            alembic
+            annotated-types
+            anthropic
+            anyio
+            async-timeout
+            attrs
+            boto3
+            boto3-stubs
+            mypy-boto3-dynamodb
+            mypy-boto3-s3
+            botocore
+            certifi
+            cffi
+            chardet
+            charset-normalizer
+            click
+            cryptography
+            dataclasses-json
+            defusedxml
+            distro
+            dnspython
+            email_validator
+            fastapi
+            fastapi-cli
+            filelock
+            frozenlist
+            fsspec
+            h11
+            hiredis
+            httpcore
+            httptools
+            httpx
+            huggingface-hub
+            idna
+            jinja2
+            jiter
+            jmespath
+            jsonpatch
+            jsonpointer
+            langchain
+            (pkgs.callPackage ./langchain-anthropic.nix pkgs.python312Packages)
+            langchain-community
+            langchain-core
+            langchain-openai
+            # TODO: needs pinecone-client to work
+            # langchain-pinecone
+            langchain-text-splitters
+            langsmith
+            Mako
+            markdown-it-py
+            markupsafe
+            marshmallow
+            mdurl
+            multidict
+            mypy-extensions
+            numpy
+            openai
+            orjson
+            packaging
+            # TODO: fix this package
+            (pkgs.callPackage ./pinecone.nix pkgs.python312Packages)
+            (pkgs.callPackage ./langchain-pinecone.nix pkgs.python312Packages)
+            psycopg
+            # psycopg-binary
+            pycparser
+            pydantic
+            pydantic-core
+            pygments
+            pyjwt
+            pypdf
+            python-dateutil
+            python-dotenv
+            python-multipart
+            pyyaml
+            types-redis
+            redis
+            regex
+            requests
+            rich
+            s3transfer
+            shellingham
+            six
+            sniffio
+            sqlalchemy
+            sse-starlette
+            starlette
+            tenacity
+            tiktoken
+            tokenizers
+            tqdm
+            typer
+            typing-inspect
+            typing-extensions
+            ujson
+            urllib3
+            uvicorn
+            uvloop
+            watchfiles
+            websockets
+            yarl
+          ]);
       in {
         devShells = rec {
           docker-python = pkgs.mkShell {
@@ -25,112 +130,9 @@
               docker
               podman-compose
               podman
-              (python3.withPackages (python-pkgs:
-                with python-pkgs; [
-                  aiohttp
-                  aiosignal
-                  alembic
-                  annotated-types
-                  anthropic
-                  anyio
-                  async-timeout
-                  attrs
-                  boto3
-                  boto3-stubs
-                  mypy-boto3-dynamodb
-                  mypy-boto3-s3
-                  botocore
-                  certifi
-                  cffi
-                  chardet
-                  charset-normalizer
-                  click
-                  cryptography
-                  dataclasses-json
-                  defusedxml
-                  distro
-                  dnspython
-                  email_validator
-                  fastapi
-                  fastapi-cli
-                  filelock
-                  frozenlist
-                  fsspec
-                  h11
-                  hiredis
-                  httpcore
-                  httptools
-                  httpx
-                  huggingface-hub
-                  idna
-                  jinja2
-                  jiter
-                  jmespath
-                  jsonpatch
-                  jsonpointer
-                  langchain
-                  (pkgs.callPackage ./langchain-anthropic.nix python312Packages)
-                  langchain-community
-                  langchain-core
-                  langchain-openai
-                  # TODO: needs pinecone-client to work
-                  # langchain-pinecone
-                  langchain-text-splitters
-                  langsmith
-                  Mako
-                  markdown-it-py
-                  markupsafe
-                  marshmallow
-                  mdurl
-                  multidict
-                  mypy-extensions
-                  numpy
-                  openai
-                  orjson
-                  packaging
-                  # TODO: fix this package
-                  (pkgs.callPackage ./pinecone.nix python312Packages)
-                  (pkgs.callPackage ./langchain-pinecone.nix python312Packages)
-                  psycopg
-                  # psycopg-binary
-                  pycparser
-                  pydantic
-                  pydantic-core
-                  pygments
-                  pyjwt
-                  pypdf
-                  python-dateutil
-                  python-dotenv
-                  python-multipart
-                  pyyaml
-                  types-redis
-                  redis
-                  regex
-                  requests
-                  rich
-                  s3transfer
-                  shellingham
-                  six
-                  sniffio
-                  sqlalchemy
-                  sse-starlette
-                  starlette
-                  tenacity
-                  tiktoken
-                  tokenizers
-                  tqdm
-                  typer
-                  typing-inspect
-                  typing-extensions
-                  ujson
-                  urllib3
-                  uvicorn
-                  uvloop
-                  watchfiles
-                  websockets
-                  yarl
-                ]))
+              py
               openssl
+              fastapi-cli
               bruno
               pkgs-treefmt.bruno-cli
               openapi-generator-cli
@@ -167,9 +169,9 @@
             type = "app";
             program = "${pkgs.writeShellScriptBin "init.sh" ''
               upsearch () {
-              local slashes=$\{PWD//[^\/]/}
+              local slashes=''${PWD//[^\/]/}
               local directory=$(pwd)
-              for (( n=$\{#slashes}; n>0; --n ))
+              for (( n=''${#slashes}; n>0; --n ))
                 do
                   test -e "$directory/$1" && cd $directory
                   directory="$directory/.."
@@ -190,6 +192,28 @@
             type = "app";
             program = "${pkgs.writeShellScriptBin "start-compose.sh" ''
               ${pkgs.podman-compose}/bin/podman-compose up --build --force-recreate
+            ''}/bin/start-compose.sh";
+          };
+          generate = {
+            type = "app";
+            program = "${pkgs.writeShellScriptBin "start-compose.sh" ''
+              upsearch () {
+                local slashes=''${PWD//[^\/]/}
+                local directory=$(pwd)
+                for (( n=''${#slashes}; n>0; --n ))
+                do
+                  test -e "$directory/$1" && cd $directory
+                  directory="$directory/.."
+                done
+              }
+
+              upsearch flake.nix
+
+              ${py}/bin/python get_openapi.py
+              mkdir -p openapi
+              cd openapi
+              ${pkgs.openapi-generator-cli}/bin/openapi-generator-cli generate -g html2 -i ../openapi.yaml
+              ${pkgs.openapi-generator-cli}/bin/openapi-generator-cli generate -g typescript-node -i ../openapi.yaml
             ''}/bin/start-compose.sh";
           };
           default = compose;

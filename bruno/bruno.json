@@ -5,5 +5,16 @@
   "ignore": [
     "node_modules",
     ".git"
-  ]
+  ],
+  "clientCertificates": {
+    "enabled": true,
+    "certs": [
+      {
+        "domain": "localhost",
+        "certFilePath": "../ssl/localhost_bundle.crt",
+        "keyFilePath": "../ssl/localhost.key",
+        "passphrase": ""
+      }
+    ]
+  }
 }

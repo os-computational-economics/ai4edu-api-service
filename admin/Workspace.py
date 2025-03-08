@@ -8,7 +8,7 @@ from http import HTTPStatus
 from typing import Annotated
 
 import chardet
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, UploadFile
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel
 from sqlalchemy import desc, func
@@ -18,7 +18,6 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from common.JWTValidator import get_jwt
 from migrations.models import (
-    APIListReturnPage,
     User,
     UserValue,
     UserWorkspace,
@@ -27,9 +26,10 @@ from migrations.models import (
     WorkspaceReturn,
     WorkspaceStatus,
     WorkspaceValue,
+    workspace_return,
 )
 from migrations.session import get_db
-from utils.response import Response, Responses
+from utils.response import APIListReturnPage, Response, Responses
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +357,7 @@ def add_users_via_csv(
     response: FastAPIResponse,
     workspace_id: str,
     db: Annotated[Session, Depends(get_db)],
-    file: UploadFile | None = None,  # pyright: ignore[reportRedeclaration]
+    file: UploadFile | None = None,
 ) -> Response[None]:
     """Add users to a workspace from a CSV file
 
@@ -373,7 +373,9 @@ def add_users_via_csv(
 
     """
     if file is None:
-        file: UploadFile = File(...)
+        return Responses[None].response(
+            response, False, status=HTTPStatus.BAD_REQUEST, message="No File Provided"
+        )
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
@@ -728,21 +730,12 @@ def get_workspace_list(
             .filter(Workspace.status != WorkspaceStatus.DELETED)
             .count()
         )
-        workspace_list: list[WorkspaceReturn] = [
-            {
-                "workspace_id": workspace.workspace_id,
-                "workspace_name": workspace.workspace_name,
-                "school_id": workspace.school_id,
-                "status": workspace.status,
-            }
-            for workspace in workspaces
-        ]
         return Responses[APIListReturnPage[WorkspaceReturn]].response(
             response,
             success=True,
             status=HTTPStatus.OK,
             data={
-                "items": workspace_list,
+                "items": [workspace_return(workspace) for workspace in workspaces],
                 "total": total_workspaces,
                 "page": page,
                 "page_size": page_size,

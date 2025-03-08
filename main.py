@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
-from typing import TypedDict
 from zoneinfo import ZoneInfo
 
 from anthropic import Anthropic
@@ -35,14 +34,15 @@ from admin.Thread import router as ThreadRouter  # noqa: N812
 from admin.Workspace import router as WorkspaceRouter  # noqa: N812
 from common.AuthSSO import AuthSSO
 from common.EnvManager import getenv
-from common.FileStorageHandler import FileReturn, FileStorageHandler
+from common.FileStorageHandler import FileReturn, FileStorageHandler, file_return
 from common.MessageStorageHandler import MessageStorageHandler
 from common.UserAuth import UserAuth
 from middleware.authorization import AuthorizationMiddleware, extract_token
+from migrations.models import TokenReturn, URLReturn, token_return, url_return
 from user.ChatStream import ChatStream, ChatStreamModel
 from user.Feedback import router as FeedbackRouter  # noqa: N812
 from user.GetAgent import router as GetAgentRouter  # noqa: N812
-from user.Threads import ThreadReturn, new_thread
+from user.Threads import NewThreadReturn, new_thread
 from user.TtsStream import TtsStream
 from utils.response import Response, Responses
 
@@ -70,8 +70,6 @@ CONFIG = getenv()
 
 # initialize FastAPI app and OpenAI client
 app = FastAPI(
-    docs_url=f"{URL_PATHS['current_dev_admin']}/docs",
-    redoc_url=f"{URL_PATHS['current_dev_admin']}/redoc",
     openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json",
 )
 openai_client = OpenAI(api_key=CONFIG["OPENAI_API_KEY"])
@@ -238,7 +236,7 @@ def get_new_thread(
     response: FastAPIResponse,
     agent_id: str,
     workspace_id: str,
-) -> Response[ThreadReturn]:
+) -> Response[NewThreadReturn]:
     """ENDPOINT: /user/get_new_thread
 
     Generates a new thread id for the user.
@@ -283,7 +281,7 @@ async def upload_file(
         return Responses[FileReturn].response(
             response,
             success=False,
-            data={"file_id": "", "file_name": ""},
+            data=file_return(),
             message="No file provided",
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -307,7 +305,7 @@ async def upload_file(
             return Responses[FileReturn].response(
                 response,
                 success=False,
-                data={"file_id": "", "file_name": ""},
+                data=file_return(),
                 message="Failed to upload file",
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
@@ -315,23 +313,17 @@ async def upload_file(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"file_id": file_id, "file_name": file.filename or ""},
+            data=file_return(file_id, file.filename or ""),
         )
     except Exception as e:
         logging.error(f"Failed to upload file: {e!s}")
     return Responses[FileReturn].response(
         response,
         success=False,
-        data={"file_id": "", "file_name": ""},
+        data=file_return(),
         message="unable to upload file",
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
-
-
-class URLReturn(TypedDict):
-    """Response containing a Presigned URL."""
-
-    url: str
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/get_presigned_url_for_file")
@@ -357,7 +349,7 @@ async def get_presigned_url_for_file(
         return Responses[URLReturn].response(
             response,
             success=False,
-            data={"url": ""},
+            data=url_return(),
             message="No file ID provided",
             status=HTTPStatus.BAD_REQUEST,
         )
@@ -366,19 +358,13 @@ async def get_presigned_url_for_file(
         return Responses[URLReturn].response(
             response,
             success=False,
-            data={"url": ""},
+            data=url_return(),
             message="Failed to generate presigned URL",
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
     return Responses[URLReturn].response(
-        response, success=True, status=HTTPStatus.OK, data={"url": url}
+        response, success=True, status=HTTPStatus.OK, data=url_return(url)
     )
-
-
-class TokenResponse(TypedDict):
-    """Response containing an Access Token."""
-
-    access_token: str
 
 
 @app.get(f"{URL_PATHS['current_dev_admin']}/generate_access_token")
@@ -388,13 +374,14 @@ class TokenResponse(TypedDict):
 def generate_token(
     request: Request,
     response: FastAPIResponse,
-) -> Response[TokenResponse]:
+) -> Response[TokenReturn]:
     """ENDPOINT: /generate_access_token
 
     Generates a temporary STT auth code for the user.
 
     Args:
         request: the FastAPI Request object.
+        response: The FastAPI respose object.
 
     Returns:
         Access token if successful, otherwise an error message.
@@ -402,26 +389,26 @@ def generate_token(
     """
     tokens = extract_token(request.headers.get("Authorization", ""))
     if tokens["refresh_token"] is None:
-        return Responses[TokenResponse].response(
+        return Responses[TokenReturn].response(
             response,
             success=False,
-            data={"access_token": ""},
+            data=token_return(),
             message="No refresh token provided",
             status=HTTPStatus.UNAUTHORIZED,
         )
     auth = UserAuth(config=CONFIG)
     access_token = auth.gen_access_token(tokens["refresh_token"])
     if access_token:
-        return Responses[TokenResponse].response(
+        return Responses[TokenReturn].response(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"access_token": str(access_token)},
+            data=token_return(str(access_token)),
         )
-    return Responses[TokenResponse].response(
+    return Responses[TokenReturn].response(
         response,
         success=False,
-        data={"access_token": ""},
+        data=token_return(),
         message="Failed to generate access token",
         status=HTTPStatus.UNAUTHORIZED,
     )

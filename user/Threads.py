@@ -4,23 +4,35 @@
 import logging
 import uuid
 from http import HTTPStatus
-from typing import TypedDict
 
 from fastapi import Request
 from fastapi import Response as FastAPIResponse
 
 from common.JWTValidator import get_jwt
-from migrations.models import Agent, Thread
+from migrations.models import Agent, ModelReturn, Thread
 from migrations.session import get_db
 from utils.response import Response, Responses
 
 logger = logging.getLogger(__name__)
 
 
-class ThreadReturn(TypedDict):
+class NewThreadReturn(ModelReturn):
     """Thread return type"""
 
     thread_id: str
+
+
+def new_thread_return(thread_id: str = "") -> NewThreadReturn:
+    """Makes an AgentReturn object from a thread_id
+
+    Args:
+        thread_id: The thread ID to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"thread_id": thread_id}
 
 
 def new_thread(
@@ -28,7 +40,7 @@ def new_thread(
     response: FastAPIResponse,
     agent_id: str,
     workspace_id: str,
-) -> Response[ThreadReturn]:
+) -> Response[NewThreadReturn]:
     """Creates a newe thread with the given agent_id and workspace_id
 
     Args:
@@ -50,10 +62,10 @@ def new_thread(
         is_user_in_workspace: bool = bool(workspace_role.get(workspace_id, False))
         if not is_user_in_workspace:
             logger.error(f"User {user_id} is not in workspace {workspace_id}")
-            return Responses[ThreadReturn].response(
+            return Responses[NewThreadReturn].response(
                 response,
                 success=False,
-                data={"thread_id": ""},
+                data=new_thread_return(),
                 status=HTTPStatus.FORBIDDEN,
                 message="User is not in workspace",
             )
@@ -61,11 +73,11 @@ def new_thread(
         agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             logger.error(f"Agent not found: {agent_id}")
-            return Responses[ThreadReturn].response(
+            return Responses[NewThreadReturn].response(
                 response,
                 success=False,
                 status=HTTPStatus.NOT_FOUND,
-                data={"thread_id": ""},
+                data=new_thread_return(),
                 message="Agent not found",
             )
         thread = Thread(
@@ -81,27 +93,27 @@ def new_thread(
         try:
             db.commit()
             logger.info(f"New thread created: {thread_id}")
-            return Responses[ThreadReturn].response(
+            return Responses[NewThreadReturn].response(
                 response,
                 success=True,
                 status=HTTPStatus.OK,
-                data={"thread_id": thread_id},
+                data=new_thread_return(thread_id),
             )
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create new thread: {e!s}")
-            return Responses[ThreadReturn].response(
+            return Responses[NewThreadReturn].response(
                 response,
                 success=False,
-                data={"thread_id": ""},
+                data=new_thread_return(),
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
                 message="Failed to create new thread",
             )
 
-    return Responses[ThreadReturn].response(
+    return Responses[NewThreadReturn].response(
         response,
         success=False,
-        data={"thread_id": ""},
+        data=new_thread_return(),
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
         message="An unknown error occurred",
     )

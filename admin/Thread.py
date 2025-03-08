@@ -4,7 +4,7 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated, TypedDict
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
@@ -17,15 +17,16 @@ from common.JWTValidator import get_jwt
 from common.MessageStorageHandler import Message, MessageStorageHandler
 from migrations.models import (
     Agent,
-    APIListReturn,
-    ReturnThreadValue,
+    ModelReturn,
     Thread,
+    ThreadReturn,
     ThreadValue,
     Workspace,
     WorkspaceStatus,
+    thread_return,
 )
 from migrations.session import get_db
-from utils.response import Response, Responses
+from utils.response import APIListReturn, Response, Responses
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,8 +42,8 @@ class ThreadListQuery(BaseModel):
     user_id: str | None = None
     start_date: str | None = None
     end_date: str | None = None
-    page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=10, ge=1, le=100)
+    page: int = Field(default=1, ge=1)  # pyright: ignore[reportAny]
+    page_size: int = Field(default=10, ge=1, le=100)  # pyright: ignore[reportAny]
     agent_name: str | None = None
     course_id: str | None = None
 
@@ -56,11 +57,29 @@ class ThreadContent(BaseModel):
     agent_id: str
 
 
-class ListAgentsResponse(TypedDict):
+class ListAgentsResponse(ModelReturn):
     """Return type for Getting Full Thread"""
 
     thread_id: str
     messages: list[Message]
+
+
+def list_agents_response(
+    thread_id: str = "", messages: list[Message] | None = None
+) -> ListAgentsResponse:
+    """Makes an ListAgentsResponse object from a python object
+
+    Args:
+        thread_id: The thread id to return
+        messages: The list of messages to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    if messages is None:
+        messages = []
+    return {"messages": messages, "thread_id": thread_id}
 
 
 @router.get("/get_thread/{thread_id}")
@@ -84,7 +103,7 @@ def get_thread_by_id(
             return Responses[ListAgentsResponse].response(
                 response,
                 success=False,
-                data={"thread_id": "", "messages": []},
+                data=list_agents_response(),
                 status=HTTPStatus.NOT_FOUND,
                 message="Thread messages not found",
             )
@@ -97,14 +116,14 @@ def get_thread_by_id(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"thread_id": str(thread_id), "messages": sorted_messages},
+            data=list_agents_response(str(thread_id), sorted_messages),
         )
     except Exception as e:
         logger.error(f"Error fetching thread content: {e}")
         return Responses[ListAgentsResponse].response(
             response,
             success=False,
-            data={"thread_id": "", "messages": []},
+            data=list_agents_response(),
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
@@ -122,7 +141,7 @@ def get_thread_list(
     agent_name: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-) -> Response[APIListReturn[ReturnThreadValue]]:
+) -> Response[APIListReturn[ThreadReturn]]:
     """List threads with pagination, filtered by agent creator.
 
     Args:
@@ -144,7 +163,7 @@ def get_thread_list(
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_workspace_role != "teacher" and user_jwt_content["user_id"] != user_id:
-        return Responses[ReturnThreadValue].forbidden_list(response)
+        return Responses[ThreadReturn].forbidden_list(response)
     query = (
         db.query(
             Thread.thread_id,
@@ -176,7 +195,7 @@ def get_thread_list(
             # ! May cause issue with timezones
             query = query.filter(Thread.created_at >= start_datetime)
         except ValueError:
-            return Responses[APIListReturn[ReturnThreadValue]].response(
+            return Responses[APIListReturn[ThreadReturn]].response(
                 response,
                 success=False,
                 data={"items": [], "total": 0},
@@ -189,7 +208,7 @@ def get_thread_list(
             # ! May cause issue with timezones
             query = query.filter(Thread.created_at <= end_datetime)
         except ValueError:
-            return Responses[APIListReturn[ReturnThreadValue]].response(
+            return Responses[APIListReturn[ThreadReturn]].response(
                 response,
                 success=False,
                 data={"items": [], "total": 0},
@@ -204,21 +223,9 @@ def get_thread_list(
         .limit(page_size)
         .all()
     )  # pyright: ignore[reportAssignmentType]
-    results: list[ReturnThreadValue] = [
-        {
-            "thread_id": str(t.thread_id),
-            "user_id": t.user_id,
-            "student_id": t.student_id,
-            "created_at": str(t.created_at),
-            "agent_id": str(t.agent_id),
-            "agent_name": str(t.agent_name),
-            "workspace_id": workspace_id,
-        }
-        for t in threads
-    ]
-    return Responses[APIListReturn[ReturnThreadValue]].response(
+    return Responses[APIListReturn[ThreadReturn]].response(
         response,
         success=True,
         status=HTTPStatus.OK,
-        data={"items": results, "total": total},
+        data={"items": [thread_return(t) for t in threads], "total": total},
     )

@@ -4,7 +4,7 @@
 import logging
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated, TypedDict
+from typing import Annotated
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
@@ -23,12 +23,13 @@ from migrations.models import (
     AgentStatus,
     AgentTeacherResponse,
     AgentValue,
-    APIListReturn,
+    ModelReturn,
     Workspace,
     WorkspaceStatus,
+    agent_teacher_return,
 )
 from migrations.session import get_db
-from utils.response import Response, Responses
+from utils.response import APIListReturn, Response, Responses
 
 logger = logging.getLogger(__name__)
 CONFIG = getenv()
@@ -43,9 +44,9 @@ class AgentCreate(BaseModel):
     agent_name: str
     workspace_id: str
     creator: str | None = None
-    voice: bool = Field(default=False)
-    status: int = Field(default=1, description="1-active, 0-inactive, 2-deleted")
-    allow_model_choice: bool = Field(default=True)
+    voice: bool = Field(default=False)  # pyright: ignore[reportAny]
+    status: int = Field(default=1, description="1-active, 0-inactive, 2-deleted")  # pyright: ignore[reportAny]
+    allow_model_choice: bool = Field(default=True)  # pyright: ignore[reportAny]
     model: str | None = None
     system_prompt: str
     agent_files: dict[str, str] | None = {}
@@ -89,10 +90,23 @@ class AgentResponse(BaseModel):
     system_prompt: str
 
 
-class AddAgentResponse(TypedDict):
+class AddAgentResponse(ModelReturn):
     """A dictionary representing the response to add an agent."""
 
     agent_id: str
+
+
+def add_agent_response(agent_id: str = "") -> AddAgentResponse:
+    """Makes an AddAgentResponse object from an agent_id
+
+    Args:
+        agent_id: The agent id to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"agent_id": agent_id}
 
 
 @router.post("/add_agent")
@@ -121,7 +135,9 @@ def create_agent(
         != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
+        return Responses[AddAgentResponse].forbidden(
+            response, data=add_agent_response()
+        )
     new_agent_id = uuid4()
     new_agent = Agent(
         agent_id=new_agent_id,
@@ -171,7 +187,7 @@ def create_agent(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"agent_id": str(new_agent.agent_id)},
+            data=add_agent_response(str(new_agent.agent_id)),
         )
     except Exception as e:
         db.rollback()
@@ -179,7 +195,7 @@ def create_agent(
         return Responses[AddAgentResponse].response(
             response,
             success=False,
-            data={"agent_id": ""},
+            data=add_agent_response(),
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
@@ -217,7 +233,9 @@ def delete_agent(
         user_jwt_content["workspace_role"].get(ws_id, None) != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
+        return Responses[AddAgentResponse].forbidden(
+            response, data=add_agent_response()
+        )
     agent_to_delete: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == delete_data.agent_id).first()
     )  # pyright: ignore[reportAssignmentType]
@@ -226,7 +244,7 @@ def delete_agent(
         return Responses[AddAgentResponse].response(
             response,
             success=False,
-            data={"agent_id": ""},
+            data=add_agent_response(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -239,7 +257,7 @@ def delete_agent(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"agent_id": str(delete_data.agent_id)},
+            data=add_agent_response(str(delete_data.agent_id)),
         )
     except Exception as e:
         db.rollback()
@@ -247,7 +265,7 @@ def delete_agent(
         return Responses[AddAgentResponse].response(
             response,
             success=False,
-            data={"agent_id": ""},
+            data=add_agent_response(),
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
@@ -278,7 +296,9 @@ def edit_agent(
         != "teacher"
         and not user_jwt_content["system_admin"]
     ):
-        return Responses[AddAgentResponse].forbidden(response, data={"agent_id": ""})
+        return Responses[AddAgentResponse].forbidden(
+            response, data=add_agent_response()
+        )
     agent_to_update: AgentValue | None = (
         db.query(Agent).filter(Agent.agent_id == update_data.agent_id).first()
     )  # pyright: ignore[reportAssignmentType]
@@ -287,7 +307,7 @@ def edit_agent(
         return Responses[AddAgentResponse].response(
             response,
             success=False,
-            data={"agent_id": ""},
+            data=add_agent_response(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -344,7 +364,7 @@ def edit_agent(
             response,
             success=True,
             status=HTTPStatus.OK,
-            data={"agent_id": str(agent_to_update.agent_id)},
+            data=add_agent_response(str(agent_to_update.agent_id)),
         )
     except Exception as e:
         db.rollback()
@@ -352,7 +372,7 @@ def edit_agent(
         return Responses[AddAgentResponse].response(
             response,
             success=False,
-            data={"agent_id": ""},
+            data=add_agent_response(),
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
@@ -400,11 +420,12 @@ def list_agents(
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
-    agents: list[AgentTeacherResponse] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
+    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
     # get the prompt for each agent
+    system_prompt = ""
     if user_role == "teacher":
         for agent in agents:
-            agent.system_prompt = (
+            system_prompt = (
                 agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
             )
     else:
@@ -414,7 +435,10 @@ def list_agents(
         response,
         success=True,
         status=HTTPStatus.OK,
-        data={"items": agents, "total": total},
+        data={
+            "items": [agent_teacher_return(agent, system_prompt) for agent in agents],
+            "total": total,
+        },
     )
 
 
@@ -424,7 +448,7 @@ def get_agent_by_id(
     response: FastAPIResponse,
     agent_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-) -> Response[AgentValue]:
+) -> Response[AgentTeacherResponse]:
     """Fetch an agent by its UUID.
 
     Args:
@@ -443,10 +467,10 @@ def get_agent_by_id(
         .first()
     )  # pyright: ignore[reportAssignmentType] exclude deleted agents
     if agent is None:
-        return Responses[AgentValue].response(
+        return Responses[AgentTeacherResponse].response(
             response,
             success=False,
-            data=AgentValue(),
+            data=agent_teacher_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -454,10 +478,12 @@ def get_agent_by_id(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
-        return Responses[AgentValue].forbidden(response, data=AgentValue())
+        return Responses[AgentTeacherResponse].forbidden(
+            response, data=agent_teacher_return()
+        )
     # if user_role != "teacher":
     #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here
-    return Responses[AgentValue].response(
-        response, success=True, status=HTTPStatus.OK, data=agent
+    return Responses[AgentTeacherResponse].response(
+        response, success=True, status=HTTPStatus.OK, data=agent_teacher_return(agent)
     )

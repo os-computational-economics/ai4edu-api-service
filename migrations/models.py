@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, Generic, Literal, TypedDict, TypeVar, override
+from typing import Any, Literal, TypedDict, override
 from uuid import UUID as UUIDType  # noqa: N811
 from zoneinfo import ZoneInfo
 
@@ -46,6 +46,10 @@ class BaseType:
 
 Base: type[BaseType] = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
+
+
+class ModelReturn(TypedDict):
+    """Base Class for Typed Responses"""
 
 
 class Agent(Base):
@@ -109,20 +113,101 @@ class AgentValue(BaseModel):
         self.agent_files = {}
 
 
-class AgentReturn(TypedDict):
+class AgentReturn(ModelReturn):
     """Dictionary representation of an Agent row"""
 
     agent_name: str
-    course_id: str
+    workspace_id: str
     voice: bool
-    model_choice: bool
+    allow_model_choice: bool
     model: str
 
 
-class AgentTeacherResponse(AgentValue):
-    """Teacher override for system prompt"""
+def agent_return(av: AgentValue | None = None) -> AgentReturn:
+    """Makes an AgentReturn object from a python object
 
-    system_prompt: str = ""
+    Args:
+        av: The AgentValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_name": av.agent_name,
+            "allow_model_choice": av.allow_model_choice,
+            "model": av.model,
+            "voice": av.voice,
+            "workspace_id": av.workspace_id,
+        }
+        if av
+        else {
+            "agent_name": "",
+            "allow_model_choice": False,
+            "model": "",
+            "voice": False,
+            "workspace_id": "",
+        }
+    )
+
+
+class AgentTeacherResponse(AgentReturn):
+    """Dictionary representation of an Agent row for Teachers"""
+
+    agent_id: str
+    created_at: str
+    creator: str
+    updated_at: str
+    status: AgentStatus
+    agent_files: dict[str, str]
+    system_prompt: str
+
+
+def agent_teacher_return(
+    av: AgentValue | None = None, system_prompt: str = ""
+) -> AgentTeacherResponse:
+    """Makes an AgentTeacherResponse object from a python object
+
+    Args:
+        av: The AgentValue to return
+        system_prompt: The system prompt to return with the object
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_name": av.agent_name,
+            "allow_model_choice": av.allow_model_choice,
+            "model": av.model,
+            "voice": av.voice,
+            "workspace_id": av.workspace_id,
+            "agent_files": av.agent_files,
+            "agent_id": av.agent_id,
+            "created_at": str(av.created_at),
+            "creator": av.creator,
+            "status": av.status,
+            "system_prompt": system_prompt,
+            "updated_at": str(av.updated_at),
+        }
+        if av
+        else {
+            "agent_name": "",
+            "allow_model_choice": False,
+            "model": "",
+            "voice": False,
+            "workspace_id": "",
+            "agent_files": {},
+            "agent_id": "",
+            "created_at": "",
+            "creator": "",
+            "status": AgentStatus.INACTIVE,
+            "system_prompt": "",
+            "updated_at": "",
+        }
+    )
 
 
 class Thread(Base):
@@ -165,7 +250,7 @@ class ThreadValue:
     agent_name: str = ""
 
 
-class ReturnThreadValue(TypedDict):
+class ThreadReturn(ModelReturn):
     """Dictionary representation of a Thread row"""
 
     thread_id: str
@@ -175,6 +260,39 @@ class ReturnThreadValue(TypedDict):
     user_id: int
     workspace_id: str
     agent_name: str
+
+
+def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
+    """Makes an ThreadReturn object from a python object
+
+    Args:
+        tv: The ThreadValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_id": tv.agent_id,
+            "agent_name": tv.agent_name,
+            "created_at": str(tv.created_at),
+            "student_id": tv.student_id,
+            "thread_id": tv.thread_id,
+            "user_id": tv.user_id,
+            "workspace_id": tv.workspace_id,
+        }
+        if tv
+        else {
+            "agent_id": "",
+            "agent_name": "",
+            "created_at": "",
+            "student_id": "",
+            "thread_id": "",
+            "user_id": 0,
+            "workspace_id": "",
+        }
+    )
 
 
 class User(Base):
@@ -217,7 +335,7 @@ class UserValue:
         self.workspace_role = {}
 
 
-class UserReturn(TypedDict):
+class UserReturn(ModelReturn):
     """Dictionary representation of a User row"""
 
     user_id: int
@@ -226,6 +344,37 @@ class UserReturn(TypedDict):
     last_name: str
     student_id: str
     workspace_role: WorkspaceRoles
+
+
+def user_return(uv: UserValue | None = None) -> UserReturn:
+    """Makes an UserReturn object from a python object
+
+    Args:
+        uv: The UserValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "email": uv.email,
+            "first_name": uv.first_name,
+            "last_name": uv.last_name,
+            "student_id": uv.student_id,
+            "user_id": uv.user_id,
+            "workspace_role": uv.workspace_role,
+        }
+        if uv
+        else {
+            "email": "",
+            "first_name": "",
+            "last_name": "",
+            "student_id": "",
+            "user_id": 0,
+            "workspace_role": {},
+        }
+    )
 
 
 class RefreshToken(Base):
@@ -266,6 +415,25 @@ class RefreshTokenValue:
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     expire_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     issued_token_count: int = 0
+
+
+class TokenReturn(ModelReturn):
+    """Response containing an Access Token."""
+
+    access_token: str
+
+
+def token_return(tk: str = "") -> TokenReturn:
+    """Makes an TokenReturn object from a token
+
+    Args:
+        tk: The token to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"access_token": tk}
 
 
 class File(Base):
@@ -346,13 +514,40 @@ class WorkspaceValue:
     workspace_password: str = ""
 
 
-class WorkspaceReturn(TypedDict):
+class WorkspaceReturn(ModelReturn):
     """Dictionary representation of a Workspace row"""
 
     workspace_id: str
     workspace_name: str
     status: WorkspaceStatus
     school_id: int
+
+
+def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
+    """Makes an WorkspaceReturn object from a python object
+
+    Args:
+        wv: The WorkspaceValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "school_id": wv.school_id,
+            "status": wv.status,
+            "workspace_id": wv.workspace_id,
+            "workspace_name": wv.workspace_name,
+        }
+        if wv
+        else {
+            "school_id": 0,
+            "status": WorkspaceStatus.INACTIVE,
+            "workspace_id": "",
+            "workspace_name": "",
+        }
+    )
 
 
 class UserWorkspace(Base):
@@ -417,19 +612,20 @@ class UserFeedbackValue:
     comments: str = ""
 
 
-data = dict[str, str] | TypedDict | BaseModel
-T = TypeVar("T", bound=data)
+class URLReturn(ModelReturn):
+    """Response containing a Presigned URL."""
+
+    url: str
 
 
-class APIListReturn(TypedDict, Generic[T]):
-    """Generic API response for list of objects"""
+def url_return(url: str = "") -> URLReturn:
+    """Makes an URLReturn object from a url
 
-    items: list[T]
-    total: int
+    Args:
+        url: The url to return
 
+    Returns:
+        A TypedDict of the return object
 
-class APIListReturnPage(APIListReturn[T]):
-    """API response for list of objects with metadata"""
-
-    page: int
-    page_size: int
+    """
+    return {"url": url}

@@ -5,7 +5,7 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -15,17 +15,31 @@ from redis import Redis
 from sqlalchemy.orm import Session
 
 from common.EnvManager import Config as Con
-from migrations.models import File, FileValue
+from migrations.models import File, FileValue, ModelReturn
 from migrations.session import get_db
 
 logger = logging.getLogger(__name__)
 
 
-class FileReturn(TypedDict):
+class FileReturn(ModelReturn):
     """Return type for file operations"""
 
     file_id: str
     file_name: str
+
+
+def file_return(file_id: str = "", file_name: str = "") -> FileReturn:
+    """Makes an FileReturn object from a file id and file name
+
+    Args:
+        file_id: The file ID
+        file_name: The file name
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"file_id": file_id, "file_name": file_name}
 
 
 class FileStorageHandler:

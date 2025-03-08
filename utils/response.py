@@ -3,16 +3,34 @@
 
 from collections.abc import Mapping
 from http import HTTPStatus
-from typing import Any, Generic, TypedDict, TypeVar
+from typing import Generic, TypeVar
 
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel
 
-from migrations.models import AgentValue, APIListReturn, APIListReturnPage
-from migrations.models import T as Q
+from migrations.models import (
+    ModelReturn,
+)
 
-Data = dict[str, Any] | AgentValue | TypedDict  # pyright: ignore[reportExplicitAny]
-T = TypeVar("T", bound=Data | None)
+Q = TypeVar("Q", bound=ModelReturn)
+
+
+class APIListReturn(ModelReturn, Generic[Q]):
+    """Generic API response for list of objects"""
+
+    items: list[Q]
+    total: int
+
+
+class APIListReturnPage(APIListReturn[Q]):
+    """API response for list of objects with metadata"""
+
+    page: int
+    page_size: int
+
+
+ResponseData = ModelReturn | APIListReturn[ModelReturn] | APIListReturnPage[ModelReturn]
+T = TypeVar("T", bound=ResponseData | None)
 
 
 class Response(BaseModel, Generic[T]):
