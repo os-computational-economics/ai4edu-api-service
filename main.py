@@ -508,7 +508,7 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
     s3_test_get_file_path = "fail"
     if s3_test_put_file_id != "fail":
         s3_test_get_file_path = (
-            str(file_storage.get_file(s3_test_put_file_id)) or "fail"
+            str(file_storage.get_file(uuid.UUID(s3_test_put_file_id))) or "fail"
         )
 
     # test AWS DynamoDB access
@@ -523,13 +523,8 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
         # TODO: create an error if failed instead of continuing with bad data
         or ""
     )
-    test_msg_get_content = str(
-        getattr(
-            message.get_message(test_thread_id, created_at),
-            "content",
-            "fail",
-        )
-    )
+    logging.info(f"created_at: {created_at}")
+    test_msg_get_content = str(message.get_message(test_thread_id, created_at))
     test_thread_get_content = (
         " ".join(i.content for i in message.get_thread(test_thread_id)) or "fail"
     )

@@ -2,6 +2,7 @@
 """Classes and endpoints related to creating and managing AI agents"""
 
 import logging
+import uuid
 from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated
@@ -162,7 +163,7 @@ def create_agent(
     if agent_data.agent_files:
         fsh = FileStorageHandler(config=CONFIG)
         for file_id, file_name in agent_data.agent_files.items():
-            file_path = fsh.get_file(file_id)
+            file_path = fsh.get_file(uuid.UUID(hex=file_id))
             if file_path:
                 _ = embed_file(
                     "namespace-test",
@@ -334,7 +335,7 @@ def edit_agent(
         # embed the files with pinecone
         fsh = FileStorageHandler(config=CONFIG)
         for file_id, file_name in update_data.agent_files.items():
-            file_path = fsh.get_file(file_id)
+            file_path = fsh.get_file(uuid.UUID(file_id))
             if file_path:
                 _ = embed_file(
                     "namespace-test",

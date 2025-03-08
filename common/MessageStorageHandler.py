@@ -13,6 +13,8 @@ from common.EnvManager import Config
 
 logging.basicConfig(level=logging.INFO)
 
+logger = logging.getLogger(__name__)
+
 
 class Message(BaseModel):
     """The message object. created_at will not be passed in when creating the object.

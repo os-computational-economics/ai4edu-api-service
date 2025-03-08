@@ -132,7 +132,7 @@ class FileStorageHandler:
             data[key] = str(value)  # pyright: ignore[reportAny] Convert to string
         return data
 
-    def get_file(self, file_id: str) -> Path | None:
+    def get_file(self, file_id: uuid.UUID) -> Path | None:
         """Get the content of a file from the local cache or S3 bucket.
 
         Args:
@@ -142,9 +142,10 @@ class FileStorageHandler:
             Path to the file, or None if the file is not found.
 
         """
+        file_id_str: str = str(file_id)
         try:
             # Check Redis cache first
-            file_info = self._get_cached_file_info(file_id)
+            file_info = self._get_cached_file_info(file_id_str)
             if not file_info:
                 # If not in cache, query database
                 file_obj: FileValue | None = (
@@ -161,16 +162,16 @@ class FileStorageHandler:
 
             file_name, file_ext = file_info["file_name"], file_info["file_ext"]
 
-            local_dir = (self.LOCAL_FOLDER / str(file_id)) / file_name
+            local_dir = self.LOCAL_FOLDER / file_id_str
             local_path = local_dir / file_name
             Path.mkdir(local_dir, parents=True, exist_ok=True)
             if not local_path.exists():
-                s3_object_name = self._get_s3_object_name(str(file_id), file_ext)
+                s3_object_name = self._get_s3_object_name(file_id_str, file_ext)
                 _ = self.__download_file(self.BUCKET_NAME, s3_object_name, local_path)
 
             return local_path
         except FileNotFoundError:
-            logger.error(f"File not found: {file_id}")
+            logger.error(f"File not found: {file_id_str}")
             return None
         except Exception as e:
             logger.error(f"Error retrieving file: {e!s}")
