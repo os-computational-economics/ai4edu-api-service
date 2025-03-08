@@ -518,12 +518,12 @@ def read_root(request: Request) -> dict[str, dict[str, str | dict[str, str]] | s
     test_role = "test"
     test_content = "test content"
     message = MessageStorageHandler(config=CONFIG)
-    created_at = (
+    message_id = (
         message.put_message(test_thread_id, test_user_id, test_role, test_content)
         # TODO: create an error if failed instead of continuing with bad data
         or ""
     )
-    logging.info(f"created_at: {created_at}")
+    created_at = message_id.split("#")[1]
     test_msg_get_content = str(message.get_message(test_thread_id, created_at))
     test_thread_get_content = (
         " ".join(i.content for i in message.get_thread(test_thread_id)) or "fail"
