@@ -49,9 +49,7 @@ class AgentCreate(BaseModel):
     workspace_id: str
     creator: str | None = None
     voice: bool = Field(default=False)  # pyright: ignore[reportAny]
-    status: int = Field(
-        default=1, description="1-active, 0-inactive, 2-deleted"
-    )  # pyright: ignore[reportAny]
+    status: int = Field(default=1, description="1-active, 0-inactive, 2-deleted")  # pyright: ignore[reportAny]
     allow_model_choice: bool = Field(default=True)  # pyright: ignore[reportAny]
     model: str | None = None
     system_prompt: str
@@ -278,7 +276,7 @@ def delete_agent(
 
 
 @router.post("/update_agent")
-def edit_agent(
+def edit_agent(  # noqa: C901, PLR0912
     request: Request,
     response: FastAPIResponse,
     update_data: AgentUpdate,
@@ -385,7 +383,7 @@ def edit_agent(
 
 
 @router.get("/agents")
-def list_agents(
+def list_agents(  # noqa: PLR0913, PLR0917
     request: Request,
     response: FastAPIResponse,
     workspace_id: str,
@@ -481,7 +479,10 @@ def list_agents(
         success=True,
         status=HTTPStatus.OK,
         data={
-            "items": [agent_dashboard_return(agent, is_teacher=user_is_teacher) for agent in agents],
+            "items": [
+                agent_dashboard_return(agent, is_teacher=user_is_teacher)
+                for agent in agents
+            ],
             "total": total,
         },
     )
@@ -523,9 +524,7 @@ def get_agent_by_id(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
-        return Responses[AgentChatReturn].forbidden(
-            response, data=agent_chat_return()
-        )
+        return Responses[AgentChatReturn].forbidden(response, data=agent_chat_return())
     # if user_role != "teacher":
     #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here

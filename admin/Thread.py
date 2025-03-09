@@ -131,7 +131,7 @@ def get_thread_by_id(
 
 
 @router.get("/get_thread_list")
-def get_thread_list(
+def get_thread_list(  # noqa: PLR0913, PLR0917
     workspace_id: str,
     request: Request,
     response: FastAPIResponse,
@@ -184,7 +184,8 @@ def get_thread_list(
         )
     )  # even the agent is deleted, the thread still exists
 
-    # casting UUID to string for thread_id and agent_id, because the response is a string
+    # casting UUID to string for thread_id and agent_id, because
+    # the response is a string
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))

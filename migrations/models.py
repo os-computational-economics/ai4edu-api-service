@@ -7,7 +7,6 @@ from typing import Any, Literal, TypedDict, override
 from uuid import UUID as UUIDType  # noqa: N811
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel
 from sqlalchemy import (
     JSON,
     UUID,
@@ -38,8 +37,8 @@ class BaseType:
     """Base class for SQLAlchemy models."""
 
     def __init__(
-        **kwargs: Any,
-    ) -> None:  # pyright: ignore[reportAny, reportExplicitAny]  # noqa: ANN401
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:  # pyright: ignore[reportAny, reportExplicitAny]
         """Initialize the base class."""
         super().__init__(**kwargs)
 
@@ -107,14 +106,14 @@ class AgentValue:
     status: AgentStatus = AgentStatus.ACTIVE
     allow_model_choice: bool = True
     model: str = ""
-    agent_files: dict[str, str] = {}
+    agent_files: dict[str, str] = {}  # noqa: RUF012
     system_prompt: str = (
         ""  # system prompt for the agent, This is not in Postgres, but in DynamoDB
     )
 
 
 class AgentChatReturn(ModelReturn):
-    """Dictionary representation of the return object for the chat page to get agent information"""
+    """Python representation of the return for the chat page to get agent information"""
 
     agent_name: str
     workspace_id: str
@@ -122,7 +121,7 @@ class AgentChatReturn(ModelReturn):
     allow_model_choice: bool
     model: (
         str | None
-    )  # if allow_model_choice is True, model is None because we allow user to choose model
+    )  # if allow_model_choice is True, model is None because we allow user to choose
     agent_files: dict[str, str]
     status: AgentStatus
 
