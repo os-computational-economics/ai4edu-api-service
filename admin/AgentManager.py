@@ -12,8 +12,8 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import String, cast, func
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, func, String
 
 from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
@@ -22,15 +22,15 @@ from common.FileStorageHandler import FileStorageHandler
 from common.JWTValidator import get_jwt
 from migrations.models import (
     Agent,
-    AgentStatus,
-    AgentDashboardReturn,
     AgentChatReturn,
+    AgentDashboardReturn,
+    AgentStatus,
     AgentValue,
     ModelReturn,
     Workspace,
     WorkspaceStatus,
-    agent_dashboard_return,
     agent_chat_return,
+    agent_dashboard_return,
 )
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses

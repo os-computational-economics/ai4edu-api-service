@@ -10,8 +10,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import String, cast
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, String
 
 from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
