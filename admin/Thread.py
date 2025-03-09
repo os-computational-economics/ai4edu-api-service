@@ -172,7 +172,6 @@ def get_thread_list(
             Thread.agent_id,
             Thread.agent_name,
             Thread.workspace_id,
-            Thread.student_id,
         )
         .join(
             Workspace,
