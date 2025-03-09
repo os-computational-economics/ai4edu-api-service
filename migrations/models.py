@@ -107,15 +107,14 @@ class AgentValue(BaseModel):
     status: AgentStatus = AgentStatus.ACTIVE
     allow_model_choice: bool = True
     model: str = ""
-    agent_files: dict[str, str]
+    agent_files: dict[str, str] = {}
     system_prompt: str = (
         ""  # system prompt for the agent, This is not in Postgres, but in DynamoDB
     )
 
     def __init__(self) -> None:
-        """Initialize workspace"""
+        """Initialize agent"""
         super().__init__()
-        self.agent_files = {}
 
 
 class AgentReturn(ModelReturn):
