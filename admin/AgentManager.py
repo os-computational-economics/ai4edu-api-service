@@ -438,25 +438,47 @@ def list_agents(
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
-    agents: list[AgentValue] = (
-        query.offset(skip).limit(page_size).all()
-    )  # pyright: ignore[reportAssignmentType]
+
+    # Get raw results as rows
+    raw_agents = query.offset(skip).limit(page_size).all()
+
+    # Convert SQLAlchemy result rows to dictionaries
+    agents: list[AgentValue] = []
+    for row in raw_agents:
+        agent_dict = {
+            "agent_id": row.agent_id,
+            "agent_name": row.agent_name,
+            "workspace_id": row.workspace_id,
+            "voice": row.voice,
+            "status": row.status,
+            "allow_model_choice": row.allow_model_choice,
+            "model": row.model,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+            "creator": row.creator,
+            "agent_files": row.agent_files or {},
+            "system_prompt": "",  # Will be filled later if needed
+        }
+        av: AgentValue = AgentValue(**agent_dict)
+        agents.append(av)
+
     # get the prompt for each agent
-    system_prompt = ""
     if user_role == "teacher":
         for agent in agents:
             system_prompt = (
                 agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
             )
+            agent.system_prompt = system_prompt
     else:
         for agent in agents:
             agent.agent_files = {}
+
     return Responses[APIListReturn[AgentTeacherResponse]].response(
         response,
         success=True,
         status=HTTPStatus.OK,
         data={
-            "items": [agent_teacher_return(agent, system_prompt) for agent in agents],
+            "items": [agent_teacher_return(agent) for agent in agents],
             "total": total,
         },
     )

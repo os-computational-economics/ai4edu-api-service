@@ -108,6 +108,9 @@ class AgentValue(BaseModel):
     allow_model_choice: bool = True
     model: str = ""
     agent_files: dict[str, str]
+    system_prompt: str = (
+        ""  # system prompt for the agent, This is not in Postgres, but in DynamoDB
+    )
 
     def __init__(self) -> None:
         """Initialize workspace"""
@@ -168,9 +171,7 @@ class AgentTeacherResponse(AgentReturn):
     system_prompt: str
 
 
-def agent_teacher_return(
-    av: AgentValue | None = None, system_prompt: str = ""
-) -> AgentTeacherResponse:
+def agent_teacher_return(av: AgentValue | None = None) -> AgentTeacherResponse:
     """Makes an AgentTeacherResponse object from a python object
 
     Args:
@@ -193,7 +194,7 @@ def agent_teacher_return(
             "created_at": str(av.created_at),
             "creator": av.creator,
             "status": av.status,
-            "system_prompt": system_prompt,
+            "system_prompt": av.system_prompt,
             "updated_at": str(av.updated_at),
         }
         if av
