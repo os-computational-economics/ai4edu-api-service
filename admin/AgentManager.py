@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import String, cast, func
 from sqlalchemy.orm import Session
 
 from common.AgentPromptHandler import AgentPromptHandler
@@ -409,7 +410,24 @@ def list_agents(  # noqa: PLR0913, PLR0917
     if user_role is None:
         return Responses[AgentDashboardReturn].forbidden_list(response)
     query = (
-        db.query(Agent)
+        db.query(
+            Agent.agent_id,
+            Agent.agent_name,
+            Agent.workspace_id,
+            Agent.voice,
+            Agent.status,
+            Agent.allow_model_choice,
+            Agent.created_at,
+            Agent.updated_at,
+            Agent.agent_files,
+            cast(func.coalesce(Agent.model, ""), String).label(
+                "model"
+            ),  # Handle NULL values for model
+            cast(func.coalesce(Agent.creator, ""), String).label(
+                "creator"
+            ),  # Handle NULL values for creator
+            # TODO: Update the database model of creator and model to not allow NULL
+        )
         .join(
             Workspace,
             Agent.workspace_id == Workspace.workspace_id,
