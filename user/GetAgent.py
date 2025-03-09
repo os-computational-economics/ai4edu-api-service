@@ -10,7 +10,13 @@ from fastapi import APIRouter, Depends
 from fastapi import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
-from migrations.models import Agent, AgentChatReturn, AgentStatus, AgentValue, agent_chat_return
+from migrations.models import (
+    Agent,
+    AgentChatReturn,
+    AgentStatus,
+    AgentValue,
+    agent_chat_return,
+)
 from migrations.session import get_db
 from utils.response import Response, Responses
 
