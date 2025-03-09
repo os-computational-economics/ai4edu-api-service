@@ -52,6 +52,12 @@ class WorkspaceUpdateStatus(BaseModel):
     workspace_status: WorkspaceStatus
 
 
+class StudentAddWorkspace(BaseModel):
+    """A Class describing the object sent to create a new workspace."""
+
+    students: list[str]
+
+
 class StudentJoinWorkspace(BaseModel):
     """A Class describing the object sent to join a workspace as a student."""
 
@@ -413,7 +419,8 @@ def add_users_via_csv(
                 role="pending",
             )
             db.add(user_workspace)
-            db.commit()
+
+        db.commit()
 
         return Responses[None].response(
             response,
@@ -425,6 +432,69 @@ def add_users_via_csv(
         logger.error(
             "Error adding users via CSV: Please make sure you"
             + " save the roster as a CSV file and try again",
+        )
+        db.rollback()
+        return Responses[None].response(
+            response, False, status=HTTPStatus.INTERNAL_SERVER_ERROR, message=str(e)
+        )
+
+
+@router.post("/add_users_json")
+def add_users_json(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_id: str,
+    students: StudentAddWorkspace,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[None]:
+    """Add users to a workspace from a CSV file
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_id: str representing the workspace ID
+        students: Students to add to the workspace
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or 400 if workspace not found or file is invalid
+
+    """
+    user_jwt_content = get_jwt(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(workspace_id, None)
+    if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
+        return Responses[None].forbidden(response)
+    try:
+        for student in students.students:
+
+            # Check if the record already exists
+            existing_user_workspace = (
+                db.query(UserWorkspace)
+                .filter_by(workspace_id=workspace_id, student_id=student)
+                .first()
+            )
+
+            if existing_user_workspace:
+                continue  # Skip this row if it already exists
+
+            user_workspace = UserWorkspace(
+                student_id=student,
+                workspace_id=workspace_id,
+                role="pending",
+            )
+            db.add(user_workspace)
+
+        db.commit()
+
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Users added via JSON successfully",
+        )
+    except Exception as e:
+        logger.error(
+            "Error adding users via JSON",
         )
         db.rollback()
         return Responses[None].response(

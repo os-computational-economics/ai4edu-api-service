@@ -1,0 +1,20 @@
+meta {
+  name: 1createAgentWorkspace
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://localhost/v1/dev/admin/workspace/create_workspace
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id": "124",
+    "school_id": 0,
+    "workspace_password": "123",
+    "workspace_name": "agent_workspace_test"
+  }
+}

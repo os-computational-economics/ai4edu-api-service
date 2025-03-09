@@ -183,7 +183,7 @@
               mkdir ssl
               cd ssl
 
-              openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=au4edudev/emailAddress=."
+              openssl req -newkey rsa:4096 -x509 -sha512 -days 365 -nodes -out localhost_bundle.crt -keyout localhost.key -subj "/C=US/ST=Ohio/L=Cleveland /O=AI4EDU/OU=dev/CN=localhost/emailAddress=."
               openssl genrsa 2048 > privateKey.pem
               openssl rsa -in privateKey.pem -pubout > publicKey.pem
             ''}/bin/init.sh";

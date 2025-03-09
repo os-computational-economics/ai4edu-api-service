@@ -443,7 +443,7 @@ def list_agents(  # noqa: PLR0913, PLR0917
     skip = (page - 1) * page_size
 
     # Get raw results as rows
-    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
+    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()
 
     user_is_teacher = user_role == "teacher"
 
