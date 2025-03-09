@@ -423,6 +423,7 @@ def list_agents(
             cast(func.coalesce(Agent.creator, ""), String).label(
                 "creator"
             ),  # Handle NULL values
+            Agent.agent_files,
         )
         .join(
             Workspace,
