@@ -115,6 +115,7 @@ class AgentValue:
 class AgentChatReturn(ModelReturn):
     """Python representation of the return for the chat page to get agent information"""
 
+    agent_id: str
     agent_name: str
     workspace_id: str
     voice: bool
@@ -138,6 +139,7 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
     """
     return (
         {
+            "agent_id": av.agent_id,
             "agent_name": av.agent_name,
             "allow_model_choice": av.allow_model_choice,
             "model": av.model,
@@ -148,6 +150,7 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
         }
         if av
         else {
+            "agent_id": "",
             "agent_name": "",
             "allow_model_choice": False,
             "model": "",
@@ -162,7 +165,6 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
 class AgentDashboardReturn(AgentChatReturn):
     """Dictionary representation of an Agent row for the dashboard"""
 
-    agent_id: str
     created_at: str
     creator: str
     updated_at: str
@@ -184,13 +186,13 @@ def agent_dashboard_return(
     """
     return (
         {
+            "agent_id": av.agent_id,
             "agent_name": av.agent_name,
             "allow_model_choice": av.allow_model_choice,
             "model": av.model,
             "voice": av.voice,
             "workspace_id": av.workspace_id,
             "agent_files": av.agent_files if is_teacher else {},
-            "agent_id": av.agent_id,
             "created_at": str(av.created_at),
             "creator": av.creator,
             "status": av.status,
@@ -199,13 +201,13 @@ def agent_dashboard_return(
         }
         if av
         else {
+            "agent_id": "",
             "agent_name": "",
             "allow_model_choice": False,
             "model": "",
             "voice": False,
             "workspace_id": "",
             "agent_files": {},
-            "agent_id": "",
             "created_at": "",
             "creator": "",
             "status": AgentStatus.INACTIVE,
