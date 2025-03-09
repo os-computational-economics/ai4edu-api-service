@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, String, func
 
 from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
@@ -407,7 +408,18 @@ def list_agents(
     if user_role is None:
         return Responses[AgentTeacherResponse].forbidden_list(response)
     query = (
-        db.query(Agent)
+        db.query(
+            cast(Agent.agent_id, String).label("agent_id"),  # Cast UUID to string
+            Agent.agent_name,
+            Agent.workspace_id,
+            Agent.voice,
+            Agent.status,
+            Agent.allow_model_choice,
+            Agent.model,
+            Agent.created_at,
+            Agent.updated_at,
+            cast(func.coalesce(Agent.creator, ''), String).label("creator"),  # Handle NULL values
+        )
         .join(
             Workspace,
             Agent.workspace_id == Workspace.workspace_id,
