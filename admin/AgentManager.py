@@ -47,7 +47,9 @@ class AgentCreate(BaseModel):
     workspace_id: str
     creator: str | None = None
     voice: bool = Field(default=False)  # pyright: ignore[reportAny]
-    status: int = Field(default=1, description="1-active, 0-inactive, 2-deleted")  # pyright: ignore[reportAny]
+    status: int = Field(
+        default=1, description="1-active, 0-inactive, 2-deleted"
+    )  # pyright: ignore[reportAny]
     allow_model_choice: bool = Field(default=True)  # pyright: ignore[reportAny]
     model: str | None = None
     system_prompt: str
@@ -418,7 +420,9 @@ def list_agents(
             Agent.model,
             Agent.created_at,
             Agent.updated_at,
-            cast(func.coalesce(Agent.creator, ''), String).label("creator"),  # Handle NULL values
+            cast(func.coalesce(Agent.creator, ""), String).label(
+                "creator"
+            ),  # Handle NULL values
         )
         .join(
             Workspace,
@@ -433,7 +437,9 @@ def list_agents(
     total = query.count()
     query = query.order_by(Agent.updated_at.desc())
     skip = (page - 1) * page_size
-    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
+    agents: list[AgentValue] = (
+        query.offset(skip).limit(page_size).all()
+    )  # pyright: ignore[reportAssignmentType]
     # get the prompt for each agent
     system_prompt = ""
     if user_role == "teacher":
