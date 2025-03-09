@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, String
 
 from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
@@ -166,10 +167,10 @@ def get_thread_list(
         return Responses[ThreadReturn].forbidden_list(response)
     query = (
         db.query(
-            Thread.thread_id,
+            cast(Thread.thread_id, String).label('thread_id'),  # Cast UUID to string
             Thread.user_id,
             Thread.created_at,
-            Thread.agent_id,
+            cast(Thread.agent_id, String).label('agent_id'),  # Cast UUID to string
             Thread.agent_name,
             Thread.workspace_id,
         )
@@ -182,6 +183,8 @@ def get_thread_list(
             Thread.workspace_id == workspace_id,
         )
     )  # even the agent is deleted, the thread still exists
+
+    # casting UUID to string for thread_id and agent_id, because the response is a string
 
     if agent_name:
         query = query.filter(Agent.agent_name.ilike(f"%{agent_name}%"))
