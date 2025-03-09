@@ -167,10 +167,10 @@ def get_thread_list(
         return Responses[ThreadReturn].forbidden_list(response)
     query = (
         db.query(
-            cast(Thread.thread_id, String).label('thread_id'),  # Cast UUID to string
+            cast(Thread.thread_id, String).label("thread_id"),  # Cast UUID to string
             Thread.user_id,
             Thread.created_at,
-            cast(Thread.agent_id, String).label('agent_id'),  # Cast UUID to string
+            cast(Thread.agent_id, String).label("agent_id"),  # Cast UUID to string
             Thread.agent_name,
             Thread.workspace_id,
         )

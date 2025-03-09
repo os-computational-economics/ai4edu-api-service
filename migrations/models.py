@@ -37,7 +37,9 @@ WorkspaceRoles = dict[str, WorkspaceRole]
 class BaseType:
     """Base class for SQLAlchemy models."""
 
-    def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny, reportExplicitAny]  # noqa: ANN401
+    def __init__(
+        **kwargs: Any,
+    ) -> None:  # pyright: ignore[reportAny, reportExplicitAny]  # noqa: ANN401
         """Initialize the base class."""
         super().__init__(**kwargs)
 
