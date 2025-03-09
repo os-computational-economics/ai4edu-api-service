@@ -23,12 +23,12 @@ from common.JWTValidator import get_jwt
 from migrations.models import (
     Agent,
     AgentStatus,
-    AgentTeacherResponse,
+    AgentDashboardReturn,
     AgentValue,
     ModelReturn,
     Workspace,
     WorkspaceStatus,
-    agent_teacher_return,
+    agent_dashboard_return,
 )
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses
@@ -390,7 +390,7 @@ def list_agents(
     db: Annotated[Session, Depends(get_db)],
     page: int = 1,
     page_size: int = 10,
-) -> Response[APIListReturn[AgentTeacherResponse]]:
+) -> Response[APIListReturn[AgentDashboardReturn]]:
     """List agents with pagination.
 
     Args:
@@ -408,7 +408,7 @@ def list_agents(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(workspace_id, None)
     if user_role is None:
-        return Responses[AgentTeacherResponse].forbidden_list(response)
+        return Responses[AgentDashboardReturn].forbidden_list(response)
     query = (
         db.query(
             cast(Agent.agent_id, String).label("agent_id"),  # Cast UUID to string
@@ -464,23 +464,22 @@ def list_agents(
             setattr(av, key, value)
         agents.append(av)
 
+    user_is_teacher = user_role == "teacher"
+
     # get the prompt for each agent
-    if user_role == "teacher":
+    if user_is_teacher:
         for agent in agents:
             system_prompt = (
                 agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
             )
             agent.system_prompt = system_prompt
-    else:
-        for agent in agents:
-            agent.agent_files = {}
 
-    return Responses[APIListReturn[AgentTeacherResponse]].response(
+    return Responses[APIListReturn[AgentDashboardReturn]].response(
         response,
         success=True,
         status=HTTPStatus.OK,
         data={
-            "items": [agent_teacher_return(agent) for agent in agents],
+            "items": [agent_dashboard_return(agent, is_teacher=user_is_teacher) for agent in agents],
             "total": total,
         },
     )
@@ -492,7 +491,7 @@ def get_agent_by_id(
     response: FastAPIResponse,
     agent_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-) -> Response[AgentTeacherResponse]:
+) -> Response[AgentDashboardReturn]:
     """Fetch an agent by its UUID.
 
     Args:
@@ -511,10 +510,10 @@ def get_agent_by_id(
         .first()
     )  # pyright: ignore[reportAssignmentType] exclude deleted agents
     if agent is None:
-        return Responses[AgentTeacherResponse].response(
+        return Responses[AgentDashboardReturn].response(
             response,
             success=False,
-            data=agent_teacher_return(),
+            data=agent_dashboard_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -522,12 +521,12 @@ def get_agent_by_id(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
-        return Responses[AgentTeacherResponse].forbidden(
-            response, data=agent_teacher_return()
+        return Responses[AgentDashboardReturn].forbidden(
+            response, data=agent_dashboard_return()
         )
     # if user_role != "teacher":
     #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here
-    return Responses[AgentTeacherResponse].response(
-        response, success=True, status=HTTPStatus.OK, data=agent_teacher_return(agent)
+    return Responses[AgentDashboardReturn].response(
+        response, success=True, status=HTTPStatus.OK, data=agent_dashboard_return(agent)
     )

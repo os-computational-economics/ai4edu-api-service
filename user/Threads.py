@@ -23,7 +23,7 @@ class NewThreadReturn(ModelReturn):
 
 
 def new_thread_return(thread_id: str = "") -> NewThreadReturn:
-    """Makes an AgentReturn object from a thread_id
+    """Makes an NewThreadReturn object from a thread_id
 
     Args:
         thread_id: The thread ID to return

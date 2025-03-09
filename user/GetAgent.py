@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends
 from fastapi import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
-from migrations.models import Agent, AgentReturn, AgentStatus, AgentValue, agent_return
+from migrations.models import Agent, AgentChatReturn, AgentStatus, AgentValue, agent_chat_return
 from migrations.session import get_db
 from utils.response import Response, Responses
 
@@ -28,7 +28,7 @@ def get_agent_by_id(
     response: FastAPIResponse,
     agent_id: str,
     db: Annotated[Session, Depends(get_db)],
-) -> Response[AgentReturn]:
+) -> Response[AgentChatReturn]:
     """Get the settings of an agent by its ID
 
     Args:
@@ -41,10 +41,10 @@ def get_agent_by_id(
 
     """
     if not check_uuid_format(agent_id):
-        return Responses[AgentReturn].response(
+        return Responses[AgentChatReturn].response(
             response,
             False,
-            data=agent_return(),
+            data=agent_chat_return(),
             status=HTTPStatus.BAD_REQUEST,
             message="Invalid UUID format",
         )
@@ -55,26 +55,26 @@ def get_agent_by_id(
     logging.info(f"User requested agent settings: {agent}")
 
     if agent is None:
-        return Responses[AgentReturn].response(
+        return Responses[AgentChatReturn].response(
             response,
             success=False,
-            data=agent_return(),
+            data=agent_chat_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
     if agent.status != AgentStatus.ACTIVE:
-        return Responses[AgentReturn].response(
+        return Responses[AgentChatReturn].response(
             response,
             success=False,
-            data=agent_return(),
+            data=agent_chat_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent is inactive",
         )
-    return Responses[AgentReturn].response(
+    return Responses[AgentChatReturn].response(
         response,
         success=True,
         status=HTTPStatus.OK,
-        data=agent_return(agent),
+        data=agent_chat_return(agent),
     )
 
 

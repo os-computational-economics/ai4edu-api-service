@@ -113,8 +113,8 @@ class AgentValue:
     )
 
 
-class AgentReturn(ModelReturn):
-    """Dictionary representation of an Agent row"""
+class AgentChatReturn(ModelReturn):
+    """Dictionary representation of the return object for the chat page to get agent information"""
 
     agent_name: str
     workspace_id: str
@@ -125,8 +125,8 @@ class AgentReturn(ModelReturn):
     )  # if allow_model_choice is True, model is None because we allow user to choose model
 
 
-def agent_return(av: AgentValue | None = None) -> AgentReturn:
-    """Makes an AgentReturn object from a python object
+def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
+    """Makes an AgentChatReturn object from a python object
 
     Args:
         av: The AgentValue to return
@@ -154,8 +154,8 @@ def agent_return(av: AgentValue | None = None) -> AgentReturn:
     )
 
 
-class AgentTeacherResponse(AgentReturn):
-    """Dictionary representation of an Agent row for Teachers"""
+class AgentDashboardReturn(AgentChatReturn):
+    """Dictionary representation of an Agent row for the dashboard"""
 
     agent_id: str
     created_at: str
@@ -166,12 +166,12 @@ class AgentTeacherResponse(AgentReturn):
     system_prompt: str
 
 
-def agent_teacher_return(av: AgentValue | None = None) -> AgentTeacherResponse:
-    """Makes an AgentTeacherResponse object from a python object
+def agent_dashboard_return(av: AgentValue | None = None, is_teacher: bool = False) -> AgentDashboardReturn:
+    """Makes an AgentDashboardReturn object from a python object
 
     Args:
         av: The AgentValue to return
-        system_prompt: The system prompt to return with the object
+        is_teacher: If the user is a teacher
 
     Returns:
         A TypedDict of the return object
@@ -184,7 +184,7 @@ def agent_teacher_return(av: AgentValue | None = None) -> AgentTeacherResponse:
             "model": av.model,
             "voice": av.voice,
             "workspace_id": av.workspace_id,
-            "agent_files": av.agent_files,
+            "agent_files": av.agent_files if is_teacher else {},
             "agent_id": av.agent_id,
             "created_at": str(av.created_at),
             "creator": av.creator,
