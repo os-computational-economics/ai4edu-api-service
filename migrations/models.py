@@ -4,7 +4,7 @@
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, Literal, TypedDict, override
-from uuid import UUID as UUIDType  # noqa: N811
+from uuid import UUID as UUID_TYPE
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
@@ -37,8 +37,8 @@ class BaseType:
     """Base class for SQLAlchemy models."""
 
     def __init__(
-        **kwargs: Any,  # noqa: ANN401
-    ) -> None:  # pyright: ignore[reportAny, reportExplicitAny]
+        **kwargs: Any,  # noqa: ANN401 # pyright: ignore[reportAny, reportExplicitAny]
+    ) -> None:
         """Initialize the base class."""
         super().__init__(**kwargs)
 
@@ -58,7 +58,7 @@ class Agent(Base):
 
     __tablename__: Literal["ai_agents"] = "ai_agents"
 
-    agent_id: Column[UUIDType] = Column(
+    agent_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True),
         primary_key=True,
         nullable=False,
@@ -96,7 +96,7 @@ class AgentStatus(IntEnum):
 class AgentValue:
     """Python representation of an Agent row"""
 
-    agent_id: str = ""
+    agent_id: UUID_TYPE = UUID_TYPE()
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_name: str = ""
     workspace_id: str = ""
@@ -107,9 +107,6 @@ class AgentValue:
     allow_model_choice: bool = True
     model: str = ""
     agent_files: dict[str, str] = {}  # noqa: RUF012
-    system_prompt: str = (
-        ""  # system prompt for the agent, This is not in Postgres, but in DynamoDB
-    )
 
 
 class AgentChatReturn(ModelReturn):
@@ -139,7 +136,7 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
     """
     return (
         {
-            "agent_id": av.agent_id,
+            "agent_id": str(av.agent_id),
             "agent_name": av.agent_name,
             "allow_model_choice": av.allow_model_choice,
             "model": av.model,
@@ -172,12 +169,13 @@ class AgentDashboardReturn(AgentChatReturn):
 
 
 def agent_dashboard_return(
-    av: AgentValue | None = None, is_teacher: bool = False
+    av: AgentValue | None = None, system_prompt: str = "", is_teacher: bool = False
 ) -> AgentDashboardReturn:
     """Makes an AgentDashboardReturn object from a python object
 
     Args:
         av: The AgentValue to return
+        system_prompt: The system prompt to return
         is_teacher: If the user is a teacher
 
     Returns:
@@ -186,7 +184,7 @@ def agent_dashboard_return(
     """
     return (
         {
-            "agent_id": av.agent_id,
+            "agent_id": str(av.agent_id),
             "agent_name": av.agent_name,
             "allow_model_choice": av.allow_model_choice,
             "model": av.model,
@@ -196,7 +194,7 @@ def agent_dashboard_return(
             "created_at": str(av.created_at),
             "creator": av.creator,
             "status": av.status,
-            "system_prompt": av.system_prompt,
+            "system_prompt": system_prompt if is_teacher else "",
             "updated_at": str(av.updated_at),
         }
         if av
@@ -222,14 +220,14 @@ class Thread(Base):
 
     __tablename__: Literal["ai_threads"] = "ai_threads"
 
-    thread_id: Column[UUIDType] = Column(
+    thread_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True),
         primary_key=True,
         nullable=False,
     )
     student_id: Column[str] = Column(String(16))
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
-    agent_id: Column[UUIDType] = Column(
+    agent_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True),
         ForeignKey("ai_agents.agent_id"),
         nullable=False,
@@ -248,9 +246,9 @@ class Thread(Base):
 class ThreadValue:
     """Python representation of a Thread row"""
 
-    thread_id: str = ""
+    thread_id: UUID_TYPE = UUID_TYPE()
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
-    agent_id: str = ""
+    agent_id: UUID_TYPE = UUID_TYPE()
     user_id: int = 0
     workspace_id: str = ""
     agent_name: str = ""
@@ -279,10 +277,10 @@ def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
     """
     return (
         {
-            "agent_id": tv.agent_id,
+            "agent_id": str(tv.agent_id),
             "agent_name": tv.agent_name,
             "created_at": str(tv.created_at),
-            "thread_id": tv.thread_id,
+            "thread_id": str(tv.thread_id),
             "user_id": tv.user_id,
             "workspace_id": tv.workspace_id,
         }
@@ -385,7 +383,7 @@ class RefreshToken(Base):
 
     __tablename__: Literal["ai_refresh_tokens"] = "ai_refresh_tokens"
 
-    token_id: Column[UUIDType] = Column(
+    token_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True),
         primary_key=True,
         nullable=False,
@@ -395,7 +393,7 @@ class RefreshToken(Base):
         ForeignKey("ai_users.user_id"),
         nullable=False,
     )
-    token: Column[UUIDType] = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    token: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False, unique=True)
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     expire_at: Column[datetime] = Column(DateTime, nullable=False)
     issued_token_count: Column[int] = Column(Integer, default=0, nullable=False)
@@ -412,9 +410,9 @@ class RefreshToken(Base):
 class RefreshTokenValue:
     """Python representation of a RefreshToken row"""
 
-    token_id: str = ""
+    token_id: UUID_TYPE = UUID_TYPE()
     user_id: int = 0
-    token: str = ""
+    token: UUID_TYPE = UUID_TYPE()
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     expire_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     issued_token_count: int = 0
@@ -444,7 +442,7 @@ class File(Base):
 
     __tablename__: Literal["ai_files"] = "ai_files"
 
-    file_id: Column[UUIDType] = Column(
+    file_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True),
         primary_key=True,
         nullable=False,
@@ -467,7 +465,7 @@ class File(Base):
 class FileValue:
     """Python representation of a File row"""
 
-    file_id: str = ""
+    file_id: UUID_TYPE = UUID_TYPE()
     file_name: str = ""
     file_desc: str = ""
     file_type: str = ""
@@ -594,7 +592,7 @@ class UserFeedback(Base):
 
     feedback_id: Column[int] = Column(Integer, primary_key=True)
     user_id: Column[int] = Column(Integer, nullable=False)
-    thread_id: Column[UUIDType] = Column(UUID(as_uuid=True), nullable=False)
+    thread_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
     message_id: Column[str] = Column(String(256))
     feedback_time: Column[datetime] = Column(DateTime, default=func.now())
     rating_format: Column[int] = Column(Integer, nullable=False)
@@ -607,7 +605,7 @@ class UserFeedbackValue:
 
     feedback_id: int = 0
     user_id: int = 0
-    thread_id: str = ""
+    thread_id: UUID_TYPE = UUID_TYPE()
     message_id: str = ""
     feedback_time: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     rating_format: Literal[2, 5, 10] = 2

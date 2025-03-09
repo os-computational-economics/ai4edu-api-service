@@ -12,7 +12,6 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import String, cast, func
 from sqlalchemy.orm import Session
 
 from common.AgentPromptHandler import AgentPromptHandler
@@ -410,21 +409,7 @@ def list_agents(  # noqa: PLR0913, PLR0917
     if user_role is None:
         return Responses[AgentDashboardReturn].forbidden_list(response)
     query = (
-        db.query(
-            cast(Agent.agent_id, String).label("agent_id"),  # Cast UUID to string
-            Agent.agent_name,
-            Agent.workspace_id,
-            Agent.voice,
-            Agent.status,
-            Agent.allow_model_choice,
-            Agent.model,
-            Agent.created_at,
-            Agent.updated_at,
-            cast(func.coalesce(Agent.creator, ""), String).label(
-                "creator"
-            ),  # Handle NULL values
-            Agent.agent_files,
-        )
+        db.query(Agent)
         .join(
             Workspace,
             Agent.workspace_id == Workspace.workspace_id,
@@ -440,39 +425,9 @@ def list_agents(  # noqa: PLR0913, PLR0917
     skip = (page - 1) * page_size
 
     # Get raw results as rows
-    raw_agents = query.offset(skip).limit(page_size).all()
-
-    # Convert SQLAlchemy result rows to dictionaries
-    agents: list[AgentValue] = []
-    for row in raw_agents:
-        agent_dict = {
-            "agent_id": row.agent_id,
-            "agent_name": row.agent_name,
-            "workspace_id": row.workspace_id,
-            "voice": row.voice,
-            "status": row.status,
-            "allow_model_choice": row.allow_model_choice,
-            "model": row.model,
-            "created_at": row.created_at,
-            "updated_at": row.updated_at,
-            "creator": row.creator,
-            "agent_files": row.agent_files or {},
-            "system_prompt": "",  # Will be filled later if needed
-        }
-        av: AgentValue = AgentValue()
-        for key, value in agent_dict.items():
-            setattr(av, key, value)
-        agents.append(av)
+    agents: list[AgentValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
 
     user_is_teacher = user_role == "teacher"
-
-    # get the prompt for each agent
-    if user_is_teacher:
-        for agent in agents:
-            system_prompt = (
-                agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or ""
-            )
-            agent.system_prompt = system_prompt
 
     return Responses[APIListReturn[AgentDashboardReturn]].response(
         response,
@@ -480,7 +435,13 @@ def list_agents(  # noqa: PLR0913, PLR0917
         status=HTTPStatus.OK,
         data={
             "items": [
-                agent_dashboard_return(agent, is_teacher=user_is_teacher)
+                agent_dashboard_return(
+                    agent,
+                    (agent_prompt_handler.get_agent_prompt(str(agent.agent_id)) or "")
+                    if user_is_teacher
+                    else "",
+                    is_teacher=user_is_teacher,
+                )
                 for agent in agents
             ],
             "total": total,
