@@ -24,11 +24,13 @@ from migrations.models import (
     Agent,
     AgentStatus,
     AgentDashboardReturn,
+    AgentChatReturn,
     AgentValue,
     ModelReturn,
     Workspace,
     WorkspaceStatus,
     agent_dashboard_return,
+    agent_chat_return,
 )
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses
@@ -491,7 +493,7 @@ def get_agent_by_id(
     response: FastAPIResponse,
     agent_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-) -> Response[AgentDashboardReturn]:
+) -> Response[AgentChatReturn]:
     """Fetch an agent by its UUID.
 
     Args:
@@ -510,10 +512,10 @@ def get_agent_by_id(
         .first()
     )  # pyright: ignore[reportAssignmentType] exclude deleted agents
     if agent is None:
-        return Responses[AgentDashboardReturn].response(
+        return Responses[AgentChatReturn].response(
             response,
             success=False,
-            data=agent_dashboard_return(),
+            data=agent_chat_return(),
             status=HTTPStatus.NOT_FOUND,
             message="Agent not found",
         )
@@ -521,12 +523,12 @@ def get_agent_by_id(
     user_jwt_content = get_jwt(request.state)
     user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
     if user_role is None:
-        return Responses[AgentDashboardReturn].forbidden(
-            response, data=agent_dashboard_return()
+        return Responses[AgentChatReturn].forbidden(
+            response, data=agent_chat_return()
         )
     # if user_role != "teacher":
     #     agent.agent_files = {}
     # TODO: not sure if returning data is correct here
-    return Responses[AgentDashboardReturn].response(
-        response, success=True, status=HTTPStatus.OK, data=agent_dashboard_return(agent)
+    return Responses[AgentChatReturn].response(
+        response, success=True, status=HTTPStatus.OK, data=agent_chat_return(agent)
     )

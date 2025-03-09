@@ -123,6 +123,8 @@ class AgentChatReturn(ModelReturn):
     model: (
         str | None
     )  # if allow_model_choice is True, model is None because we allow user to choose model
+    agent_files: dict[str, str]
+    status: AgentStatus
 
 
 def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
@@ -142,6 +144,8 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
             "model": av.model,
             "voice": av.voice,
             "workspace_id": av.workspace_id,
+            "agent_files": av.agent_files,
+            "status": av.status,
         }
         if av
         else {
@@ -150,6 +154,8 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
             "model": "",
             "voice": False,
             "workspace_id": "",
+            "agent_files": {},
+            "status": AgentStatus.INACTIVE,
         }
     )
 
@@ -161,12 +167,12 @@ class AgentDashboardReturn(AgentChatReturn):
     created_at: str
     creator: str
     updated_at: str
-    status: AgentStatus
-    agent_files: dict[str, str]
     system_prompt: str
 
 
-def agent_dashboard_return(av: AgentValue | None = None, is_teacher: bool = False) -> AgentDashboardReturn:
+def agent_dashboard_return(
+    av: AgentValue | None = None, is_teacher: bool = False
+) -> AgentDashboardReturn:
     """Makes an AgentDashboardReturn object from a python object
 
     Args:
