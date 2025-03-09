@@ -242,7 +242,6 @@ class ThreadValue:
     """Python representation of a Thread row"""
 
     thread_id: str = ""
-    student_id: str = ""
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_id: str = ""
     user_id: int = 0
@@ -254,7 +253,6 @@ class ThreadReturn(ModelReturn):
     """Dictionary representation of a Thread row"""
 
     thread_id: str
-    student_id: str
     created_at: str
     agent_id: str
     user_id: int
@@ -277,7 +275,6 @@ def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
             "agent_id": tv.agent_id,
             "agent_name": tv.agent_name,
             "created_at": str(tv.created_at),
-            "student_id": tv.student_id,
             "thread_id": tv.thread_id,
             "user_id": tv.user_id,
             "workspace_id": tv.workspace_id,
@@ -287,7 +284,6 @@ def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
             "agent_id": "",
             "agent_name": "",
             "created_at": "",
-            "student_id": "",
             "thread_id": "",
             "user_id": 0,
             "workspace_id": "",
