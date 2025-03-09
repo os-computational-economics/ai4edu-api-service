@@ -117,9 +117,7 @@ class AgentChatReturn(ModelReturn):
     workspace_id: str
     voice: bool
     allow_model_choice: bool
-    model: (
-        str | None
-    )  # if allow_model_choice is True, model is None because we allow user to choose
+    model: str  # allow_model_choice is True, model will be empty for user choice
     agent_files: dict[str, str]
     status: AgentStatus
 
