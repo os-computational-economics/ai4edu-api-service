@@ -459,7 +459,9 @@ def list_agents(
             "agent_files": row.agent_files or {},
             "system_prompt": "",  # Will be filled later if needed
         }
-        av: AgentValue = AgentValue(**agent_dict)
+        av: AgentValue = AgentValue()
+        for key, value in agent_dict.items():
+            setattr(av, key, value)
         agents.append(av)
 
     # get the prompt for each agent
