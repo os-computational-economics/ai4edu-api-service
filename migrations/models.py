@@ -94,7 +94,7 @@ class AgentStatus(IntEnum):
     DELETED = 2
 
 
-class AgentValue(BaseModel):
+class AgentValue:
     """Python representation of an Agent row"""
 
     agent_id: str = ""
@@ -111,10 +111,6 @@ class AgentValue(BaseModel):
     system_prompt: str = (
         ""  # system prompt for the agent, This is not in Postgres, but in DynamoDB
     )
-
-    def __init__(self) -> None:
-        """Initialize agent"""
-        super().__init__()
 
 
 class AgentReturn(ModelReturn):
