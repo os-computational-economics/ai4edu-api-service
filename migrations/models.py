@@ -27,7 +27,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from common.EnvManager import getenv
 
 CONFIG = getenv()
-
+DEFAULT_UUID = UUID_TYPE("00000000-0000-0000-0000-000000000000")
 
 WorkspaceRole = Literal["student", "teacher", "admin"]
 WorkspaceRoles = dict[str, WorkspaceRole]
@@ -96,7 +96,7 @@ class AgentStatus(IntEnum):
 class AgentValue:
     """Python representation of an Agent row"""
 
-    agent_id: UUID_TYPE = UUID_TYPE()
+    agent_id: UUID_TYPE = DEFAULT_UUID
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_name: str = ""
     workspace_id: str = ""
@@ -246,9 +246,9 @@ class Thread(Base):
 class ThreadValue:
     """Python representation of a Thread row"""
 
-    thread_id: UUID_TYPE = UUID_TYPE()
+    thread_id: UUID_TYPE = DEFAULT_UUID
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
-    agent_id: UUID_TYPE = UUID_TYPE()
+    agent_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
     workspace_id: str = ""
     agent_name: str = ""
@@ -410,9 +410,9 @@ class RefreshToken(Base):
 class RefreshTokenValue:
     """Python representation of a RefreshToken row"""
 
-    token_id: UUID_TYPE = UUID_TYPE()
+    token_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
-    token: UUID_TYPE = UUID_TYPE()
+    token: UUID_TYPE = DEFAULT_UUID
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     expire_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     issued_token_count: int = 0
@@ -465,7 +465,7 @@ class File(Base):
 class FileValue:
     """Python representation of a File row"""
 
-    file_id: UUID_TYPE = UUID_TYPE()
+    file_id: UUID_TYPE = DEFAULT_UUID
     file_name: str = ""
     file_desc: str = ""
     file_type: str = ""
@@ -605,7 +605,7 @@ class UserFeedbackValue:
 
     feedback_id: int = 0
     user_id: int = 0
-    thread_id: UUID_TYPE = UUID_TYPE()
+    thread_id: UUID_TYPE = DEFAULT_UUID
     message_id: str = ""
     feedback_time: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     rating_format: Literal[2, 5, 10] = 2
