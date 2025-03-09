@@ -122,7 +122,9 @@ class AgentReturn(ModelReturn):
     workspace_id: str
     voice: bool
     allow_model_choice: bool
-    model: str
+    model: (
+        str | None
+    )  # if allow_model_choice is True, model is None because we allow user to choose model
 
 
 def agent_return(av: AgentValue | None = None) -> AgentReturn:
