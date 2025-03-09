@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, String, func
+from sqlalchemy import cast, func, String
 
 from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
