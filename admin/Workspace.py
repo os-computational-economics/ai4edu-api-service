@@ -466,7 +466,6 @@ def add_users_json(
         return Responses[None].forbidden(response)
     try:
         for student in students.students:
-
             # Check if the record already exists
             existing_user_workspace = (
                 db.query(UserWorkspace)
