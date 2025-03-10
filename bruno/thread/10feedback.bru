@@ -1,0 +1,19 @@
+meta {
+  name: 10feedback
+  type: http
+  seq: 10
+}
+
+get {
+  url: https://localhost/v1/dev/user/feedback/rating
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "thread_id": "{{thread_id}}",
+    "rating": 5,
+    "comments": "rating test"
+  }
+}

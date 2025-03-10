@@ -1,0 +1,24 @@
+meta {
+  name: 8getThread
+  type: http
+  seq: 8
+}
+
+get {
+  url: https://localhost/v1/dev/admin/threads/get_thread/{{thread_id}}
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "voice" : false,
+    "creator" : "{{jwt.user_id}}",
+    "allow_model_choice" : true,
+    "agent_name" : "test_agent",
+    "model" : "openai",
+    "system_prompt" : "you are an AI assistant",
+    "agent_files" : {}
+  }
+}

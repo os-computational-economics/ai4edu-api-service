@@ -1,0 +1,23 @@
+meta {
+  name: 2createAgent
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://localhost/v1/dev/admin/workspace/add_users_json?workspace_id={{workspace_id}}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  workspace_id: {{workspace_id}}
+}
+
+body:json {
+  {
+    "students": [
+      "{{jwt.student_id}}"
+    ]
+  }
+}

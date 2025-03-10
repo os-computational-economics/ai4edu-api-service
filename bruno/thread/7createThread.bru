@@ -1,0 +1,33 @@
+meta {
+  name: 7createThread
+  type: http
+  seq: 7
+}
+
+get {
+  url: https://localhost/v1/dev/user/get_new_thread?workspace_id={{workspace_id}}&agent_id={{agent_id}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  workspace_id: {{workspace_id}}
+  agent_id: {{agent_id}}
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "voice" : false,
+    "creator" : "{{jwt.user_id}}",
+    "allow_model_choice" : true,
+    "agent_name" : "test_agent",
+    "model" : "openai",
+    "system_prompt" : "you are an AI assistant",
+    "agent_files" : {}
+  }
+}
+
+vars:post-response {
+  thread_id: res.body.data.thread_id
+}

@@ -73,6 +73,13 @@ class UserRoleUpdate(BaseModel):
     role: str  # student, teacher, pending
 
 
+class UserDelete(BaseModel):
+    """A Class describing the object sent to update a user role in a workspace."""
+
+    user_id: int
+    workspace_id: str
+
+
 @router.post("/create_workspace")
 def create_workspace(
     request: Request,
@@ -606,7 +613,7 @@ def student_join_workspace(
 def delete_user_from_workspace(
     request: Request,
     response: FastAPIResponse,
-    user_role_update: UserRoleUpdate,
+    user_role_update: UserDelete,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response[None]:
     """Deletes a user from a workspace
@@ -614,7 +621,7 @@ def delete_user_from_workspace(
     Args:
         request: FastAPI request object
         response: FastAPI response object
-        user_role_update: UserRoleUpdate object containing user details and workspace ID
+        user_role_update: UserDelete object containing user details and workspace ID
         db: SQLAlchemy database session
 
     Returns:

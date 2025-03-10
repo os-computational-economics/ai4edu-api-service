@@ -1,0 +1,28 @@
+meta {
+  name: 9getThreadList
+  type: http
+  seq: 9
+}
+
+get {
+  url: https://localhost/v1/dev/admin/threads/get_thread_list?workspace_id={{workspace_id}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  workspace_id: {{workspace_id}}
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "voice" : false,
+    "creator" : "{{jwt.user_id}}",
+    "allow_model_choice" : true,
+    "agent_name" : "test_agent",
+    "model" : "openai",
+    "system_prompt" : "you are an AI assistant",
+    "agent_files" : {}
+  }
+}
