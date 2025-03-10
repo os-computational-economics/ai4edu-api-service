@@ -40,6 +40,7 @@ endpoint_access_map: AccessMap = {
         "admin": True,
     },
     "/workspace/add_users_via_csv": {"student": False, "teacher": True, "admin": True},
+    "/workspace/add_users_json": {"student": False, "teacher": True, "admin": True},
     "/workspace/student_join_workspace": {
         "student": True,
         "teacher": True,

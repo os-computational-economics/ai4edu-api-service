@@ -1,7 +1,7 @@
 meta {
-  name: getAccesssToken
+  name: 5getAccesssToken
   type: http
-  seq: 2
+  seq: 5
 }
 
 get {
@@ -24,6 +24,4 @@ script:post-response {
   let jwt = parseJwt(res.body.data.access_token)
   bru.setVar("jwt", jwt)
   bru.setVar("access", res.body.data.access_token)
-  
-  console.log(jwt)
 }

@@ -1,0 +1,18 @@
+meta {
+  name: 10delete
+  type: http
+  seq: 10
+}
+
+post {
+  url: https://localhost/v1/dev/admin/agents/delete_agent
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "agent_id" :"{{agent_id}}"
+  }
+}
