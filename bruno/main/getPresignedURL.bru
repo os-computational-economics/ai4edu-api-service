@@ -1,0 +1,15 @@
+meta {
+  name: getPresignedURL
+  type: http
+  seq: 8
+}
+
+get {
+  url: https://localhost/v1/prod/admin/get_presigned_url_for_file?file_id={{file_id}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  file_id: {{file_id}}
+}

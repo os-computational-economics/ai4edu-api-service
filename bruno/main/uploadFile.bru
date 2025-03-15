@@ -1,0 +1,28 @@
+meta {
+  name: uploadFile
+  type: http
+  seq: 7
+}
+
+post {
+  url: https://localhost/v1/prod/admin/upload_file?file_desc=test file&chunking_separator
+  body: multipartForm
+  auth: inherit
+}
+
+params:query {
+  file_desc: test file
+  chunking_separator: 
+}
+
+body:multipart-form {
+  file: @file(main/test_file.pdf)
+}
+
+body:file {
+  file: @file(main/test_file.pdf) @contentType(application/pdf)
+}
+
+script:post-response {
+  bru.setVar("file_id", res.body.data.file_id)
+}

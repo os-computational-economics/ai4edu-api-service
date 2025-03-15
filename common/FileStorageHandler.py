@@ -277,7 +277,7 @@ class FileStorageHandler:
             s3_object_name = self._get_s3_object_name(file_id, file_ext)
             return self.s3_client.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": self.BUCKET_NAME, "Key": s3_object_name},
+                Params={"Bucket": self.BUCKET_NAME, "Key": str(s3_object_name)},
                 ExpiresIn=expiration,
             )
         except Exception as e:

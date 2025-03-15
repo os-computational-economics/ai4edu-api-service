@@ -379,7 +379,7 @@ def add_users_via_csv(
         response: FastAPI response object
         workspace_id: str representing the workspace ID
         db: SQLAlchemy database session
-        file: UploadFile representing the CSV file
+        file: UploadFile representing the CSV file with Network ID column
 
     Returns:
         Success message or 400 if workspace not found or file is invalid
