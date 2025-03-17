@@ -487,7 +487,19 @@ def get_agent_by_id(
 
     """
     agent: AgentValue | None = (
-        db.query(Agent)
+        db.query(
+            Agent.agent_id,
+            Agent.agent_name,
+            Agent.workspace_id,
+            Agent.voice,
+            Agent.status,
+            Agent.allow_model_choice,
+            Agent.agent_files,
+            cast(func.coalesce(Agent.model, ""), String).label(
+                "model"
+            ),  # Handle NULL values for model
+            # TODO: Update the database model of creator and model to not allow NULL
+        )
         .filter(Agent.agent_id == agent_id, Agent.status != AgentStatus.DELETED)
         .first()
     )  # pyright: ignore[reportAssignmentType] exclude deleted agents
