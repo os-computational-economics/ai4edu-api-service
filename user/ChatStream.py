@@ -1,10 +1,12 @@
 # Copyright (c) 2024.
 """Tools for handling chat streams"""
 
+import datetime
 import json
 import uuid
 from collections.abc import Iterator
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from anthropic._client import Anthropic as AnthropicClient
 from openai._client import OpenAI as OpenAIClient
@@ -140,7 +142,9 @@ class ChatStream:
         )
         #  get agent prompt
         agent_prompt_handler = AgentPromptHandler(config=self.CONFIG)
-        agent_prompt = agent_prompt_handler.get_agent_prompt(self.agent_id)
+        agent_prompt = self.__add_current_date_time_to_system_prompt(
+            agent_prompt_handler.get_agent_prompt(self.agent_id)
+        )
         return EventSourceResponse(
             self.__chat_generator(chat_stream_model.messages, agent_prompt or ""),
         )
@@ -320,6 +324,34 @@ class ChatStream:
             self.tts.stream_tts(chunk_buffer, str(chunk_id))
         chunk_buffer = sentence_ender.join(new_text_split[1:])
         return chunk_buffer, chunk_id
+
+    def __add_current_date_time_to_system_prompt(
+        self,
+        system_prompt: str | None,
+    ) -> str:
+        """Add the current date and time to the start of the system prompt.
+
+        Args:
+            system_prompt: The system prompt.
+
+        Returns:
+            The updated system prompt with the current date and time (in both UTC and EST).
+
+        """
+        if system_prompt is None:
+            system_prompt = ""
+        # get the current date and time in UTC and EST
+        utc_now = datetime.datetime.now(datetime.UTC)
+        est_now = datetime.datetime.now(
+            ZoneInfo("America/New_York")
+        )  # Eastern Time with automatic DST
+
+        # add the current date and time to the system prompt
+        return (
+            f"Current date and time in UTC: {utc_now.strftime('%Y-%m-%d %H:%M:%S')}. "
+            f"Current date and time in EST: {est_now.strftime('%Y-%m-%d %H:%M:%S')}. "
+            "EST is the main timezone you should use.\n" + system_prompt
+        )
 
     def __messages_processor(  # pyright: ignore[reportUnusedFunction]
         self,
