@@ -160,7 +160,6 @@ class ChatStream:
             A JSON-formatted string with the chat message
 
         """
-        print(f"Using {self.requested_provider}")
         last_message = messages[len(messages) - 1]
 
         # Try with the requested provider first, then fallback if needed
@@ -170,11 +169,10 @@ class ChatStream:
             if provider != self.requested_provider:
                 available_providers.append(provider)
 
-        stream = None
         last_exception = None
-        provider_actually_used = self.requested_provider
+        have_good_provider = False
 
-        for provider in available_providers:
+        for provider in available_providers:  # noqa: PLR1702
             try:
                 print(f"Attempting with provider: {provider}")
                 stream = chat_stream_with_retrieve(
@@ -187,16 +185,102 @@ class ChatStream:
                     provider,  # Use current provider in the loop
                     provider,
                 )
-                # If we reach this point without exception, we have a working stream
-                print(f"Successfully connected with provider: {provider}")
-                provider_actually_used = provider
+                # start to stream the response
+                response_text = ""
+                all_sources: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
+                chunk_id = (
+                    -1
+                )  # chunk_id starts from 0, -1 means no chunk has been created
+                sentence_ender = [".", "?", "!"]
+                chunk_buffer = ""
+                for text_chunk in stream:
+                    if text_chunk[0] == "answer":
+                        new_text = text_chunk[1]
+                        response_text += new_text
+                        if len(chunk_buffer.split()) > 17 + (
+                            chunk_id * 12
+                        ):  # dynamically adjust the chunk size
+                            for ender in (
+                                sentence_ender
+                            ):  # if the chunk contains a sentence ender
+                                if ender in new_text:
+                                    chunk_buffer, chunk_id = self.__process_chunking(
+                                        ender,
+                                        new_text,
+                                        chunk_buffer,
+                                        chunk_id,
+                                    )
+                                    break
+                            else:  # if the chunk does not contain a sentence ender
+                                chunk_buffer += new_text
+                        else:  # if the chunk is less than 21 words
+                            chunk_buffer += new_text
+                        yield json.dumps(
+                            {
+                                "response": response_text,
+                                "source": all_sources,
+                                "tts_session_id": self.tts_session_id,
+                                "tts_max_chunk_id": chunk_id,
+                            },
+                        )
+                    elif text_chunk[0] == "source":
+                        source_text = text_chunk[1]
+                        all_sources.append(source_text)
+                        yield json.dumps(
+                            {
+                                "response": response_text,
+                                "source": all_sources,
+                                "tts_session_id": self.tts_session_id,
+                                "tts_max_chunk_id": chunk_id,
+                            },
+                        )
+                # put the finished response into the database (AI message)
+                msg_id = self.message_storage_handler.put_message(
+                    self.thread_id,
+                    self.user_id,
+                    provider,
+                    response_text,
+                )
+                print(
+                    "Latest response:",
+                    response_text,
+                    "msg_id:",
+                    msg_id,
+                    "provider:",
+                    provider,
+                )
+                # Process any remaining text in the chunk_buffer after the stream has finished
+                if chunk_buffer:
+                    chunk_id += 1
+                    if self.tts_voice_enabled:
+                        self.tts.stream_tts(chunk_buffer, str(chunk_id))
+                    yield json.dumps(
+                        {
+                            "response": response_text,
+                            "source": all_sources,
+                            "tts_session_id": self.tts_session_id,
+                            "tts_max_chunk_id": chunk_id,
+                            "msg_id": msg_id,
+                        },
+                    )
+                yield json.dumps(
+                    {
+                        "response": response_text,
+                        "source": all_sources,
+                        "tts_session_id": self.tts_session_id,
+                        "tts_max_chunk_id": chunk_id,
+                        "msg_id": msg_id,
+                    },
+                )
+                # If we are here, it means the provider worked, no need to try others
+                have_good_provider = True
                 break
             except Exception as e:
                 print(f"Provider {provider} failed with error: {str(e)}")
                 last_exception = e
                 continue
 
-        if stream is None:
+        if not have_good_provider:
             # All providers failed, yield an error message
             error_message = f"All providers failed. Last error: {str(last_exception)}"
             print(error_message)
@@ -209,84 +293,6 @@ class ChatStream:
                 }
             )
             return
-
-        response_text = ""
-        all_sources: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
-        chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
-        sentence_ender = [".", "?", "!"]
-        chunk_buffer = ""
-        for text_chunk in stream:
-            if text_chunk[0] == "answer":
-                new_text = text_chunk[1]
-                response_text += new_text
-                if len(chunk_buffer.split()) > 17 + (
-                    chunk_id * 12
-                ):  # dynamically adjust the chunk size
-                    for (
-                        ender
-                    ) in sentence_ender:  # if the chunk contains a sentence ender
-                        if ender in new_text:
-                            chunk_buffer, chunk_id = self.__process_chunking(
-                                ender,
-                                new_text,
-                                chunk_buffer,
-                                chunk_id,
-                            )
-                            break
-                    else:  # if the chunk does not contain a sentence ender
-                        chunk_buffer += new_text
-                else:  # if the chunk is less than 21 words
-                    chunk_buffer += new_text
-                yield json.dumps(
-                    {
-                        "response": response_text,
-                        "source": all_sources,
-                        "tts_session_id": self.tts_session_id,
-                        "tts_max_chunk_id": chunk_id,
-                    },
-                )
-            elif text_chunk[0] == "source":
-                source_text = text_chunk[1]
-                all_sources.append(source_text)
-                yield json.dumps(
-                    {
-                        "response": response_text,
-                        "source": all_sources,
-                        "tts_session_id": self.tts_session_id,
-                        "tts_max_chunk_id": chunk_id,
-                    },
-                )
-        # put the finished response into the database (AI message)
-        msg_id = self.message_storage_handler.put_message(
-            self.thread_id,
-            self.user_id,
-            provider_actually_used,
-            response_text,
-        )
-        print("Latest response:", response_text, "msg_id:", msg_id)
-        # Process any remaining text in the chunk_buffer after the stream has finished
-        if chunk_buffer:
-            chunk_id += 1
-            if self.tts_voice_enabled:
-                self.tts.stream_tts(chunk_buffer, str(chunk_id))
-            yield json.dumps(
-                {
-                    "response": response_text,
-                    "source": all_sources,
-                    "tts_session_id": self.tts_session_id,
-                    "tts_max_chunk_id": chunk_id,
-                    "msg_id": msg_id,
-                },
-            )
-        yield json.dumps(
-            {
-                "response": response_text,
-                "source": all_sources,
-                "tts_session_id": self.tts_session_id,
-                "tts_max_chunk_id": chunk_id,
-                "msg_id": msg_id,
-            },
-        )
 
     def __process_chunking(
         self,
