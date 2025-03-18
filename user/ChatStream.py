@@ -135,10 +135,7 @@ class ChatStream:
             "human",
             # ! Is this meant to be a string?
             # ! What if it is a:
-            #  Iterable[ChatCompletionContentPartTextParam] |
-            #  Iterable[ChatCompletionContentPartParam] |
-            #  Iterable[ContentArrayOfContentPart] |
-            #  Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]  # noqa: E501
+            # ! Iterable[ChatCompletionContentPartTextParam] | Iterable[ChatCompletionContentPartParam] | Iterable[ContentArrayOfContentPart] | Iterable[ContentBlock | TextBlockParam | ImageBlockParam | ToolUseBlockParam | ToolResultBlockParam]
             last_item["content"] or "" if "content" in last_item else "",
         )
         #  get agent prompt
@@ -165,13 +162,6 @@ class ChatStream:
         """
         print(f"Using {self.requested_provider}")
         last_message = messages[len(messages) - 1]
-
-        # Primary provider is the requested one, fallback to the other provider
-        primary_provider = self.requested_provider
-
-        # Track which provider was actually used (default to requested, will be updated if fallback occurs)
-        actual_provider_used = primary_provider
-
         stream = chat_stream_with_retrieve(
             self.thread_id,
             # ! Assumes users are only able to send text messages
@@ -179,8 +169,8 @@ class ChatStream:
             self.retrieval_namespace,
             system_prompt,
             messages,
-            primary_provider,  # Use the primary provider for question consolidation
-            primary_provider,  # Use the primary provider for answering
+            self.requested_provider,
+            self.requested_provider,
         )
         response_text = ""
         all_sources: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
@@ -228,18 +218,11 @@ class ChatStream:
                         "tts_max_chunk_id": chunk_id,
                     },
                 )
-            elif text_chunk[0] == "provider_used":
-                # Update the actual provider used
-                actual_provider_used = text_chunk[1]
-                print(
-                    f"Using provider: {actual_provider_used} (originally requested: {self.requested_provider})"
-                )
         # put the finished response into the database (AI message)
-        # Use the actual provider that was used (which might be different from the requested one)
         msg_id = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
-            actual_provider_used,  # Use the actual provider that was used after fallback
+            self.requested_provider,
             response_text,
         )
         print("Latest response:", response_text, "msg_id:", msg_id)

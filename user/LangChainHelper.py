@@ -128,9 +128,6 @@ def chat_stream_with_retrieve(
 ) -> (
     Iterable[tuple[Literal["answer"], str]]
     | Iterable[tuple[Literal["source"], dict[str, Any]]]  # pyright: ignore[reportExplicitAny]
-    | Iterable[
-        tuple[Literal["provider_used"], Provider]
-    ]  # Added to indicate which provider was used
 ):
     """Chat stream with retrieval.
 
@@ -146,25 +143,13 @@ def chat_stream_with_retrieve(
     Yields:
         Chat messages.
 
-    """  # noqa: DOC201
+    """
     vectorstore = PineconeVectorStore.from_existing_index(
         index_name,
         embeddings,
         namespace=retrieval_namespace,
     )
     retriever: RetrieverLike = vectorstore.as_retriever()
-
-    # Try primary LLM for question consolidation, fall back to secondary if it fails
-    primary_consolidation_llm = (
-        llm2 if llm_for_question_consolidation == Provider.anthropic else llm
-    )
-    backup_consolidation_llm = (
-        llm if llm_for_question_consolidation == Provider.anthropic else llm2
-    )
-
-    # Try primary LLM for answering, fall back to secondary if it fails
-    primary_answer_llm = llm2 if llm_for_answer == Provider.anthropic else llm
-    backup_answer_llm = llm if llm_for_answer == Provider.anthropic else llm2
 
     # Contextualize question ###
     # This prompt will be used to contextualize the question,
@@ -185,40 +170,11 @@ def chat_stream_with_retrieve(
     if history_from_request is None:
         history_from_request = {}
 
-    # Create history-aware retriever with primary LLM, fallback to backup if it fails
-    history_aware_retriever = None
-
-    try:
-        history_aware_retriever = create_history_aware_retriever(
-            primary_consolidation_llm,
-            retriever,
-            contextualize_q_prompt,
-        )
-        print(f"Using {llm_for_question_consolidation} for question consolidation")
-    except Exception as e:
-        fallback_provider = (
-            Provider.openai
-            if llm_for_question_consolidation == Provider.anthropic
-            else Provider.anthropic
-        )
-        print(
-            f"Error using {llm_for_question_consolidation} for question consolidation: {str(e)}"
-        )
-        print(f"Falling back to {fallback_provider} for question consolidation")
-        try:
-            history_aware_retriever = create_history_aware_retriever(
-                backup_consolidation_llm,
-                retriever,
-                contextualize_q_prompt,
-            )
-        except Exception as e2:
-            error_msg = f"Both LLM providers failed for question consolidation. Errors: {str(e)}, {str(e2)}"
-            print(error_msg)
-            yield (
-                "answer",
-                "I'm sorry, I'm currently experiencing technical difficulties.",
-            )
-            return
+    history_aware_retriever = create_history_aware_retriever(
+        llm2 if llm_for_question_consolidation == Provider.anthropic else llm,
+        retriever,
+        contextualize_q_prompt,
+    )
 
     qa_system_prompt = f"""You are a personalized assistant. \
     Use the following pieces of retrieved context to answer the question. \
@@ -235,44 +191,10 @@ def chat_stream_with_retrieve(
         ],
     )
 
-    # Create question answering chain with primary LLM, fallback to backup if it fails
-    question_answer_chain = None
-    # Track which provider was actually used for answering
-    provider_used_for_answer = llm_for_answer
-
-    try:
-        question_answer_chain = create_stuff_documents_chain(
-            primary_answer_llm,
-            qa_prompt,
-        )
-        print(f"Using {llm_for_answer} for answering")
-    except Exception as e:
-        fallback_provider = (
-            Provider.openai
-            if llm_for_answer == Provider.anthropic
-            else Provider.anthropic
-        )
-        print(f"Error using {llm_for_answer} for answering: {str(e)}")
-        print(f"Falling back to {fallback_provider} for answering")
-        try:
-            question_answer_chain = create_stuff_documents_chain(
-                backup_answer_llm,
-                qa_prompt,
-            )
-            provider_used_for_answer = fallback_provider
-        except Exception as e2:
-            error_msg = (
-                f"Both LLM providers failed for answering. Errors: {str(e)}, {str(e2)}"
-            )
-            print(error_msg)
-            yield (
-                "answer",
-                "I'm sorry, I'm currently experiencing technical difficulties.",
-            )
-            return
-
-    # Send information about which provider was actually used
-    yield "provider_used", provider_used_for_answer
+    question_answer_chain = create_stuff_documents_chain(
+        llm2 if llm_for_answer == Provider.anthropic else llm,
+        qa_prompt,
+    )
 
     rag_chain: Runnable[
         MessagesOrDictWithMessages,
@@ -307,43 +229,34 @@ def chat_stream_with_retrieve(
 
     print("Latest question: ", question)
 
-    try:
-        rag_stream: Iterator[ConversationalStream] = conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
-            {"input": question},
-            config={
-                "configurable": {
-                    "thread_id": thread_id,
-                    "history_from_request": history_from_request,
-                },
+    rag_stream: Iterator[ConversationalStream] = conversational_rag_chain.stream(  # pyright: ignore[reportUnknownMemberType]
+        {"input": question},
+        config={
+            "configurable": {
+                "thread_id": thread_id,
+                "history_from_request": history_from_request,
             },
-        )
+        },
+    )
 
-        for chunk in rag_stream:
-            # ! This portion of code is incredibly hard to typecheck as the .stream() method
-            # ! returns a dynamic type. We know this type to be ConversationStream, but
-            # ! the.stream() method is still a generic function. Type casting/forcing
-            # ! is possible here, but annoying
-            chunk: ConversationalStream
-            answer = chunk.get("answer")
-            if answer:
-                yield "answer", answer
-                continue
-            context = chunk.get("context")
-            if context:
-                sources = chunk.get("context")
-                for doc in sources:
-                    md: dict[str, Any] = (  # pyright: ignore[reportExplicitAny, reportUnknownMemberType]
-                        doc.metadata
-                    )
-                    yield "source", md
-    except Exception as e:
-        error_msg = f"Error during RAG streaming: {str(e)}"
-        print(error_msg)
-        yield (
-            "answer",
-            "I'm sorry, I'm currently experiencing technical difficulties.",
-        )
-        return
+    for chunk in rag_stream:
+        # ! This portion of code is incredibly hard to typecheck as the .stream() method
+        # ! returns a dynamic type. We know this type to be ConversationStream, but
+        # ! the.stream() method is still a generic function. Type casting/forcing
+        # ! is possible here, but annoying
+        chunk: ConversationalStream
+        answer = chunk.get("answer")
+        if answer:
+            yield "answer", answer
+            continue
+        context = chunk.get("context")
+        if context:
+            sources = chunk.get("context")
+            for doc in sources:
+                md: dict[str, Any] = (  # pyright: ignore[reportExplicitAny, reportUnknownMemberType]
+                    doc.metadata
+                )
+                yield "source", md
 
 
 # Example usage:
