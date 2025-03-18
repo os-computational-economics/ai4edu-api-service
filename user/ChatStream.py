@@ -162,16 +162,54 @@ class ChatStream:
         """
         print(f"Using {self.requested_provider}")
         last_message = messages[len(messages) - 1]
-        stream = chat_stream_with_retrieve(
-            self.thread_id,
-            # ! Assumes users are only able to send text messages
-            str(last_message["content"]) if "content" in last_message else "",
-            self.retrieval_namespace,
-            system_prompt,
-            messages,
-            self.requested_provider,
-            self.requested_provider,
-        )
+
+        # Try with the requested provider first, then fallback if needed
+        available_providers = [self.requested_provider]
+        # Add fallback providers if not already included
+        for provider in [Provider.openai, Provider.anthropic]:
+            if provider != self.requested_provider:
+                available_providers.append(provider)
+
+        stream = None
+        last_exception = None
+        provider_actually_used = self.requested_provider
+
+        for provider in available_providers:
+            try:
+                print(f"Attempting with provider: {provider}")
+                stream = chat_stream_with_retrieve(
+                    self.thread_id,
+                    # ! Assumes users are only able to send text messages
+                    str(last_message["content"]) if "content" in last_message else "",
+                    self.retrieval_namespace,
+                    system_prompt,
+                    messages,
+                    provider,  # Use current provider in the loop
+                    provider,
+                )
+                # If we reach this point without exception, we have a working stream
+                print(f"Successfully connected with provider: {provider}")
+                provider_actually_used = provider
+                break
+            except Exception as e:
+                print(f"Provider {provider} failed with error: {str(e)}")
+                last_exception = e
+                continue
+
+        if stream is None:
+            # All providers failed, yield an error message
+            error_message = f"All providers failed. Last error: {str(last_exception)}"
+            print(error_message)
+            yield json.dumps(
+                {
+                    "response": "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+                    "source": [],
+                    "tts_session_id": self.tts_session_id,
+                    "tts_max_chunk_id": -1,
+                }
+            )
+            return
+
         response_text = ""
         all_sources: list[dict[str, Any]] = []  # pyright: ignore[reportExplicitAny]
         chunk_id = -1  # chunk_id starts from 0, -1 means no chunk has been created
@@ -222,7 +260,7 @@ class ChatStream:
         msg_id = self.message_storage_handler.put_message(
             self.thread_id,
             self.user_id,
-            self.requested_provider,
+            provider_actually_used,
             response_text,
         )
         print("Latest response:", response_text, "msg_id:", msg_id)
