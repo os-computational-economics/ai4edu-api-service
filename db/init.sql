@@ -123,8 +123,6 @@ create table ai_workspaces
         constraint ai_workspaces_pk
             primary key,
     workspace_name      varchar(64)          not null
-        constraint ai_workspaces_pk_2
-            unique,
     workspace_prompt    text,
     workspace_comment   text,
     created_by integer                       not null
