@@ -799,7 +799,7 @@ def set_user_role_with_user_id(
 
     """
     user_jwt_content = get_jwt(request.state)
-    if not user_jwt_content["system_admin"] and not user_jwt_content("workspace_admin"):
+    if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
     try:
         user: UserValue | None = (
@@ -822,9 +822,10 @@ def set_user_role_with_user_id(
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
-        logger.info("Reached here")
-        logger.info(f"payload: {user_role_update}")
+        logger.info(f'workspace_admin -> {user_jwt_content["workspace_admin"]}')
+        logger.info(f'system_admin -> {user_jwt_content["system_admin"]}')
 
+        
         if user_jwt_content["workspace_admin"] and not user_jwt_content["system_admin"]:
             # Ensure the user that the workspace admin is trying to promote is within this workspace
             calling_user: UserValue | None = (
@@ -849,6 +850,8 @@ def set_user_role_with_user_id(
                 .first()
             )
 
+            logger.info(f"calling_user_workspace: {calling_user_workspace}")
+
             if not calling_user_workspace:
                 return Responses[None].response(
                     response,
@@ -862,7 +865,7 @@ def set_user_role_with_user_id(
             new_user_workspace = UserWorkspace(
                 user_id=user.user_id,
                 student_id=user.student_id,
-                workspace_id=user_role_update.workspace_id,
+                workspace_id=str(user_role_update.workspace_id),
                 role=user_role_update.role,
             )
             db.add(new_user_workspace)
@@ -870,7 +873,8 @@ def set_user_role_with_user_id(
         else:
             user_workspace.role = user_role_update.role
 
-        user.workspace_role[user_role_update.workspace_id] = user_role_update.role
+        logger.info(f"Attempting to set user workspace role to {user_role_update.role}")
+        user.workspace_role[str(user_role_update.workspace_id)] = user_role_update.role
         flag_modified(user, "workspace_role")
         db.commit()
 
