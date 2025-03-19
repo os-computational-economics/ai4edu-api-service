@@ -917,26 +917,35 @@ def get_workspace_list(
 
     """
     user_jwt_content = get_jwt(request.state)
+    user_id = int(user_jwt_content["user_id"])
     if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[WorkspaceReturn].forbidden_list_page(response)
     try:
         offset = (page - 1) * page_size
-        workspaces: list[WorkspaceValue] = (
-            db.query(Workspace)
-            .filter(
-                (Workspace.status != WorkspaceStatus.DELETED) if user_jwt_content["system_admin"]
-                else (Workspace.status != WorkspaceStatus.DELETED and Workspace.created_by == int(user_jwt_content["user_id"]))
-            )
-            .order_by(desc(Workspace.status))
-            .offset(offset)
-            .limit(page_size)
-            .all()
-        )  # pyright: ignore[reportAssignmentType]
-        total_workspaces = (
-            db.query(Workspace)
-            .filter(Workspace.status != WorkspaceStatus.DELETED)
-            .count()
-        )
+        if user_jwt_content["system_admin"]:
+            workspaces: list[WorkspaceValue] = (
+                db.query(Workspace)
+                .filter(
+                    Workspace.status != WorkspaceStatus.DELETED
+                )
+                .order_by(desc(Workspace.status))
+                .offset(offset)
+                .limit(page_size)
+                .all()
+            )  # pyright: ignore[reportAssignmentType]
+        else:
+            workspaces: list[WorkspaceValue] = (
+                db.query(Workspace)
+                .filter(
+                    Workspace.status != WorkspaceStatus.DELETED,
+                    Workspace.created_by == user_id
+                )
+                .order_by(desc(Workspace.status))
+                .offset(offset)
+                .limit(page_size)
+                .all()
+            )  # pyright: ignore[reportAssignmentType]
+        total_workspaces = len(workspaces)
         return Responses[APIListReturnPage[WorkspaceReturn]].response(
             response,
             success=True,

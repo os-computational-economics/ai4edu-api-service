@@ -553,17 +553,23 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
     """
     return (
         {
-            "school_id": wv.school_id,
-            "status": wv.status,
             "workspace_id": wv.workspace_id,
             "workspace_name": wv.workspace_name,
+            "workspace_prompt": wv.workspace_prompt,
+            "workspace_comment": wv.workspace_comment,
+            "workspace_join_code": wv.workspace_join_code,
+            "school_id": wv.school_id,
+            "status": wv.status,
         }
         if wv
         else {
-            "school_id": 0,
-            "status": WorkspaceStatus.INACTIVE,
             "workspace_id": "",
             "workspace_name": "",
+            "workspace_prompt": "",
+            "workspace_comment": "",
+            "workspace_join_code": "",
+            "status": WorkspaceStatus.INACTIVE,
+            "school_id": 0,
         }
     )
 
