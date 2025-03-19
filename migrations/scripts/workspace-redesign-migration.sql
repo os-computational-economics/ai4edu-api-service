@@ -104,6 +104,7 @@ WITH teachers AS (
     JOIN ai_workspaces AS w ON uw.workspace_id=w.workspace_id
     WHERE uw.role='teacher'
 )
+
 -- update created_by based on the following criteria:
     -- no teacher -> set created_by to 3
     -- one teacher -> set created_by to teacher user_id
@@ -113,6 +114,9 @@ UPDATE ai_workspaces AS w
         (SELECT user_id FROM teachers AS t WHERE t.workspace_id=w.workspace_id AND t.row_num=1),
         3
     );
+
+-- Remove uniqueness constraint on workspace name
+ALTER TABLE ai_user_workspace DROP CONSTRAINT ai_workspaces_pk_2;
 
 -- set workspace_admin to true for users who are creators
 UPDATE ai_users

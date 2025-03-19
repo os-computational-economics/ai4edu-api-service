@@ -490,7 +490,7 @@ class Workspace(Base):
     workspace_id: Column[UUID_TYPE] = Column(
         UUID(as_uuid=True), primary_key=True, nullable=False
     )
-    workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
+    workspace_name: Column[str] = Column(String(64), unique=False, nullable=False)
     workspace_prompt: Column[Text] = Column(Text(), nullable=True)
     workspace_comment: Column[Text] = Column(Text(), nullable=True)
     created_by: Column[int] = Column(Integer, nullable=False)
