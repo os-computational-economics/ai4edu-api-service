@@ -494,7 +494,7 @@ class Workspace(Base):
     workspace_prompt: Column[Text] = Column(Text(), nullable=True)
     workspace_comment: Column[Text] = Column(Text(), nullable=True)
     created_by: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
-    workspace_join_code: Column[str] = Column(String(6), nullable=False)
+    workspace_join_code: Column[str] = Column(String(8), nullable=False, unique=True)
     status: Column[int] = Column(
         Integer, default=1, nullable=False
     )  # 1-active, 0-inactive, 2-deleted

@@ -129,10 +129,10 @@ create table ai_workspaces
     workspace_comment   text,
     created_by integer                       not null
         references ai_users(user_id),
-    workspace_join_code varchar(6)           not null
+    workspace_join_code varchar(8)           not null
         unique
             constraint valid_join_code
-                check (workspace_join_code similar to '[0-9]{6}'),
+                check (workspace_join_code similar to '[0-9]{8}'),
     status             integer default 1     not null,
     school_id          integer default 0     not null
 );

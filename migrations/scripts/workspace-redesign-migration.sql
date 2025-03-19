@@ -63,13 +63,13 @@ ALTER TABLE ai_agents DROP COLUMN old_workspace_id;
 -- assign a workspace_join_code to all existing workspaces
 -- ensure correct constraint is applied to workspace_join_code
 ALTER TABLE ai_workspaces 
-    ADD COLUMN workspace_join_code VARCHAR(6);
+    ADD COLUMN workspace_join_code VARCHAR(8);
 
 ALTER TABLE ai_workspaces
     ADD CONSTRAINT valid_join_code
-        CHECK (workspace_join_code similar to '[0-9]{6}');
+        CHECK (workspace_join_code similar to '[0-9]{8}');
 
-UPDATE ai_workspaces SET workspace_join_code=LPAD((floor(random() * 1000000)::TEXT), 6, '0') 
+UPDATE ai_workspaces SET workspace_join_code=LPAD((floor(random() * 100000000)::TEXT), 8, '0') 
     WHERE workspace_join_code IS NULL;
 
 -- add and remove required fields to ai_workspaces table
