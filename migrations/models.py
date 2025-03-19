@@ -59,6 +59,7 @@ metadata = Base.metadata
 class ModelReturn(TypedDict):
     """Base Class for Typed Responses"""
 
+
 class Agent(Base):
     """Agent model."""
 
@@ -321,6 +322,7 @@ class User(Base):
     def __repr__(self) -> str:
         return f"User id: {self.user_id}, email: {self.email}"
 
+
 class UserValue:
     """Python representation of a User row"""
 
@@ -485,7 +487,9 @@ class Workspace(Base):
 
     __tablename__: Literal["ai_workspaces"] = "ai_workspaces"
 
-    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True), primary_key=True, nullable=False
+    )
     workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
     workspace_prompt: Column[Text] = Column(Text(), nullable=True)
     workspace_comment: Column[Text] = Column(Text(), nullable=True)

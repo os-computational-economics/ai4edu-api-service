@@ -857,10 +857,10 @@ def set_workspace_admin_role(
     # Verify authority to perform this action
     logger.info("Entered endpoint")
     user_jwt_content = get_jwt(request.state)
-    logger.info(f'system_admin status -> {user_jwt_content["system_admin"]}')
+    logger.info(f"system_admin status -> {user_jwt_content['system_admin']}")
     if not user_jwt_content["system_admin"]:
         return Responses[None].forbidden(response)
-    
+
     try:
         # Get user to change workspace values for
         user: UserValue = (
@@ -874,7 +874,9 @@ def set_workspace_admin_role(
 
         # Commit the changes
         db.commit()
-        logger.info(f"Updated workspace admin role to {workspace_admin_update.workspace_admin}")
+        logger.info(
+            f"Updated workspace admin role to {workspace_admin_update.workspace_admin}"
+        )
 
         return Responses[None].response(
             response,
