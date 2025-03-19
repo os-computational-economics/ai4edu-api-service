@@ -4,8 +4,10 @@
 import csv
 import io
 import logging
+import uuid
 from http import HTTPStatus
 from typing import Annotated
+from random import randrange
 
 import chardet
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, UploadFile
@@ -41,8 +43,10 @@ class WorkspaceCreate(BaseModel):
 
     workspace_id: str
     workspace_name: str
-    workspace_password: str
     school_id: int = 0
+    user_id: int
+    workspace_prompt: str
+    workspace_comment: str
 
 
 class WorkspaceUpdateStatus(BaseModel):
@@ -69,7 +73,7 @@ class StudentJoinWorkspace(BaseModel):
     """A Class describing the object sent to join a workspace as a student."""
 
     workspace_id: str
-    password: str
+    workspace_join_code: str
 
 
 class UserRoleUpdate(BaseModel):
@@ -85,6 +89,26 @@ class UserDelete(BaseModel):
 
     user_id: int
     workspace_id: str
+
+
+def gen_random_join_code(join_code_len: int=8):
+    """Generate a random join code for a workspace
+
+    Args:
+        join_code_len: the length of the join code. Defaults to 8
+
+    Returns:
+        The new workspace join code
+    """
+
+    # Defines the length of the join code
+    new_join_code = ""
+    
+    for _ in range(0, join_code_len):
+        # Add a random digit to the join code
+        new_join_code + randrange(10)
+    
+    return new_join_code
 
 
 @router.post("/create_workspace")
@@ -110,10 +134,20 @@ def create_workspace(
     if not user_jwt_content["system_admin"] or not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
     try:
+        # TODO: Determine if the user can enter a custom UUID for the workspace ID
+        #       Assumedly, it should be random always
+        # NOTE: uuid1 is used since it reduces the chance of a uuid collision to 0
+        #       due to it using timestamp data in the generated uuid
+        new_workspace_id = uuid.uuid1()
+        new_workspace_join_code = gen_random_join_code()
+
         new_workspace = Workspace(
-            workspace_id=workspace.workspace_id,
+            workspace_id=new_workspace_id,
             workspace_name=workspace.workspace_name,
-            workspace_password=workspace.workspace_password,
+            workspace_prompt=workspace.workspace_prompt,
+            workspace_comment=workspace.workspace_comment,
+            created_by=workspace.user_id,
+            workspace_join_code=new_workspace_join_code,
             school_id=workspace.school_id,
         )
         db.add(new_workspace)
@@ -560,7 +594,7 @@ def student_join_workspace(
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
-        if join_workspace.password != workspace.workspace_password:
+        if join_workspace.workspace_join_code != workspace.workspace_join_code:
             return Responses[None].response(
                 response,
                 success=False,
