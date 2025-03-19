@@ -1,0 +1,15 @@
+meta {
+  name: getSSO
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://login.case.edu/cas/login?service=https://localhost/v1/dev/user/sso?came_from=https://localhost/v1/dev/user/sso
+  body: none
+  auth: none
+}
+
+params:query {
+  service: https://localhost/v1/dev/user/sso?came_from=https://localhost/v1/dev/user/sso
+}

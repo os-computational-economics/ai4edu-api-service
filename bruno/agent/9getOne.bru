@@ -1,0 +1,23 @@
+meta {
+  name: 9getOne
+  type: http
+  seq: 9
+}
+
+get {
+  url: https://localhost/v1/dev/admin/agents/agent/{{agent_id}}
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "agent_id" :"{{agent_id}}",
+    "voice" : true,
+    "allow_model_choice" : false,
+    "agent_name" : "test_agent_changed",
+    "model" : "anthropic",
+    "system_prompt" : "You are an AI assistant!"
+  }
+}

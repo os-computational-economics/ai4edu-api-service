@@ -1,15 +1,16 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: models.py.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 3/16/24 23:48
-"""
+"""Classes for interracting with the Postgres database"""
+
 from datetime import datetime
-from typing import Any, Literal, override
-from sqlalchemy.ext.declarative import declarative_base
+from enum import IntEnum
+from typing import Any, Literal, TypedDict, override
+from uuid import UUID as UUID_TYPE
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import (
+    JSON,
+    UUID,
+    Boolean,
     Column,
     DateTime,
     String,
@@ -20,207 +21,499 @@ from sqlalchemy import (
     Boolean,
     UUID,
     ForeignKey,
-    JSON,
-    UniqueConstraint,
+    Integer,
+    MetaData,
     PrimaryKeyConstraint,
+    String,
     Text,
+    UniqueConstraint,
+    func,
 )
-from enum import IntEnum
+from sqlalchemy.ext.declarative import declarative_base
+
+from common.EnvManager import getenv
+
+CONFIG = getenv()
+DEFAULT_UUID = UUID_TYPE("00000000-0000-0000-0000-000000000000")
+
+WorkspaceRole = Literal["student", "teacher", "admin"]
+WorkspaceRoles = dict[str, WorkspaceRole]
 
 
 class BaseType:
-    def __init__(**kwargs: Any) -> None:  # pyright: ignore[reportAny]
-        return super().__init__(**kwargs)
+    """Base class for SQLAlchemy models."""
 
-    metadata = MetaData
+    def __init__(
+        **kwargs: Any,  # noqa: ANN401 # pyright: ignore[reportAny, reportExplicitAny]
+    ) -> None:
+        """Initialize the base class."""
+        super().__init__(**kwargs)
+
+    metadata: type = MetaData
 
 
 Base: type[BaseType] = declarative_base(metadata=MetaData(schema="public"))
 metadata = Base.metadata
 
 
-class Agent(Base):
-    __tablename__ = "ai_agents"
+class ModelReturn(TypedDict):
+    """Base Class for Typed Responses"""
 
-    agent_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    agent_name = Column(String(255), nullable=False)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False)
-    creator = Column(String(16))
-    updated_at = Column(DateTime, default=func.now(), nullable=False)
-    voice = Column(Boolean, default=False, nullable=False)
-    status = Column(
-        Integer, default=1, nullable=False
+class Agent(Base):
+    """Agent model."""
+
+    __tablename__: Literal["ai_agents"] = "ai_agents"
+
+    agent_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
+    )
+    created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
+    agent_name: Column[str] = Column(String(255), nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
+    creator: Column[str] = Column(String(16))
+    updated_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
+    voice: Column[bool] = Column(Boolean, default=False, nullable=False)
+    status: Column[int] = Column(
+        Integer,
+        default=1,
+        nullable=False,
     )  # 1-active, 0-inactive, 2-deleted
-    allow_model_choice = Column(Boolean, default=True, nullable=False)
-    model = Column(String(16))
-    agent_files = Column(JSON)  # {"file_id": "file_name"}
+    allow_model_choice: Column[bool] = Column(Boolean, default=True, nullable=False)
+    model: Column[str] = Column(String(16))
+    agent_files: Column[JSON] = Column(JSON)  # {"file_id": "file_name"}
 
     @override
-    def __repr__(self):
-        return f"Agent id: {self.agent_id}, name: {self.agent_name}, creator: {self.creator}, status: {self.status}, model: {self.model}"
+    def __repr__(self) -> str:
+        return f"""Agent id: {self.agent_id}, name: {self.agent_name}, creator: {
+            self.creator
+        }, status: {self.status}, model: {self.model}"""
+
+
+class AgentStatus(IntEnum):
+    """Enum for agent status."""
+
+    ACTIVE = 1
+    INACTIVE = 0
+    DELETED = 2
 
 
 class AgentValue:
-    agent_id: str = ""
-    created_at: datetime = datetime.now()
+    """Python representation of an Agent row"""
+
+    agent_id: UUID_TYPE = DEFAULT_UUID
+    created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_name: str = ""
     workspace_id: str = ""
     creator: str = ""
-    updated_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     voice: bool = False
-    status: int = 1
+    status: AgentStatus = AgentStatus.ACTIVE
     allow_model_choice: bool = True
     model: str = ""
-    agent_files: dict[str, Any] = {}
+    agent_files: dict[str, str] = {}  # noqa: RUF012
 
 
-class AgentTeacherResponse(AgentValue):
-    system_prompt: str = ""
+class AgentChatReturn(ModelReturn):
+    """Python representation of the return for the chat page to get agent information"""
+
+    agent_id: str
+    agent_name: str
+    workspace_id: str
+    voice: bool
+    allow_model_choice: bool
+    model: str  # allow_model_choice is True, model will be empty for user choice
+    agent_files: dict[str, str]
+    status: AgentStatus
+
+
+def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
+    """Makes an AgentChatReturn object from a python object
+
+    Args:
+        av: The AgentValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_id": str(av.agent_id),
+            "agent_name": av.agent_name,
+            "allow_model_choice": av.allow_model_choice,
+            "model": av.model,
+            "voice": av.voice,
+            "workspace_id": av.workspace_id,
+            "agent_files": av.agent_files,
+            "status": av.status,
+        }
+        if av
+        else {
+            "agent_id": "",
+            "agent_name": "",
+            "allow_model_choice": False,
+            "model": "",
+            "voice": False,
+            "workspace_id": "",
+            "agent_files": {},
+            "status": AgentStatus.INACTIVE,
+        }
+    )
+
+
+class AgentDashboardReturn(AgentChatReturn):
+    """Dictionary representation of an Agent row for the dashboard"""
+
+    created_at: str
+    creator: str
+    updated_at: str
+    system_prompt: str
+
+
+def agent_dashboard_return(
+    av: AgentValue | None = None, system_prompt: str = "", is_teacher: bool = False
+) -> AgentDashboardReturn:
+    """Makes an AgentDashboardReturn object from a python object
+
+    Args:
+        av: The AgentValue to return
+        system_prompt: The system prompt to return
+        is_teacher: If the user is a teacher
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_id": str(av.agent_id),
+            "agent_name": av.agent_name,
+            "allow_model_choice": av.allow_model_choice,
+            "model": av.model,
+            "voice": av.voice,
+            "workspace_id": av.workspace_id,
+            "agent_files": av.agent_files if is_teacher else {},
+            "created_at": str(av.created_at),
+            "creator": av.creator,
+            "status": av.status,
+            "system_prompt": system_prompt if is_teacher else "",
+            "updated_at": str(av.updated_at),
+        }
+        if av
+        else {
+            "agent_id": "",
+            "agent_name": "",
+            "allow_model_choice": False,
+            "model": "",
+            "voice": False,
+            "workspace_id": "",
+            "agent_files": {},
+            "created_at": "",
+            "creator": "",
+            "status": AgentStatus.INACTIVE,
+            "system_prompt": "",
+            "updated_at": "",
+        }
+    )
 
 
 class Thread(Base):
-    __tablename__ = "ai_threads"
+    """Thread model. Represents a conversation between a student and an AI agent."""
 
-    thread_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    student_id = Column(String(16))
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    agent_id = Column(
-        UUID(as_uuid=True), ForeignKey("ai_agents.agent_id"), nullable=False
+    __tablename__: Literal["ai_threads"] = "ai_threads"
+
+    thread_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
     )
-    user_id = Column(Integer, nullable=False)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False)
-    agent_name = Column(String(255), nullable=False)
+    student_id: Column[str] = Column(String(16))
+    created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
+    agent_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ai_agents.agent_id"),
+        nullable=False,
+    )
+    user_id: Column[int] = Column(Integer, nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
+    agent_name: Column[str] = Column(String(255), nullable=False)
 
     @override
-    def __repr__(self):
-        return f"Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {self.created_at}, agent_id: {self.agent_id}"
+    def __repr__(self) -> str:
+        return f"""Thread id: {self.thread_id}, user_id: {self.user_id}, created_at: {
+            self.created_at
+        }, agent_id: {self.agent_id}"""
 
 
 class ThreadValue:
-    thread_id: str = ""
-    student_id: str = ""
-    created_at: datetime = datetime.now()
-    agent_id: str = ""
+    """Python representation of a Thread row"""
+
+    thread_id: UUID_TYPE = DEFAULT_UUID
+    created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+    agent_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
     workspace_id: str = ""
     agent_name: str = ""
 
 
-class User(Base):
-    __tablename__ = "ai_users"
+class ThreadReturn(ModelReturn):
+    """Dictionary representation of a Thread row"""
 
-    user_id = Column(Integer, primary_key=True, unique=True)
-    first_name = Column(String(60), nullable=False)
-    last_name = Column(String(60), nullable=False)
-    email = Column(String(150), nullable=False, unique=True)
-    student_id = Column(String(20), nullable=False, unique=True)
-    workspace_role = Column(JSON, nullable=False)
-    school_id = Column(Integer, nullable=False)
-    last_login = Column(DateTime)
-    create_at = Column(DateTime)
-    system_admin = Column(Boolean, default=False, nullable=False)
-    workspace_admin: Any = Column(Boolean, default=False, nullable=False)
+    thread_id: str
+    created_at: str
+    agent_id: str
+    user_id: int
+    workspace_id: str
+    agent_name: str
+
+
+def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
+    """Makes an ThreadReturn object from a python object
+
+    Args:
+        tv: The ThreadValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "agent_id": str(tv.agent_id),
+            "agent_name": tv.agent_name,
+            "created_at": str(tv.created_at),
+            "thread_id": str(tv.thread_id),
+            "user_id": tv.user_id,
+            "workspace_id": tv.workspace_id,
+        }
+        if tv
+        else {
+            "agent_id": "",
+            "agent_name": "",
+            "created_at": "",
+            "thread_id": "",
+            "user_id": 0,
+            "workspace_id": "",
+        }
+    )
+
+
+class User(Base):
+    """User model."""
+
+    __tablename__: Literal["ai_users"] = "ai_users"
+
+    user_id: Column[int] = Column(Integer, primary_key=True, unique=True)
+    first_name: Column[str] = Column(String(60), nullable=False)
+    last_name: Column[str] = Column(String(60), nullable=False)
+    email: Column[str] = Column(String(150), nullable=False, unique=True)
+    student_id: Column[str] = Column(String(20), nullable=False, unique=True)
+    workspace_role: Column[JSON] = Column(JSON, nullable=False)
+    school_id: Column[int] = Column(Integer, nullable=False)
+    last_login: Column[datetime] = Column(DateTime)
+    create_at: Column[datetime] = Column(DateTime)
+    system_admin: Column[bool] = Column(Boolean, default=False, nullable=False)
+    workspace_admin: Column[bool] = Column(Boolean, default=False, nullable=False)
 
     @override
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"User id: {self.user_id}, email: {self.email}"
 
-
 class UserValue:
+    """Python representation of a User row"""
+
     user_id: int = 0
     first_name: str = ""
     last_name: str = ""
     email: str = ""
     student_id: str = ""
-    workspace_role: dict[str, Any] = {}
+    workspace_role: dict[str, Any]  # pyright: ignore[reportExplicitAny]
     system_admin: bool = False
     workspace_admin: bool = False
     school_id: int = 0
-    last_login: datetime = datetime.now()
-    create_at: datetime = datetime.now()
+    last_login: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+    create_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+
+    def __init__(self) -> None:
+        """Initialize workspace"""
+        self.workspace_role = {}
+
+
+class UserReturn(ModelReturn):
+    """Dictionary representation of a User row"""
+
+    user_id: int
+    email: str
+    first_name: str
+    last_name: str
+    student_id: str
+    workspace_role: WorkspaceRoles
+
+
+def user_return(uv: UserValue | None = None) -> UserReturn:
+    """Makes an UserReturn object from a python object
+
+    Args:
+        uv: The UserValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "email": uv.email,
+            "first_name": uv.first_name,
+            "last_name": uv.last_name,
+            "student_id": uv.student_id,
+            "user_id": uv.user_id,
+            "workspace_role": uv.workspace_role,
+        }
+        if uv
+        else {
+            "email": "",
+            "first_name": "",
+            "last_name": "",
+            "student_id": "",
+            "user_id": 0,
+            "workspace_role": {},
+        }
+    )
 
 
 class RefreshToken(Base):
-    __tablename__ = "ai_refresh_tokens"
+    """RefreshToken model"""
 
-    token_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("ai_users.user_id"), nullable=False)
-    token = Column(UUID(as_uuid=True), nullable=False, unique=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    expire_at = Column(DateTime, nullable=False)
-    issued_token_count = Column(Integer, default=0, nullable=False)
+    __tablename__: Literal["ai_refresh_tokens"] = "ai_refresh_tokens"
 
-    __table_args__ = (UniqueConstraint("token"),)
+    token_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
+    )
+    user_id: Column[int] = Column(
+        Integer,
+        ForeignKey("ai_users.user_id"),
+        nullable=False,
+    )
+    token: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False, unique=True)
+    created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
+    expire_at: Column[datetime] = Column(DateTime, nullable=False)
+    issued_token_count: Column[int] = Column(Integer, default=0, nullable=False)
+
+    __table_args__: tuple[UniqueConstraint] = (UniqueConstraint("token"),)
 
     @override
-    def __repr__(self):
-        return f"RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {self.token}"
+    def __repr__(self) -> str:
+        return f"""RefreshToken id: {self.token_id}, user_id: {self.user_id}, token: {
+            self.token
+        }"""
 
 
 class RefreshTokenValue:
-    token_id: str = ""
+    """Python representation of a RefreshToken row"""
+
+    token_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
-    token: str = ""
-    created_at: datetime = datetime.now()
-    expire_at: datetime = datetime.now()
+    token: UUID_TYPE = DEFAULT_UUID
+    created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+    expire_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     issued_token_count: int = 0
 
 
-class File(Base):
-    __tablename__ = "ai_files"
+class TokenReturn(ModelReturn):
+    """Response containing an Access Token."""
 
-    file_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    file_name = Column(String, nullable=False)
-    file_desc = Column(String)
-    file_type = Column(String(63), nullable=False)
-    file_ext = Column(String(15))
-    file_status = Column(Integer, default=1)
-    chunking_separator = Column(String(15))
-    created_at = Column(DateTime, default=func.now(), nullable=False)
+    access_token: str
+
+
+def token_return(tk: str = "") -> TokenReturn:
+    """Makes an TokenReturn object from a token
+
+    Args:
+        tk: The token to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"access_token": tk}
+
+
+class File(Base):
+    """File model."""
+
+    __tablename__: Literal["ai_files"] = "ai_files"
+
+    file_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        nullable=False,
+    )
+    file_name: Column[str] = Column(String, nullable=False)
+    file_desc: Column[str] = Column(String)
+    file_type: Column[str] = Column(String(63), nullable=False)
+    file_ext: Column[str] = Column(String(15))
+    file_status: Column[int] = Column(Integer, default=1)
+    chunking_separator: Column[str] = Column(String(15))
+    created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
 
     @override
-    def __repr__(self):
-        return f"Files id: {self.file_id}, name: {self.file_name}, type: {self.file_type}, status: {self.file_status}"
+    def __repr__(self) -> str:
+        return f"""Files id: {self.file_id}, name: {self.file_name}, type: {
+            self.file_type
+        }, status: {self.file_status}"""
 
 
 class FileValue:
-    file_id: str = ""
+    """Python representation of a File row"""
+
+    file_id: UUID_TYPE = DEFAULT_UUID
     file_name: str = ""
     file_desc: str = ""
     file_type: str = ""
     file_ext: str = ""
     file_status: int = 0
     chunking_separator: str = ""
-    created_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
 
 
 class Workspace(Base):
-    __tablename__ = "ai_workspaces"
+    """Workspace model."""
 
-    workspace_id = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
-    workspace_name = Column(String(64), unique=True, nullable=False)
-    workspace_prompt: Any = Column(Text(), nullable=True)
-    workspace_comment: Any = Column(Text(), nullable=True)
-    created_by: Any = Column(UUID(as_uuid=True), nullable=False)
-    workspace_join_code: Any = Column(String(6), nullable=False)
-    status = Column(
+    __tablename__: Literal["ai_workspaces"] = "ai_workspaces"
+
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
+    workspace_prompt: Column[Text] = Column(Text(), nullable=True)
+    workspace_comment: Column[Text] = Column(Text(), nullable=True)
+    created_by: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
+    workspace_join_code: Column[str] = Column(String(6), nullable=False)
+    status: Column[int] = Column(
         Integer, default=1, nullable=False
     )  # 1-active, 0-inactive, 2-deleted
-    school_id = Column(Integer, default=0, nullable=False)
+    school_id: Column[int] = Column(Integer, default=0, nullable=False)
 
     @override
-    def __repr__(self):
-        return f"AIWorkspace id: {self.workspace_id}, name: {self.workspace_name}, status: {self.status}, school_id: {self.school_id}"
+    def __repr__(self) -> str:
+        return f"""AIWorkspace id: {self.workspace_id}, name: {
+            self.workspace_name
+        }, status: {self.status}, school_id: {self.school_id}"""
 
 
 class WorkspaceStatus(IntEnum):
+    """Enum for workspace status."""
+
     ACTIVE = 1
     INACTIVE = 0
     DELETED = 2
 
 
 class WorkspaceValue:
+    """Python representation of a Workspace row"""
+
     workspace_id: str = ""
     workspace_name: str = ""
     workspace_prompt: str = ""
@@ -232,53 +525,118 @@ class WorkspaceValue:
     workspace_password: str = ""
 
 
+class WorkspaceReturn(ModelReturn):
+    """Dictionary representation of a Workspace row"""
+
+    workspace_id: str
+    workspace_name: str
+    status: WorkspaceStatus
+    school_id: int
+
+
+def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
+    """Makes an WorkspaceReturn object from a python object
+
+    Args:
+        wv: The WorkspaceValue to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return (
+        {
+            "school_id": wv.school_id,
+            "status": wv.status,
+            "workspace_id": wv.workspace_id,
+            "workspace_name": wv.workspace_name,
+        }
+        if wv
+        else {
+            "school_id": 0,
+            "status": WorkspaceStatus.INACTIVE,
+            "workspace_id": "",
+            "workspace_name": "",
+        }
+    )
+
+
 class UserWorkspace(Base):
-    __tablename__ = "ai_user_workspace"
+    """Users in Workspaces many to many model."""
 
-    user_id = Column(Integer)
-    workspace_id = Column(String(16), nullable=False)
-    role = Column(String(16), default="pending", nullable=False)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime)
-    student_id = Column(String(16), nullable=False)
+    __tablename__: Literal["ai_user_workspace"] = "ai_user_workspace"
 
-    __table_args__ = (
+    user_id: Column[int] = Column(Integer)
+    workspace_id: Column[str] = Column(String(16), nullable=False)
+    role: Column[str] = Column(String(16), default="pending", nullable=False)
+    created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
+    updated_at: Column[datetime] = Column(DateTime)
+    student_id: Column[str] = Column(String(16), nullable=False)
+
+    __table_args__: tuple[PrimaryKeyConstraint] = (
         PrimaryKeyConstraint("workspace_id", "user_id", name="ai_user_workspace_pk"),
     )
 
     @override
-    def __repr__(self):
-        return f"AIUserWorkspace user_id: {self.user_id}, workspace_id: {self.workspace_id}, role: {self.role}"
+    def __repr__(self) -> str:
+        return f"""AIUserWorkspace user_id: {self.user_id}, workspace_id: {
+            self.workspace_id
+        }, role: {self.role}"""
 
 
 class UserWorkspaceValue:
+    """Python representation of a UserWorkspace row"""
+
     user_id: int = 0
     workspace_id: str = ""
     role: str = ""
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
+    created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
+    updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     student_id: str = ""
 
 
 class UserFeedback(Base):
-    __tablename__ = "ai_feedback"
+    """Feedback model."""
 
-    feedback_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=False)
-    thread_id = Column(UUID(as_uuid=True), nullable=False)
-    message_id = Column(String(256))
-    feedback_time = Column(DateTime, default=func.now())
-    rating_format = Column(Integer, nullable=False)
-    rating = Column(Integer, nullable=False)
-    comments = Column(Text)
+    __tablename__: Literal["ai_feedback"] = "ai_feedback"
+
+    feedback_id: Column[int] = Column(Integer, primary_key=True)
+    user_id: Column[int] = Column(Integer, nullable=False)
+    thread_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
+    message_id: Column[str] = Column(String(256))
+    feedback_time: Column[datetime] = Column(DateTime, default=func.now())
+    rating_format: Column[int] = Column(Integer, nullable=False)
+    rating: Column[int] = Column(Integer, nullable=False)
+    comments: Column[str] = Column(Text)
 
 
 class UserFeedbackValue:
+    """Python representation of a UserFeedback row"""
+
     feedback_id: int = 0
     user_id: int = 0
-    thread_id: str = ""
+    thread_id: UUID_TYPE = DEFAULT_UUID
     message_id: str = ""
-    feedback_time: datetime = datetime.now()
+    feedback_time: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     rating_format: Literal[2, 5, 10] = 2
     rating: int = 0
     comments: str = ""
+
+
+class URLReturn(ModelReturn):
+    """Response containing a Presigned URL."""
+
+    url: str
+
+
+def url_return(url: str = "") -> URLReturn:
+    """Makes an URLReturn object from a url
+
+    Args:
+        url: The url to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {"url": url}

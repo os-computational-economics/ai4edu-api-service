@@ -1,0 +1,28 @@
+meta {
+  name: 6createAgent
+  type: http
+  seq: 6
+}
+
+post {
+  url: https://localhost/v1/dev/admin/agents/add_agent
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id" : "{{workspace_id}}",
+    "voice" : false,
+    "creator" : "{{jwt.user_id}}",
+    "allow_model_choice" : true,
+    "agent_name" : "test_agent",
+    "model" : "openai",
+    "system_prompt" : "you are an AI assistant",
+    "agent_files" : {}
+  }
+}
+
+vars:post-response {
+  agent_id: res.body.data.agent_id
+}

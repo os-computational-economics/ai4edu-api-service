@@ -1,5 +1,4 @@
 # This is the docker-compose file for in cloud development and production
-
 version: "1.1.1"
 services:
   ai4edu-admin-dev-server:

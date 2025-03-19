@@ -1,21 +1,17 @@
-from collections.abc import Generator
-from typing import Any
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker, declarative_base
-from dotenv import load_dotenv, dotenv_values
+# Copyright (c) 2024.
+"""Utility functions for creating database connections."""
 
-import os
+from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+from common.EnvManager import getenv
 
 # try loading from .env file (only when running locally)
-try:
-    config = dotenv_values(".env")
-except FileNotFoundError:
-    config = {}
-# load secrets from /run/secrets/ (only when running in docker)
-_ = load_dotenv(dotenv_path="/run/secrets/ai4edu-secret")
-_ = load_dotenv()
+CONFIG = getenv()
 
-DATABASE_URL = config.get("DB_URI") or os.getenv("DB_URI") or ""
+DATABASE_URL = CONFIG["DB_URI"]
 
 engine = create_engine(DATABASE_URL)
 
@@ -24,7 +20,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()  # pyright: ignore[reportAny]
 
 
-def get_db() -> Generator[Session, Any, None]:
+def get_db() -> Generator[Session, None, None]:
+    """Provide a database session via a generator
+
+    Yields:
+        A database session generator
+
+    """
     db = SessionLocal()
     try:
         yield db

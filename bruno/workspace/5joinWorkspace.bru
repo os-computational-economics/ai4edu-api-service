@@ -1,0 +1,18 @@
+meta {
+  name: 5joinWorkspace
+  type: http
+  seq: 5
+}
+
+post {
+  url: https://localhost/v1/dev/admin/workspace/student_join_workspace
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "workspace_id": "123",
+    "password": "123"
+  }
+}

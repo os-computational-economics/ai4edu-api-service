@@ -1,13 +1,11 @@
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Docker compose reference guide at
 # https://docs.docker.com/go/compose-spec-reference/
-
 # Here the instructions define your application as a service called "server".
 # This service is built from the Dockerfile in the current directory.
 # You can add other services your application may depend on here, such as a
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
-
 # This is docker-compose for local testing, DO NOT USE IN PRODUCTION
 services:
   ai4edu-api-server:
@@ -17,8 +15,8 @@ services:
       context: .
     volumes:
       - ./ai4edu_api_volume_local:/app/volume_cache:rw
-    ports:
-      - 8000:5000
+    expose:
+      - 5000
     secrets:
       - ai4edu-secret
     networks:
@@ -31,8 +29,8 @@ services:
     container_name: redis-stack
     volumes:
       - rds-data:/data:rw
-    ports:
-      - 8001:8001
+    expose:
+      - 8001
     networks:
       - localnet
   db:
@@ -47,8 +45,8 @@ services:
       - ./db:/docker-entrypoint-initdb.d:ro
       # If you want to use an external database viewer, uncomment the following "ports" section.
       # NOTE: This will cause port conflicts if you have a local PostgreSQL server running.
-    #    ports:
-    #      - 5432:5432
+    # ports:
+    #   - 5432:5432
 
     expose:
       - 5432
@@ -79,6 +77,9 @@ services:
     env_file: ./.env
     environment:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: true
+    expose:
+      - 80
+      - 443
     ports:
       - 80:80
       - 443:443
