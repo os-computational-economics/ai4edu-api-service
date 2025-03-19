@@ -92,7 +92,7 @@ class UserDelete(BaseModel):
     workspace_id: UUID_TYPE
 
 
-def gen_random_join_code(join_code_len: int=8):
+def gen_random_join_code(join_code_len: int = 8):
     """Generate a random join code for a workspace
 
     Args:
@@ -104,13 +104,13 @@ def gen_random_join_code(join_code_len: int=8):
 
     # Defines the length of the join code
     new_join_code = ""
-    
+
     for _ in range(0, join_code_len):
         # Add a random digit to the join code
         new_join_code = new_join_code + str(randrange(10))
 
     logger.info(f"Join code: {new_join_code}")
-    
+
     return new_join_code
 
 
@@ -146,18 +146,22 @@ def create_workspace(
 
         # If this join code would cause an integrity error, regenerate it
         is_join_code_unique = False
-        max_attempts = 100  # Cap the maximum number of attempts due to the cost of these queries
+        max_attempts = (
+            100  # Cap the maximum number of attempts due to the cost of these queries
+        )
         num_iterations = 0
         while not is_join_code_unique and num_iterations < max_attempts:
             existing_workspace: WorkspaceValue | None = (
-                db.query(Workspace).filter(Workspace.workspace_join_code == new_workspace_join_code).first()
-            ) # pyright: ignore[reportAssignmentType]
-            
+                db.query(Workspace)
+                .filter(Workspace.workspace_join_code == new_workspace_join_code)
+                .first()
+            )  # pyright: ignore[reportAssignmentType]
+
             if existing_workspace is not None:
                 new_workspace_join_code = gen_random_join_code()
             else:
                 is_join_code_unique = True
-            
+
             num_iterations += 1
 
         new_workspace = Workspace(
@@ -190,7 +194,7 @@ def create_workspace(
             user_id=user.user_id,
             workspace_id=new_workspace_id,
             role="teacher",
-            student_id=user.student_id
+            student_id=user.student_id,
         )
 
         user.workspace_role[new_workspace_id] = "teacher"
@@ -822,14 +826,15 @@ def set_user_role_with_user_id(
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
-        logger.info(f'workspace_admin -> {user_jwt_content["workspace_admin"]}')
-        logger.info(f'system_admin -> {user_jwt_content["system_admin"]}')
+        logger.info(f"workspace_admin -> {user_jwt_content['workspace_admin']}")
+        logger.info(f"system_admin -> {user_jwt_content['system_admin']}")
 
-        
         if user_jwt_content["workspace_admin"] and not user_jwt_content["system_admin"]:
             # Ensure the user that the workspace admin is trying to promote is within this workspace
             calling_user: UserValue | None = (
-                db.query(User).filter(User.user_id == user_role_update.calling_user_id).first()
+                db.query(User)
+                .filter(User.user_id == user_role_update.calling_user_id)
+                .first()
             )  # pyright: ignore[reportAssignmentType]
             if not calling_user:
                 return Responses[None].response(
@@ -838,7 +843,7 @@ def set_user_role_with_user_id(
                     status=HTTPStatus.NOT_FOUND,
                     message="User not found",
                 )
-            
+
             # If this value is null, then that means that the calling user is not within the
             # workspace of the specified user id
             calling_user_workspace: UserWorkspaceValue = (
@@ -857,7 +862,7 @@ def set_user_role_with_user_id(
                     response,
                     success=False,
                     status=HTTPStatus.FORBIDDEN,
-                    message="User not found within this workspace"
+                    message="User not found within this workspace",
                 )
 
         if not user_workspace:
@@ -925,9 +930,7 @@ def get_workspace_list(
         if user_jwt_content["system_admin"]:
             workspaces: list[WorkspaceValue] = (
                 db.query(Workspace)
-                .filter(
-                    Workspace.status != WorkspaceStatus.DELETED
-                )
+                .filter(Workspace.status != WorkspaceStatus.DELETED)
                 .order_by(desc(Workspace.status))
                 .offset(offset)
                 .limit(page_size)
@@ -938,7 +941,7 @@ def get_workspace_list(
                 db.query(Workspace)
                 .filter(
                     Workspace.status != WorkspaceStatus.DELETED,
-                    Workspace.created_by == user_id
+                    Workspace.created_by == user_id,
                 )
                 .order_by(desc(Workspace.status))
                 .offset(offset)

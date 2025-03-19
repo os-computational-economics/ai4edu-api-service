@@ -141,8 +141,18 @@ def extract_role(access_token_load: UserJWTContent | None) -> Role:
 
     """
     if access_token_load is None:
-        return {"system_admin": False, "workspace_admin": False, "teacher": False, "student": False}
-    default_role: Role = {"system_admin": False, "workspace_admin": False, "teacher": False, "student": True}
+        return {
+            "system_admin": False,
+            "workspace_admin": False,
+            "teacher": False,
+            "student": False,
+        }
+    default_role: Role = {
+        "system_admin": False,
+        "workspace_admin": False,
+        "teacher": False,
+        "student": True,
+    }
     if access_token_load["system_admin"]:
         default_role["system_admin"] = True
     if access_token_load["workspace_admin"]:

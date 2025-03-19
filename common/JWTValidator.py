@@ -96,7 +96,7 @@ def parse_jwt(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None: 
                 ]
             },
             system_admin=bool(user_jwt_content["system_admin"]),  # pyright: ignore[reportAny]
-            workspace_admin=bool(user_jwt_content["workspace_admin"]),  #pyright: ignore[reportAny]
+            workspace_admin=bool(user_jwt_content["workspace_admin"]),  # pyright: ignore[reportAny]
             email=str(user_jwt_content["email"]),  # pyright: ignore[reportAny]
             iat=datetime.fromtimestamp(
                 user_jwt_content["iat"],  # pyright: ignore[reportAny]
