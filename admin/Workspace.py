@@ -58,6 +58,13 @@ class StudentAddWorkspace(BaseModel):
     students: list[str]
 
 
+class WorkspaceAdminRoleUpdate(BaseModel):
+    """A Class describing the object set to update one's workspace admin role"""
+
+    user_id: int
+    workspace_admin: bool
+
+
 class StudentJoinWorkspace(BaseModel):
     """A Class describing the object sent to join a workspace as a student."""
 
@@ -100,7 +107,7 @@ def create_workspace(
 
     """
     user_jwt_content = get_jwt(request.state)
-    if not user_jwt_content["system_admin"]:
+    if not user_jwt_content["system_admin"] or not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
     try:
         new_workspace = Workspace(
@@ -823,6 +830,65 @@ def get_workspace_list(
             response,
             success=False,
             data={"items": [], "total": 0, "page": 0, "page_size": 0},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
+
+
+@router.post("/set_workspace_admin_role")
+def set_workspace_admin_role(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_admin_update: WorkspaceAdminRoleUpdate,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[None]:
+    """Modify the workspace admin role for a particular user
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_admin_update: WorkspaceAdminRoleUpdate containing user ID and the value for workspace_admin for that user
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or 404 if user or not found
+
+    """
+    # Verify authority to perform this action
+    logger.info("Entered endpoint")
+    user_jwt_content = get_jwt(request.state)
+    logger.info(f'system_admin status -> {user_jwt_content["system_admin"]}')
+    if not user_jwt_content["system_admin"]:
+        return Responses[None].forbidden(response)
+    
+    try:
+        # Get user to change workspace values for
+        user: UserValue = (
+            db.query(User)
+            .filter(User.user_id == workspace_admin_update.user_id)
+            .first()
+        )  # pyright: ignore[reportAssignmentType]
+
+        # Modify the workspace_admin role
+        user.workspace_admin = workspace_admin_update.workspace_admin
+
+        # Commit the changes
+        db.commit()
+        logger.info(f"Updated workspace admin role to {workspace_admin_update.workspace_admin}")
+
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Successfully updated workplace admin role",
+        )
+
+    except Exception as e:
+        logger.error(f"Error changing workspace admin status: {e}")
+        db.rollback()
+        return Responses[None].response(
+            response,
+            success=False,
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
