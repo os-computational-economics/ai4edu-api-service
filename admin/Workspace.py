@@ -5,6 +5,7 @@ import csv
 import io
 import logging
 import uuid
+from uuid import UUID as UUID_TYPE
 from http import HTTPStatus
 from typing import Annotated
 from random import randrange
@@ -41,7 +42,6 @@ router = APIRouter()
 class WorkspaceCreate(BaseModel):
     """A Class describing the object sent to create a new workspace."""
 
-    workspace_id: str
     workspace_name: str
     school_id: int = 0
     user_id: int
@@ -52,7 +52,7 @@ class WorkspaceCreate(BaseModel):
 class WorkspaceUpdateStatus(BaseModel):
     """A Class describing the object sent to update the status of a workspace."""
 
-    workspace_id: str
+    workspace_id: UUID_TYPE
     workspace_status: WorkspaceStatus
 
 
@@ -72,15 +72,16 @@ class WorkspaceAdminRoleUpdate(BaseModel):
 class StudentJoinWorkspace(BaseModel):
     """A Class describing the object sent to join a workspace as a student."""
 
-    workspace_id: str
+    workspace_id: UUID_TYPE
     workspace_join_code: str
 
 
 class UserRoleUpdate(BaseModel):
     """A Class describing the object sent to update a user role in a workspace."""
 
+    calling_user_id: int
     user_id: int
-    workspace_id: str
+    workspace_id: UUID_TYPE
     role: str  # student, teacher, pending
 
 
@@ -88,7 +89,7 @@ class UserDelete(BaseModel):
     """A Class describing the object sent to update a user role in a workspace."""
 
     user_id: int
-    workspace_id: str
+    workspace_id: UUID_TYPE
 
 
 def gen_random_join_code(join_code_len: int=8):
@@ -106,7 +107,9 @@ def gen_random_join_code(join_code_len: int=8):
     
     for _ in range(0, join_code_len):
         # Add a random digit to the join code
-        new_join_code + randrange(10)
+        new_join_code = new_join_code + str(randrange(10))
+
+    logger.info(f"Join code: {new_join_code}")
     
     return new_join_code
 
@@ -131,15 +134,31 @@ def create_workspace(
 
     """
     user_jwt_content = get_jwt(request.state)
-    if not user_jwt_content["system_admin"] or not user_jwt_content["workspace_admin"]:
+    if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
     try:
         # TODO: Determine if the user can enter a custom UUID for the workspace ID
         #       Assumedly, it should be random always
         # NOTE: uuid1 is used since it reduces the chance of a uuid collision to 0
         #       due to it using timestamp data in the generated uuid
-        new_workspace_id = uuid.uuid1()
+        new_workspace_id = str(uuid.uuid1())
         new_workspace_join_code = gen_random_join_code()
+
+        # If this join code would cause an integrity error, regenerate it
+        is_join_code_unique = False
+        max_attempts = 100  # Cap the maximum number of attempts due to the cost of these queries
+        num_iterations = 0
+        while not is_join_code_unique and num_iterations < max_attempts:
+            existing_workspace: WorkspaceValue | None = (
+                db.query(Workspace).filter(Workspace.workspace_join_code == new_workspace_join_code).first()
+            ) # pyright: ignore[reportAssignmentType]
+            
+            if existing_workspace is not None:
+                new_workspace_join_code = gen_random_join_code()
+            else:
+                is_join_code_unique = True
+            
+            num_iterations += 1
 
         new_workspace = Workspace(
             workspace_id=new_workspace_id,
@@ -151,7 +170,36 @@ def create_workspace(
             school_id=workspace.school_id,
         )
         db.add(new_workspace)
+
+        # Add an associated workplace role
+
+        # Update the role of this user to a teacher for this workspace
+        user: UserValue | None = (
+            db.query(User).filter(User.user_id == workspace.user_id).first()
+        )  # pyright: ignore[reportAssignmentType]
+        if not user:
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found",
+            )
+
+        # Add an associated workplace role
+        new_user_workspace = UserWorkspace(
+            user_id=user.user_id,
+            workspace_id=new_workspace_id,
+            role="teacher",
+            student_id=user.student_id
+        )
+
+        user.workspace_role[new_workspace_id] = "teacher"
+        flag_modified(user, "workspace_role")
+        db.add(new_user_workspace)
+        logger.info(f"user_workspace role: {new_user_workspace}")
+        logger.info(f"user: {user}")
         db.commit()
+
         return Responses[None].response(
             response,
             success=True,
@@ -164,7 +212,7 @@ def create_workspace(
             response,
             success=False,
             status=HTTPStatus.BAD_REQUEST,
-            message="Workspace with this name already exists",
+            message="A problem occurred while creating this workspace, try recreating it",
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
@@ -751,7 +799,7 @@ def set_user_role_with_user_id(
 
     """
     user_jwt_content = get_jwt(request.state)
-    if not user_jwt_content["system_admin"]:
+    if not user_jwt_content["system_admin"] and not user_jwt_content("workspace_admin"):
         return Responses[None].forbidden(response)
     try:
         user: UserValue | None = (
@@ -773,6 +821,41 @@ def set_user_role_with_user_id(
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
+
+        logger.info("Reached here")
+        logger.info(f"payload: {user_role_update}")
+
+        if user_jwt_content["workspace_admin"] and not user_jwt_content["system_admin"]:
+            # Ensure the user that the workspace admin is trying to promote is within this workspace
+            calling_user: UserValue | None = (
+                db.query(User).filter(User.user_id == user_role_update.calling_user_id).first()
+            )  # pyright: ignore[reportAssignmentType]
+            if not calling_user:
+                return Responses[None].response(
+                    response,
+                    success=False,
+                    status=HTTPStatus.NOT_FOUND,
+                    message="User not found",
+                )
+            
+            # If this value is null, then that means that the calling user is not within the
+            # workspace of the specified user id
+            calling_user_workspace: UserWorkspaceValue = (
+                db.query(UserWorkspace)
+                .filter(
+                    UserWorkspace.user_id == calling_user.user_id,
+                    UserWorkspace.workspace_id == user_role_update.workspace_id,
+                )
+                .first()
+            )
+
+            if not calling_user_workspace:
+                return Responses[None].response(
+                    response,
+                    success=False,
+                    status=HTTPStatus.FORBIDDEN,
+                    message="User not found within this workspace"
+                )
 
         if not user_workspace:
             # create a new user workspace record
@@ -830,13 +913,16 @@ def get_workspace_list(
 
     """
     user_jwt_content = get_jwt(request.state)
-    if not user_jwt_content["system_admin"]:
+    if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[WorkspaceReturn].forbidden_list_page(response)
     try:
         offset = (page - 1) * page_size
         workspaces: list[WorkspaceValue] = (
             db.query(Workspace)
-            .filter(Workspace.status != WorkspaceStatus.DELETED)
+            .filter(
+                (Workspace.status != WorkspaceStatus.DELETED) if user_jwt_content["system_admin"]
+                else (Workspace.status != WorkspaceStatus.DELETED and Workspace.created_by == int(user_jwt_content["user_id"]))
+            )
             .order_by(desc(Workspace.status))
             .offset(offset)
             .limit(page_size)

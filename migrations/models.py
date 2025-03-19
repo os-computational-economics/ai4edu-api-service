@@ -106,7 +106,7 @@ class AgentValue:
     agent_id: UUID_TYPE = DEFAULT_UUID
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_name: str = ""
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     creator: str = ""
     updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     voice: bool = False
@@ -121,7 +121,7 @@ class AgentChatReturn(ModelReturn):
 
     agent_id: str
     agent_name: str
-    workspace_id: str
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     voice: bool
     allow_model_choice: bool
     model: str  # allow_model_choice is True, model will be empty for user choice
@@ -255,7 +255,7 @@ class ThreadValue:
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     agent_name: str = ""
 
 
@@ -266,7 +266,7 @@ class ThreadReturn(ModelReturn):
     created_at: str
     agent_id: str
     user_id: int
-    workspace_id: str
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     agent_name: str
 
 
@@ -493,7 +493,7 @@ class Workspace(Base):
     workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
     workspace_prompt: Column[Text] = Column(Text(), nullable=True)
     workspace_comment: Column[Text] = Column(Text(), nullable=True)
-    created_by: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
+    created_by: Column[int] = Column(Integer, nullable=False)
     workspace_join_code: Column[str] = Column(String(8), nullable=False, unique=True)
     status: Column[int] = Column(
         Integer, default=1, nullable=False
@@ -518,7 +518,7 @@ class WorkspaceStatus(IntEnum):
 class WorkspaceValue:
     """Python representation of a Workspace row"""
 
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     workspace_name: str = ""
     workspace_prompt: str = ""
     workspace_comment: str = ""
@@ -532,10 +532,13 @@ class WorkspaceValue:
 class WorkspaceReturn(ModelReturn):
     """Dictionary representation of a Workspace row"""
 
-    workspace_id: str
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     workspace_name: str
-    status: WorkspaceStatus
+    workspace_prompt: str
+    workspace_comment: str
+    workspace_join_code: str
     school_id: int
+    status: WorkspaceStatus
 
 
 def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
@@ -571,7 +574,7 @@ class UserWorkspace(Base):
     __tablename__: Literal["ai_user_workspace"] = "ai_user_workspace"
 
     user_id: Column[int] = Column(Integer)
-    workspace_id: Column[str] = Column(String(16), nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
     role: Column[str] = Column(String(16), default="pending", nullable=False)
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     updated_at: Column[datetime] = Column(DateTime)
@@ -592,7 +595,7 @@ class UserWorkspaceValue:
     """Python representation of a UserWorkspace row"""
 
     user_id: int = 0
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     role: str = ""
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))

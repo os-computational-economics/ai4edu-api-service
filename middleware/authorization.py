@@ -128,7 +128,8 @@ def extract_actual_path(path: str) -> str:
 def extract_role(access_token_load: UserJWTContent | None) -> Role:
     """Extract the role from the access token payload
 
-    if the user is system_admin, the role system_admin is True
+    if the user is a system_admin, the role system_admin is True
+    if the user is a workspace_admin, the role workspace_admin is True
     if the user is at least one teacher in a workspace, the role teacher is True
     if the user is at least one student in a workspace, the role student is True
 
@@ -140,10 +141,12 @@ def extract_role(access_token_load: UserJWTContent | None) -> Role:
 
     """
     if access_token_load is None:
-        return {"system_admin": False, "teacher": False, "student": False}
-    default_role: Role = {"system_admin": False, "teacher": False, "student": True}
+        return {"system_admin": False, "workspace_admin": False, "teacher": False, "student": False}
+    default_role: Role = {"system_admin": False, "workspace_admin": False, "teacher": False, "student": True}
     if access_token_load["system_admin"]:
         default_role["system_admin"] = True
+    if access_token_load["workspace_admin"]:
+        default_role["workspace_admin"] = True
     for _, role in access_token_load["workspace_role"].items():
         if role == "teacher":
             default_role["teacher"] = True
