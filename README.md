@@ -13,7 +13,9 @@
    ```
 1. Run the following command in the root directory of the repository to generate the JWT keys:
    ```
-   mkdir -p jwt_keys && openssl genrsa 2048 > jwt_keys/privateKey.pem && openssl rsa -in jwt_keys/privateKey.pem -pubout > jwt_keys/publicKey.pem
+   mkdir -p jwt_keys && \
+   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_keys/privateKey.pem && \
+   openssl rsa -in jwt_keys/privateKey.pem -pubout -out jwt_keys/publicKey.pem
    ```
 1. Create a new file named `.env` in the root directory of the repository and copy the contents of the `.env.template` file into the `.env` file.
 1. Fill in the values in the `.env` file with the appropriate values.

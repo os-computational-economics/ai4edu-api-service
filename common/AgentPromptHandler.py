@@ -1,43 +1,53 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: AgentPromptHandler.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 4/11/24 11:48
-"""
-import boto3
-from redis import Redis
-from boto3.dynamodb.conditions import Key
+"""Class for accessing and updating agent prompts in the database."""
+
 import logging
-import os
+
+import boto3
+from boto3.dynamodb.conditions import Key
+from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource, Table
+from redis import Redis
+
+from common.EnvManager import Config
 
 logging.basicConfig(level=logging.INFO)
 
 
 class AgentPromptHandler:
-    DYNAMODB_TABLE_NAME = "ai4edu_agent_prompt"
+    """Class for accessing and updating agent prompts in the database."""
 
-    def __init__(self):
-        self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
+    DYNAMODB_TABLE_NAME: str = "ai4edu_agent_prompt"
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the AgentPromptHandler with the given configuration.
+
+        Args:
+            config: The environment configuration
+
+        """
+        self.dynamodb: DynamoDBServiceResource = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
             "dynamodb",
             region_name="us-east-2",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
+            aws_access_key_id=config["AWS_ACCESS_KEY_ID_DYNAMODB"],
+            aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY_DYNAMODB"],
         )
-        self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
-        self.redis_client = Redis(
-            host=os.getenv("REDIS_ADDRESS") or "localhost",
+        self.table: Table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
+        self.redis_client: Redis[str] = Redis(
+            host=config["REDIS_ADDRESS"],
             port=6379,
-            # protocol=3,
             decode_responses=True,
         )
 
     def put_agent_prompt(self, agent_id: str, prompt: str) -> bool:
-        """
-        Put the agent prompt into the database.
-        :param prompt: The prompt of the agent.
-        :param agent_id: The ID of the agent.
+        """Put the agent prompt into the database.
+
+        Args:
+            prompt: The prompt of the agent.
+            agent_id: The ID of the agent.
+
+        Returns:
+            True if the prompt was successfully put into the database, False otherwise.
+
         """
         try:
             _ = self.table.put_item(Item={"agent_id": agent_id, "prompt": prompt})
@@ -48,40 +58,48 @@ class AgentPromptHandler:
             return False
 
     def get_agent_prompt(self, agent_id: str) -> str | None:
-        """
-        Get the agent prompt from the database.
-        :param agent_id: The ID of the agent.
+        """Get the agent prompt from the database.
+
+        Args:
+            agent_id: The ID of the agent.
+
+        Returns:
+            The prompt of the agent if found, None otherwise.
+
         """
         cached_prompt = self.__get_cached_agent_prompt(agent_id)
         if cached_prompt:
             logging.info(
-                f"Cache hit, getting the agent prompt from the cache. {agent_id}"
+                f"Cache hit, getting the agent prompt from the cache. {agent_id}",
             )
             return cached_prompt
         # if cache miss, get the prompt from the database, and cache it
         logging.info(
-            f"Cache miss, getting the agent prompt from the database. {agent_id}"
+            f"Cache miss, getting the agent prompt from the database. {agent_id}",
         )
         try:
             response = self.table.query(
-                KeyConditionExpression=Key("agent_id").eq(agent_id)
+                KeyConditionExpression=Key("agent_id").eq(agent_id),
             )
             if response["Items"]:
                 prompt = str(response["Items"][0]["prompt"])
                 _ = self.__cache_agent_prompt(agent_id, prompt)
                 return prompt
-            else:
-                return None
+            return None
         except Exception as e:
             logging.error(f"Error getting the agent prompt from the database: {e}")
             return None
 
     def __cache_agent_prompt(self, agent_id: str, prompt: str) -> bool:
-        """
-        Cache the agent prompt into redis.
-        :param agent_id: The ID of the agent.
-        :param prompt: The prompt of the agent.
-        :return: True if successful, False otherwise.
+        """Cache the agent prompt into redis.
+
+        Args:
+            agent_id: The ID of the agent.
+            prompt: The prompt of the agent.
+
+        Returns:
+            True if successful, False otherwise.
+
         """
         try:
             _ = self.redis_client.set(agent_id, prompt)
@@ -91,16 +109,20 @@ class AgentPromptHandler:
             return False
 
     def __get_cached_agent_prompt(self, agent_id: str) -> str | None:
-        """
-        Get the agent prompt from redis.
-        :param agent_id: The ID of the agent.
+        """Get the agent prompt from redis.
+
+        Args:
+            agent_id: The ID of the agent.
+
+        Returns:
+            The prompt of the agent if found, None otherwise.
+
         """
         try:
             prompt = self.redis_client.get(agent_id)
             if prompt:
                 return str(prompt)
-            else:
-                return None
+            return None
         except Exception as e:
             logging.error(f"Error getting the agent prompt from redis cache: {e}")
             return None

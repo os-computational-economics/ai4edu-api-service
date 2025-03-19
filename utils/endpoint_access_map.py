@@ -1,14 +1,7 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: endpoint_access_map.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 5/24/24 19:54
-"""
+"""Access endpoint map"""
 
 from typing import Literal
-
 
 PersonType = Literal["student", "teacher", "admin"]
 AccessMap = dict[str, dict[PersonType, bool]]
@@ -47,6 +40,7 @@ endpoint_access_map: AccessMap = {
         "admin": True,
     },
     "/workspace/add_users_via_csv": {"student": False, "teacher": True, "admin": True},
+    "/workspace/add_users_json": {"student": False, "teacher": True, "admin": True},
     "/workspace/student_join_workspace": {
         "student": True,
         "teacher": True,
@@ -79,4 +73,5 @@ endpoint_access_map: AccessMap = {
     "/upload_file": {"student": True, "teacher": True, "admin": True},
     "/get_presigned_url_for_file": {"student": True, "teacher": True, "admin": True},
     "/ping": {"student": True, "teacher": True, "admin": True},
+    "/openapi.json": {"student": False, "teacher": False, "admin": True},
 }

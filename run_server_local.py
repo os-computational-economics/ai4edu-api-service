@@ -1,3 +1,6 @@
+# Copyright (c) 2024.
+"""Script to run the unicorn server locally."""
+
 import uvicorn
 
 if __name__ == "__main__":

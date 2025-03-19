@@ -1,62 +1,80 @@
 # Copyright (c) 2024.
-# -*-coding:utf-8 -*-
-"""
-@file: MessageStorageHandler.py
-@author: Jerry(Ruihuang)Yang
-@email: rxy216@case.edu
-@time: 4/10/24 23:26
-"""
+"""Managed the storage of messages in DynamoDB."""
+
+import logging
+import time
+
 import boto3
 from boto3.dynamodb.conditions import Key
+from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource, Table
 from pydantic import BaseModel
-import logging
-import os
-import time
+
+from common.EnvManager import Config
 
 logging.basicConfig(level=logging.INFO)
 
+logger = logging.getLogger(__name__)
+
 
 class Message(BaseModel):
-    """
-    The message object. created_at will not be passed in when creating the object.
-    thread_id: The ID of the thread, UUID. Partition key of the table
-    created_at: The time when the message is created, unix timestamp in milliseconds. Sort key of the table
-    msg_id: The ID of the message, first 8 characters of the thread_id + sequence number starting from 0
-    user_id: The ID of the user who the message belongs to, case ID
-    role: The role of message sender, openai or anthropic or human
-    content: The content of the message
+    """The message object. created_at will not be passed in when creating the object.
+
+    Args:
+        thread_id: The ID of the thread, UUID. Partition key of the table
+        created_at: The time when the message is created, unix timestamp in milliseconds
+        msg_id: The ID of the message, first 8 characters of the thread_id + sequence
+        user_id: The ID of the user who the message belongs to, case ID
+        role: The role of message sender, openai or anthropic or human
+        content: The content of the message
+
     """
 
-    thread_id: str  # The ID of the thread, UUID. Partition key of the table
-    created_at: str  # The time when the message is created, unix timestamp in milliseconds. Sort key of the table
-    msg_id: str  # The ID of the message, first 8 characters of the thread_id + # +created_at
-    user_id: str  # The ID of the user who the message belongs to, case ID
-    role: str  # The role of message sender, openai or anthropic or human
-    content: str  # The content of the message
+    thread_id: str
+    created_at: str
+    msg_id: str
+    user_id: str
+    role: str
+    content: str
 
 
 class MessageStorageHandler:
-    DYNAMODB_TABLE_NAME = "ai4edu_chat_msg_prod" if os.getenv("POSTGRES_DB") == "ai4edu_prod" else "ai4edu_chat_msg_dev"
+    """Handle the storage of messages in DynamoDB."""
 
-    def __init__(self):
-        self.dynamodb = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
+    dynamodb_table_name: str = ""
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the MessageStorageHandler."""
+        self.dynamodb: DynamoDBServiceResource = boto3.resource(  # pyright: ignore[reportUnknownMemberType]
             "dynamodb",
             region_name="us-east-2",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID_DYNAMODB"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY_DYNAMODB"),
+            aws_access_key_id=config["AWS_ACCESS_KEY_ID_DYNAMODB"],
+            aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY_DYNAMODB"],
         )
-        self.table = self.dynamodb.Table(self.DYNAMODB_TABLE_NAME)
+        self.dynamodb_table_name = config["DYNAMODB_NAME"]
+        self.table: Table = self.dynamodb.Table(self.dynamodb_table_name)
 
     def put_message(
-        self, thread_id: str, user_id: str, role: str, content: str
+        self,
+        thread_id: str,
+        user_id: str,
+        role: str,
+        content: str,
     ) -> str | None:
-        """
-        Put the message into the database. This function will generate the created_at field.
-        :param thread_id: The ID of the thread.
-        :param user_id: The ID of the user who the message belongs to.
-        :param role: The role of message sender.
-        :param content: The content of the message.
-        :return: The ID of the message. If the operation fails, return None.
+        """Put the message into the database.
+
+        This function will generate created_at field.
+
+        Args:
+            thread_id: The ID of the thread.
+            user_id: The ID of the user who the message belongs to.
+            role: The role of message sender.
+            content: The content of the message.
+
+        Returns:
+            The ID of the message. If the operation fails, return None.
+            Note: The ID of the message is the first 8 characters of the thread_id#unix timestamp in milliseconds when the message is created.
+            Example: 3cd331fc#1741413462489
+
         """
         try:
             created_at = str(int(time.time() * 1000))  # unix timestamp in milliseconds
@@ -69,7 +87,7 @@ class MessageStorageHandler:
                     "user_id": user_id,
                     "role": role,
                     "content": content,
-                }
+                },
             )
             return msg_id
         except Exception as e:
@@ -77,33 +95,39 @@ class MessageStorageHandler:
             return None
 
     def get_message(self, thread_id: str, created_at: str) -> Message | None:
-        """
-        Get the message from the database.
-        :param created_at: The time when the message is created.
-        :param thread_id: The ID of the thread.
-        :return:
+        """Get the message from the database.
+
+        Args:
+            created_at: The time when the message is created.
+            thread_id: The ID of the thread.
+
+        Returns:
+            The message object if found, otherwise None.
+
         """
         try:
             response = self.table.get_item(
-                Key={"thread_id": thread_id, "created_at": created_at}
+                Key={"thread_id": thread_id, "created_at": created_at},
             )
-            item = response[
-                "Item"
-            ]  # pyright: ignore[reportTypedDictNotRequiredAccess] This is okay because we are in a try-catch
+            item = response["Item"]  # pyright: ignore[reportTypedDictNotRequiredAccess] This is okay because we are in a try-catch
             return Message(**item)  # pyright: ignore[reportArgumentType] Same here
         except Exception as e:
             print(f"Error getting the message from the database: {e}")
             return None
 
     def get_thread(self, thread_id: str) -> list[Message]:
-        """
-        Get all the messages in the thread.
-        :param thread_id: The ID of the thread.
-        :return:
+        """Get all the messages in the thread.
+
+        Args:
+            thread_id: The ID of the thread.
+
+        Returns:
+            A list of Message objects. If not, return an empty list.
+
         """
         try:
             response = self.table.query(
-                KeyConditionExpression=Key("thread_id").eq(thread_id)
+                KeyConditionExpression=Key("thread_id").eq(thread_id),
             )
             items = response["Items"]
             return [

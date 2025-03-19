@@ -54,3 +54,8 @@ ssl
 /main.ipynb
 /.env.online
 /jwt_keys/
+
+# OpenAPI
+
+openapi.yaml
+openapi/

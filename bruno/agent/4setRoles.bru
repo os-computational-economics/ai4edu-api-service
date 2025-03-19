@@ -1,0 +1,19 @@
+meta {
+  name: 4setRoles
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://localhost/v1/dev/admin/workspace/set_user_role_with_user_id
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "user_id": "{{jwt.user_id}}",
+    "workspace_id": "{{workspace_id}}",
+    "role": "teacher"
+  }
+}
