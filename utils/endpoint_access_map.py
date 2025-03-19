@@ -95,8 +95,8 @@ endpoint_access_map: AccessMap = {
     },
     "/workspace/set_workspace_admin_role": {
         "student": False,
-        "teacher": True,
-        "system_admin": True,
+        "teacher": False,
+        "system_admin": False,
         "workspace_admin": True,
     },
     "/workspace/delete_workspace/{workspace}": {
