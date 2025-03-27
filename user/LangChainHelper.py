@@ -45,6 +45,7 @@ CONFIG = getenv()
 OPENAI_API_KEY = CONFIG["OPENAI_API_KEY"]
 PINECONE_API_KEY = CONFIG["PINECONE_API_KEY"]
 ANTHROPIC_API_KEY = CONFIG["ANTHROPIC_API_KEY"]
+XLAB_API_KEY = CONFIG["XLAB_API_KEY"]
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
@@ -73,6 +74,12 @@ llm2 = ChatAnthropic(
     timeout=None,
     stop=None,
 )
+llm3 = ChatOpenAI(
+    api_key=SecretStr(XLAB_API_KEY),
+    model="/workspace/models/Llama-3.3-70B-Instruct",
+    base_url="https://xlab-gpu0.weatherhead.case.edu/openai-compatible-api/v1",
+    streaming=True,
+)
 
 
 class Provider(StrEnum):
@@ -80,6 +87,7 @@ class Provider(StrEnum):
 
     openai = "openai"
     anthropic = "anthropic"
+    xlab = "xlab"
 
 
 def get_session_history(
@@ -170,8 +178,18 @@ def chat_stream_with_retrieve(
     if history_from_request is None:
         history_from_request = {}
 
+    # choose the LLM based on the provider
+    if llm_for_question_consolidation == Provider.openai:
+        llm_use_1 = llm
+    elif llm_for_question_consolidation == Provider.anthropic:
+        llm_use_1 = llm2
+    elif llm_for_question_consolidation == Provider.xlab:
+        llm_use_1 = llm3
+    else:
+        llm_use_1 = llm
+
     history_aware_retriever = create_history_aware_retriever(
-        llm2 if llm_for_question_consolidation == Provider.anthropic else llm,
+        llm_use_1,
         retriever,
         contextualize_q_prompt,
     )
@@ -191,8 +209,18 @@ def chat_stream_with_retrieve(
         ],
     )
 
+    # Choose the LLM based on the provider
+    if llm_for_answer == Provider.openai:
+        llm_use_2 = llm
+    elif llm_for_answer == Provider.anthropic:
+        llm_use_2 = llm2
+    elif llm_for_answer == Provider.xlab:
+        llm_use_2 = llm3
+    else:
+        llm_use_2 = llm
+
     question_answer_chain = create_stuff_documents_chain(
-        llm2 if llm_for_answer == Provider.anthropic else llm,
+        llm_use_2,
         qa_prompt,
     )
 

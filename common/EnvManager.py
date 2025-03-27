@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 ConfigKeys = Literal[
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
+    "XLAB_API_KEY",
     "PINECONE_API_KEY",
     "DEEPGRAM_API_KEY",
     "DEEPGRAM_PROJECT_ID",
