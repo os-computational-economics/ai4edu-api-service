@@ -80,6 +80,12 @@ llm3 = ChatOpenAI(
     base_url="https://xlab-gpu0.weatherhead.case.edu/openai-compatible-api/v1",
     streaming=True,
 )
+llm4 = ChatOpenAI(
+    api_key=SecretStr(XLAB_API_KEY),
+    model="/workspace/models/QwQ-32B",
+    base_url="https://xlab-gpu0.weatherhead.case.edu/openai-compatible-api/v1",
+    streaming=True,
+)
 
 
 class Provider(StrEnum):
@@ -88,6 +94,7 @@ class Provider(StrEnum):
     openai = "openai"
     anthropic = "anthropic"
     xlab = "xlab"
+    xlab_reasoning = "xlab-reasoning"
 
 
 def get_session_history(
@@ -185,6 +192,8 @@ def chat_stream_with_retrieve(
         llm_use_1 = llm2
     elif llm_for_question_consolidation == Provider.xlab:
         llm_use_1 = llm3
+    elif llm_for_question_consolidation == Provider.xlab_reasoning:
+        llm_use_1 = llm  # resoning model is not good for question consolidation task
     else:
         llm_use_1 = llm
 
@@ -216,6 +225,8 @@ def chat_stream_with_retrieve(
         llm_use_2 = llm2
     elif llm_for_answer == Provider.xlab:
         llm_use_2 = llm3
+    elif llm_for_answer == Provider.xlab_reasoning:
+        llm_use_2 = llm4
     else:
         llm_use_2 = llm
 
