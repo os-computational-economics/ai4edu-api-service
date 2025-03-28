@@ -113,7 +113,14 @@ def get_session_history(
 
     """
     history: InMemoryChatMessageHistory = ChatMessageHistory()
-    for _, message in history_from_request.items():
+    # Find the last message and check if it's from user
+    last_key = (
+        max(history_from_request.keys(), default=None) if history_from_request else None
+    )
+    for msg_key, message in history_from_request.items():
+        # Skip the last message if it's from a user
+        if msg_key == last_key and message["role"] == "user":
+            continue
         if message["role"] == "user":
             # TODO: converted to string here, although the message may contain others
             history.add_message(HumanMessage(str(message["content"])))
