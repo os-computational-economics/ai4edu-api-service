@@ -188,3 +188,8 @@ UPDATE ai_users
 
 -- commit the changes
 COMMIT;
+
+-- post transaction
+alter table ai_workspaces
+    add constraint ai_workspaces_pk_2
+        unique (workspace_join_code);
