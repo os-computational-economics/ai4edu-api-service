@@ -13,13 +13,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    String,
-    Integer,
-    Text,
-    func,
-    MetaData,
-    Boolean,
-    UUID,
     ForeignKey,
     Integer,
     MetaData,
@@ -121,7 +114,7 @@ class AgentChatReturn(ModelReturn):
 
     agent_id: str
     agent_name: str
-    workspace_id: UUID_TYPE = DEFAULT_UUID
+    workspace_id: UUID_TYPE
     voice: bool
     allow_model_choice: bool
     model: str  # allow_model_choice is True, model will be empty for user choice
@@ -157,7 +150,7 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
             "allow_model_choice": False,
             "model": "",
             "voice": False,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "agent_files": {},
             "status": AgentStatus.INACTIVE,
         }
@@ -209,7 +202,7 @@ def agent_dashboard_return(
             "allow_model_choice": False,
             "model": "",
             "voice": False,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "agent_files": {},
             "created_at": "",
             "creator": "",
@@ -266,7 +259,7 @@ class ThreadReturn(ModelReturn):
     created_at: str
     agent_id: str
     user_id: int
-    workspace_id: UUID_TYPE = DEFAULT_UUID
+    workspace_id: UUID_TYPE
     agent_name: str
 
 
@@ -296,7 +289,7 @@ def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
             "created_at": "",
             "thread_id": "",
             "user_id": 0,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
         }
     )
 
@@ -491,8 +484,8 @@ class Workspace(Base):
         UUID(as_uuid=True), primary_key=True, nullable=False
     )
     workspace_name: Column[str] = Column(String(64), unique=False, nullable=False)
-    workspace_prompt: Column[Text] = Column(Text(), nullable=True)
-    workspace_comment: Column[Text] = Column(Text(), nullable=True)
+    workspace_prompt: Column[str] = Column(Text(), nullable=True)
+    workspace_comment: Column[str] = Column(Text(), nullable=True)
     created_by: Column[int] = Column(Integer, nullable=False)
     workspace_join_code: Column[str] = Column(String(8), nullable=False, unique=True)
     status: Column[int] = Column(
@@ -532,7 +525,7 @@ class WorkspaceValue:
 class WorkspaceReturn(ModelReturn):
     """Dictionary representation of a Workspace row"""
 
-    workspace_id: UUID_TYPE = DEFAULT_UUID
+    workspace_id: UUID_TYPE
     workspace_name: str
     workspace_prompt: str
     workspace_comment: str
@@ -563,7 +556,7 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
         }
         if wv
         else {
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "workspace_name": "",
             "workspace_prompt": "",
             "workspace_comment": "",
