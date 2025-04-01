@@ -114,7 +114,7 @@ create table ai_user_workspace
     updated_at   timestamp,
     student_id   varchar(16)                                      not null,
     constraint ai_user_workspace_pk
-        primary key (workspace_id, user_id)
+        primary key (workspace_id, student_id)
 );
 
 create table ai_workspaces
