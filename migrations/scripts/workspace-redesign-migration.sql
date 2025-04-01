@@ -46,7 +46,9 @@ ALTER TABLE ai_user_workspace DROP CONSTRAINT ai_user_workspace_pk;
 ALTER TABLE ai_user_workspace RENAME COLUMN workspace_id TO old_workspace_id;
 ALTER TABLE ai_user_workspace RENAME COLUMN new_workspace_id TO workspace_id;
 -- note: the user_id is being replaced with the student_id in the pk as student_id is being phased out
-ALTER TABLE ai_user_workspace ADD CONSTRAINT ai_user_workspace_pk PRIMARY KEY (workspace_id, user_id);
+-- It's true that we should phase out student ID. However, updating primary key here to 
+-- user id will make the current way of adding students via CSV upload stop working.
+ALTER TABLE ai_user_workspace ADD CONSTRAINT ai_user_workspace_pk PRIMARY KEY (workspace_id, student_id);
 
 ALTER TABLE ai_threads RENAME COLUMN workspace_id TO old_workspace_id;
 ALTER TABLE ai_threads RENAME COLUMN new_workspace_id TO workspace_id;
