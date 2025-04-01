@@ -169,7 +169,10 @@ class ChatStream:
         # Try with the requested provider first, then fallback if needed
         available_providers = [self.requested_provider]
         # Add fallback providers if not already included
-        for provider in [Provider.openai, Provider.anthropic]:
+        for provider in [Provider.openai,
+                         Provider.anthropic,
+                         Provider.xlab,
+                         Provider.xlab_reasoning]:
             if provider != self.requested_provider:
                 available_providers.append(provider)
 
