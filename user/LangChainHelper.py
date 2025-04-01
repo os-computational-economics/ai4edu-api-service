@@ -201,6 +201,7 @@ def chat_stream_with_retrieve(
         llm_use_1 = llm3
     elif llm_for_question_consolidation == Provider.xlab_reasoning:
         llm_use_1 = llm  # reasoning model is not good for question consolidation task
+    else:
         llm_use_1 = llm
 
     history_aware_retriever = create_history_aware_retriever(
