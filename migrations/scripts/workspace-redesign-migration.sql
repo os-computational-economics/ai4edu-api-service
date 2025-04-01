@@ -179,7 +179,7 @@ UPDATE ai_workspaces AS w
     );
 
 -- Remove uniqueness constraint on workspace name
-ALTER TABLE ai_user_workspace DROP CONSTRAINT ai_workspaces_pk_2;
+ALTER TABLE ai_workspaces DROP CONSTRAINT ai_workspaces_pk_2;
 
 -- set workspace_admin to true for users who are creators
 UPDATE ai_users
