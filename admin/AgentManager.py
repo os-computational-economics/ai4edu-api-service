@@ -234,7 +234,7 @@ def delete_agent(
 
     user_jwt_content = get_jwt(request.state)
     if (
-        user_jwt_content["workspace_role"].get(ws_id, None) != "teacher"
+        user_jwt_content["workspace_role"].get(str(ws_id), None) != "teacher"
         and not user_jwt_content["system_admin"]
     ):
         return Responses[AddAgentResponse].forbidden(
@@ -322,7 +322,7 @@ def edit_agent(  # noqa: C901, PLR0912
     if update_data.agent_name is not None:
         agent_to_update.agent_name = update_data.agent_name
     if update_data.workspace_id is not None:
-        agent_to_update.workspace_id = update_data.workspace_id
+        agent_to_update.workspace_id = UUID(update_data.workspace_id)
     if update_data.creator is not None:
         agent_to_update.creator = update_data.creator
     if update_data.voice is not None:
@@ -348,7 +348,9 @@ def edit_agent(  # noqa: C901, PLR0912
                     file_name,
                     "pdf",
                     str(update_data.agent_id),
-                    update_data.workspace_id or agent_to_update.workspace_id,
+                    #  casting to str because pinecone file metadata does not support
+                    #  UUID type
+                    str(update_data.workspace_id) or str(agent_to_update.workspace_id),
                 )
             else:
                 logger.error(f"Failed to embed file: {file_id}")
@@ -513,7 +515,7 @@ def get_agent_by_id(
         )
     agent_workspace = agent.workspace_id
     user_jwt_content = get_jwt(request.state)
-    user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
+    user_role = user_jwt_content["workspace_role"].get(str(agent_workspace), None)
     if user_role is None:
         return Responses[AgentChatReturn].forbidden(response, data=agent_chat_return())
     # if user_role != "teacher":
