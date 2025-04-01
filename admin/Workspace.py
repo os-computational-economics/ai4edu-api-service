@@ -45,8 +45,8 @@ class WorkspaceCreate(BaseModel):
     workspace_name: str
     school_id: int = 0
     user_id: int
-    workspace_prompt: str
-    workspace_comment: str
+    workspace_prompt: str | None = None
+    workspace_comment: str | None = None
 
 
 class WorkspaceUpdateStatus(BaseModel):
@@ -135,8 +135,6 @@ def create_workspace(
     if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
     try:
-        # TODO: Determine if the user can enter a custom UUID for the workspace ID
-        #       Assumedly, it should be random always
         # NOTE: uuid1 is used since it reduces the chance of a uuid collision to 0
         #       due to it using timestamp data in the generated uuid
         new_workspace_id = str(uuid.uuid1())
