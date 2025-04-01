@@ -1,3 +1,64 @@
+/*
+    Pre-Migration Check Script
+    --------------------------
+    Due to a very legacy design history issue, there is a possibility that some user workspace relationships
+    stored in the "workspace_role" JSON column in the ai_users table do not have corresponding records in the
+    ai_workspaces and ai_user_workspace tables. This script is designed as a pre-migration check to ensure that 
+    every workspace present in the JSON is properly recorded in the ai_workspaces table, and that the corresponding 
+    user-workspace relationship exists in the ai_user_workspace table.
+
+    For each user, the script:
+      - Extracts each workspace and associated role from the workspace_role JSON.
+      - Checks if the workspace exists in ai_workspaces; if not, it inserts a new record with default values.
+      - Checks if the user-workspace relationship exists in ai_user_workspace; if not, it inserts the relationship.
+      - Logs each insert action using RAISE NOTICE for tracking purposes.
+
+    This operation is performed within a single transaction to maintain atomicity. This pre-migration script 
+    clears out any inconsistencies before the actual migration process.
+*/
+
+BEGIN;
+
+DO $$
+DECLARE
+    r RECORD;
+    ws_item RECORD;
+BEGIN
+    -- Loop over each user in ai_users
+    FOR r IN SELECT user_id, student_id, workspace_role FROM ai_users LOOP
+        -- For each workspace in the JSON, iterate over its key/value pairs.
+        FOR ws_item IN SELECT key, value FROM json_each_text(r.workspace_role) LOOP
+
+            -- If the workspace does not exist in ai_workspaces, insert it.
+            IF NOT EXISTS (
+                SELECT 1
+                FROM ai_workspaces
+                WHERE workspace_id = ws_item.key
+            ) THEN
+                INSERT INTO ai_workspaces(workspace_id, workspace_name, workspace_password)
+                VALUES (ws_item.key, ws_item.key, ws_item.key);
+                RAISE NOTICE 'Inserted workspace % into ai_workspaces', ws_item.key;
+            END IF;
+
+            -- If the relationship does not exist in ai_user_workspace, insert it.
+            IF NOT EXISTS (
+                SELECT 1
+                FROM ai_user_workspace
+                WHERE workspace_id = ws_item.key
+                  AND student_id = r.student_id
+            ) THEN
+                INSERT INTO ai_user_workspace(user_id, workspace_id, role, student_id)
+                VALUES (r.user_id, ws_item.key, ws_item.value, r.student_id);
+                RAISE NOTICE 'Inserted user_workspace relationship for user_id %, student_id %, workspace %', r.user_id, r.student_id, ws_item.key;
+            END IF;
+        END LOOP;
+    END LOOP;
+END
+$$;
+
+COMMIT;
+
+-- actual migration starts
 -- Script used for updating database for workspace redesign
 BEGIN;
 
