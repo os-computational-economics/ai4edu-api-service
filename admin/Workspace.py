@@ -4,11 +4,11 @@
 import csv
 import io
 import logging
+import secrets
 import uuid
-from uuid import UUID as UUID_TYPE
 from http import HTTPStatus
 from typing import Annotated
-from random import randrange
+from uuid import UUID as UUID_TYPE
 
 import chardet
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, UploadFile
@@ -72,14 +72,12 @@ class WorkspaceAdminRoleUpdate(BaseModel):
 class StudentJoinWorkspace(BaseModel):
     """A Class describing the object sent to join a workspace as a student."""
 
-    workspace_id: UUID_TYPE
     workspace_join_code: str
 
 
 class UserRoleUpdate(BaseModel):
     """A Class describing the object sent to update a user role in a workspace."""
 
-    calling_user_id: int
     user_id: int
     workspace_id: UUID_TYPE
     role: str  # student, teacher, pending
@@ -92,7 +90,7 @@ class UserDelete(BaseModel):
     workspace_id: UUID_TYPE
 
 
-def gen_random_join_code(join_code_len: int = 8):
+def gen_random_join_code(join_code_len: int = 8) -> str:
     """Generate a random join code for a workspace
 
     Args:
@@ -100,14 +98,14 @@ def gen_random_join_code(join_code_len: int = 8):
 
     Returns:
         The new workspace join code
-    """
 
+    """
     # Defines the length of the join code
     new_join_code = ""
 
-    for _ in range(0, join_code_len):
-        # Add a random digit to the join code
-        new_join_code = new_join_code + str(randrange(10))
+    for _ in range(join_code_len):
+        # Add a cryptographically secure random digit to the join code
+        new_join_code += str(secrets.randbelow(10))
 
     logger.info(f"Join code: {new_join_code}")
 
@@ -216,7 +214,7 @@ def create_workspace(
             response,
             success=False,
             status=HTTPStatus.BAD_REQUEST,
-            message="A problem occurred while creating this workspace, try recreating it",
+            message="A problem occurred while creating this workspace, try recreating",
         )
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
@@ -253,7 +251,7 @@ def set_workspace_status(
     # Get JWT and user workspace role for authentication
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
-        update_workspace.workspace_id,
+        str(update_workspace.workspace_id),
         None,
     )
 
@@ -337,7 +335,10 @@ def remove_workspace_roles(
 
         # Remove the workspace role from each associated user
         for user in users_to_modify:
-            del user.workspace_role[workspace.workspace_id]
+            #  because user.workspace_role is fresh from JSON in Postgres,
+            #  which does not support defining the key as a UUID
+            #  we need to convert the UUID to a string
+            del user.workspace_role[str(workspace.workspace_id)]
             flag_modified(user, "workspace_role")
 
         # Commit the changes
@@ -613,7 +614,7 @@ def student_join_workspace(
     Args:
         request: FastAPI request object
         response: FastAPI response object
-        join_workspace: StudentJoinWorkspace object containing workspace details
+        join_workspace: StudentJoinWorkspace object containing workspace join code
         db: SQLAlchemy database session
 
     Returns:
@@ -637,28 +638,29 @@ def student_join_workspace(
                 message="User not found",
             )
 
-        workspace: WorkspaceValue = (
+        workspace: WorkspaceValue | None = (
             db.query(Workspace)
             .filter(
-                Workspace.workspace_id == join_workspace.workspace_id,
+                Workspace.workspace_join_code == join_workspace.workspace_join_code,
                 Workspace.status == WorkspaceStatus.ACTIVE,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
 
-        if join_workspace.workspace_join_code != workspace.workspace_join_code:
+        if not workspace:
+            #  no matching workspace join code
             return Responses[None].response(
                 response,
                 success=False,
-                status=HTTPStatus.BAD_REQUEST,
-                message="Failed to join workspace",
+                status=HTTPStatus.NOT_FOUND,
+                message="Invalid join code",
             )
 
         user_workspace: UserWorkspaceValue | None = (
             db.query(UserWorkspace)
             .filter(
                 UserWorkspace.student_id == student_id,
-                UserWorkspace.workspace_id == join_workspace.workspace_id,
+                UserWorkspace.workspace_id == workspace.workspace_id,
             )
             .first()
         )  # pyright: ignore[reportAssignmentType]
@@ -667,7 +669,7 @@ def student_join_workspace(
             return Responses[None].response(
                 response,
                 success=False,
-                status=HTTPStatus.NOT_FOUND,
+                status=HTTPStatus.UNAUTHORIZED,
                 message="Not authorized to join this workspace",
             )
 
@@ -681,7 +683,7 @@ def student_join_workspace(
 
         user_workspace.role = "student"
         user_workspace.user_id = user_id
-        user.workspace_role[join_workspace.workspace_id] = "student"
+        user.workspace_role[str(workspace.workspace_id)] = "student"
         flag_modified(user, "workspace_role")
         db.commit()
 
@@ -723,7 +725,7 @@ def delete_user_from_workspace(
     """
     user_jwt_content = get_jwt(request.state)
     user_workspace_role = user_jwt_content["workspace_role"].get(
-        user_role_update.workspace_id,
+        str(user_role_update.workspace_id),
         None,
     )
     if user_workspace_role != "teacher" and not user_jwt_content["system_admin"]:
@@ -762,7 +764,7 @@ def delete_user_from_workspace(
             )
 
         db.delete(user_workspace)
-        del user.workspace_role[user_role_update.workspace_id]
+        del user.workspace_role[str(user_role_update.workspace_id)]
         flag_modified(user, "workspace_role")
         db.commit()
 
@@ -805,6 +807,7 @@ def set_user_role_with_user_id(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
+    calling_user_id = user_jwt_content["user_id"]
     try:
         user: UserValue | None = (
             db.query(User).filter(User.user_id == user_role_update.user_id).first()
@@ -830,11 +833,10 @@ def set_user_role_with_user_id(
         logger.info(f"system_admin -> {user_jwt_content['system_admin']}")
 
         if user_jwt_content["workspace_admin"] and not user_jwt_content["system_admin"]:
-            # Ensure the user that the workspace admin is trying to promote is within this workspace
+            # Ensure the user that the workspace admin is trying to promote is within
+            # this workspace
             calling_user: UserValue | None = (
-                db.query(User)
-                .filter(User.user_id == user_role_update.calling_user_id)
-                .first()
+                db.query(User).filter(User.user_id == calling_user_id).first()
             )  # pyright: ignore[reportAssignmentType]
             if not calling_user:
                 return Responses[None].response(
@@ -844,25 +846,25 @@ def set_user_role_with_user_id(
                     message="User not found",
                 )
 
-            # If this value is null, then that means that the calling user is not within the
-            # workspace of the specified user id
-            calling_user_workspace: UserWorkspaceValue = (
+            # If this value is null, then that means that the calling user is not within
+            # the workspace of the specified user id
+            calling_user_workspace: UserWorkspaceValue | None = (
                 db.query(UserWorkspace)
                 .filter(
                     UserWorkspace.user_id == calling_user.user_id,
                     UserWorkspace.workspace_id == user_role_update.workspace_id,
                 )
                 .first()
-            )
+            )  # pyright: ignore[reportAssignmentType]
 
             logger.info(f"calling_user_workspace: {calling_user_workspace}")
 
-            if not calling_user_workspace:
+            if not calling_user_workspace or calling_user_workspace.role != "teacher":
                 return Responses[None].response(
                     response,
                     success=False,
                     status=HTTPStatus.FORBIDDEN,
-                    message="User not found within this workspace",
+                    message="User not found within this workspace or not a teacher",
                 )
 
         if not user_workspace:
@@ -870,7 +872,7 @@ def set_user_role_with_user_id(
             new_user_workspace = UserWorkspace(
                 user_id=user.user_id,
                 student_id=user.student_id,
-                workspace_id=str(user_role_update.workspace_id),
+                workspace_id=user_role_update.workspace_id,
                 role=user_role_update.role,
             )
             db.add(new_user_workspace)
@@ -983,7 +985,8 @@ def set_workspace_admin_role(
     Args:
         request: FastAPI request object
         response: FastAPI response object
-        workspace_admin_update: WorkspaceAdminRoleUpdate containing user ID and the value for workspace_admin for that user
+        workspace_admin_update: WorkspaceAdminRoleUpdate containing user ID and
+          the value for workspace_admin for that user
         db: SQLAlchemy database session
 
     Returns:

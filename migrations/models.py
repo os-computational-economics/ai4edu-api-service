@@ -29,7 +29,7 @@ from common.EnvManager import getenv
 CONFIG = getenv()
 DEFAULT_UUID = UUID_TYPE("00000000-0000-0000-0000-000000000000")
 
-WorkspaceRole = Literal["student", "teacher", "admin"]
+WorkspaceRole = Literal["student", "teacher"]
 WorkspaceRoles = dict[str, WorkspaceRole]
 
 
