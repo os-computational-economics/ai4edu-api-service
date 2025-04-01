@@ -527,8 +527,8 @@ class WorkspaceReturn(ModelReturn):
 
     workspace_id: UUID_TYPE
     workspace_name: str
-    workspace_prompt: str
-    workspace_comment: str
+    workspace_prompt: str | None
+    workspace_comment: str | None
     workspace_join_code: str
     school_id: int
     status: WorkspaceStatus
