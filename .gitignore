@@ -60,3 +60,7 @@ ssl
 
 openapi.yaml
 openapi/
+
+# Ruff
+
+.ruff_cache
