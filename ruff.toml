@@ -43,7 +43,7 @@ docstring-code-line-length = "dynamic"
 [lint]
 preview = true
 select = ["E", "F", "W", "C90", "I", "N", "D", "UP", "YTT", "ANN", "ASYNC", "S", "B", "COM", "CPY", "C4", "DTZ", "PIE", "Q", "RSE", "RET", "SIM", "TID", "ARG", "PTH", "PL", "FAST", "DOC", "RUF"]
-ignore = ["D211", "D213", "D400", "D401", "D415", "N999", "COM812", "D203"]
+ignore = ["D211", "D213", "D400", "D401", "D415", "N999", "COM812", "D203", "TID252"]
 fixable = ["ALL"]
 unfixable = []
 # Allow unused variables when underscore-prefixed.

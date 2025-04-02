@@ -19,108 +19,37 @@
         };
         py = pkgs.python3.withPackages (python-pkgs:
           with python-pkgs; [
-            aiohttp
-            aiosignal
-            alembic
-            annotated-types
             anthropic
-            anyio
-            async-timeout
-            attrs
             boto3
             boto3-stubs
             mypy-boto3-dynamodb
             mypy-boto3-s3
             botocore
-            certifi
-            cffi
             chardet
-            charset-normalizer
-            click
-            cryptography
-            dataclasses-json
             defusedxml
-            distro
-            dnspython
-            email_validator
             fastapi
             fastapi-cli
-            filelock
-            frozenlist
-            fsspec
-            h11
-            hiredis
-            httpcore
-            httptools
-            httpx
-            huggingface-hub
-            idna
-            jinja2
-            jiter
-            jmespath
-            jsonpatch
-            jsonpointer
             langchain
-            (pkgs.callPackage ./langchain-anthropic.nix pkgs.python312Packages)
             langchain-community
             langchain-core
             langchain-openai
-            # TODO: needs pinecone-client to work
-            # langchain-pinecone
-            langchain-text-splitters
-            langsmith
-            Mako
-            markdown-it-py
-            markupsafe
-            marshmallow
-            mdurl
-            multidict
-            mypy-extensions
-            numpy
+            (pkgs.callPackage ./nix/langchain-anthropic.nix pkgs.python312Packages)
+            (pkgs.callPackage ./nix/langchain-pinecone.nix pkgs.python312Packages)
             openai
-            orjson
-            packaging
-            # TODO: fix this package
-            (pkgs.callPackage ./pinecone.nix pkgs.python312Packages)
-            (pkgs.callPackage ./langchain-pinecone.nix pkgs.python312Packages)
+            pinecone-client
             psycopg
-            # psycopg-binary
-            pycparser
             pydantic
-            pydantic-core
-            pygments
             pyjwt
             pypdf
-            python-dateutil
             python-dotenv
             python-multipart
-            pyyaml
-            types-redis
             redis
-            regex
+            types-redis
             requests
-            rich
-            s3transfer
-            shellingham
-            six
-            sniffio
             sqlalchemy
             sse-starlette
             starlette
-            tenacity
-            tiktoken
-            tokenizers
-            tqdm
-            typer
-            typing-inspect
-            typing-extensions
-            ujson
-            urllib3
             uvicorn
-            uvloop
-            watchfiles
-            websockets
-            yarl
           ]);
       in {
         devShells = rec {
@@ -139,7 +68,6 @@
               dig
               ruff
               basedpyright
-              # pgadmin4-desktopmode
             ];
           };
           default = docker-python;
@@ -191,6 +119,19 @@
           compose = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "start-compose.sh" ''
+              upsearch () {
+              local slashes=''${PWD//[^\/]/}
+              local directory=$(pwd)
+              for (( n=''${#slashes}; n>0; --n ))
+                do
+                  test -e "$directory/$1" && cd $directory
+                  directory="$directory/.."
+                done
+              }
+
+              upsearch flake.nix
+              nix build .#docker
+              podman load < result
               ${pkgs.podman-compose}/bin/podman-compose up --build --force-recreate
             ''}/bin/start-compose.sh";
           };
@@ -217,6 +158,10 @@
             ''}/bin/start-compose.sh";
           };
           default = compose;
+        };
+        packages = rec {
+          docker = pkgs.callPackage ./nix/docker.nix { inherit py; app = ./src; };
+          default = docker;
         };
       }
     );

@@ -9,10 +9,8 @@
 # This is docker-compose for local testing, DO NOT USE IN PRODUCTION
 services:
   ai4edu-api-server:
-    image: ai4edu-api-server:local
+    image: localhost/ai4edu-api-server:latest
     container_name: ai4edu-api-server-local
-    build:
-      context: .
     volumes:
       - ./ai4edu_api_volume_local:/app/volume_cache:rw
     expose:

@@ -45,6 +45,7 @@ password.txt
 # Direnv
 
 .direnv
+result
 
 # Nginx
 
