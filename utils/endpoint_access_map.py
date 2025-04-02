@@ -170,6 +170,12 @@ endpoint_access_map: AccessMap = {
         "system_admin": True,
         "workspace_admin": True,
     },
+    "/workspace/get_user_workspace_details": {
+        "student": False,
+        "teacher": False,
+        "system_admin": True,
+        "workspace_admin": True,
+    },
     # testing endpoints
     "/test_query": {
         "student": True,

@@ -32,7 +32,7 @@ from migrations.models import (
     workspace_return,
 )
 from migrations.session import get_db
-from utils.response import APIListReturnPage, Response, Responses
+from utils.response import APIListReturnPage, APIListReturn, Response, Responses
 
 logger = logging.getLogger(__name__)
 
@@ -898,6 +898,72 @@ def set_user_role_with_user_id(
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
         )
+
+# TODO: This is turning out to be almost equivalent to get_workspace_list, so perhaps just merge the two
+@router.get("/get_user_workspace_details")
+def get_user_workspace_details(
+    request: Request,
+    response: FastAPIResponse,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[APIListReturn[WorkspaceReturn]]:
+    """Get the workspace names of the workspaces a user is in
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or 404 error if user is not found
+
+    """
+    user_jwt_content = get_jwt(request.state)
+    calling_user_id = user_jwt_content["user_id"]
+    try:
+        user: UserValue | None = (
+            db.query(User).filter(User.user_id == calling_user_id).first()
+        )  # pyright: ignore[reportAssignmentType]
+        if not user:
+            return Responses[APIListReturn[WorkspaceReturn]].response(
+                response,
+                success=False,
+                data={"items": [], "total": 0},
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found"
+            )
+
+        workspaces: list[WorkspaceValue] = (
+            db.query(Workspace)
+            .join(UserWorkspace, Workspace.workspace_id == UserWorkspace.workspace_id)
+            .filter(
+                UserWorkspace.user_id == calling_user_id
+            )
+            .all()
+        ) # pyright: ignore[reportAssignmentType]
+
+        # Extract workspace names from the result
+        workspace_names = []
+        for workspace in workspaces:
+            workspace_names.append(workspace.workspace_name)
+
+        return Responses[APIListReturn[WorkspaceReturn]].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={
+                "items": [workspace_return(workspace) for workspace in workspaces],
+                "total": len(workspaces)
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error setting user role: {e}")
+        return Responses[APIListReturn[WorkspaceReturn]].response(
+                response,
+                success=False,
+                data={"items": [], "total": 0},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=str(e),
+            )
 
 
 @router.get("/get_workspace_list")
