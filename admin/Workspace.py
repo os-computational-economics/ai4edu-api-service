@@ -32,7 +32,7 @@ from migrations.models import (
     workspace_return,
 )
 from migrations.session import get_db
-from utils.response import APIListReturnPage, APIListReturn, Response, Responses
+from utils.response import APIListReturn, APIListReturnPage, Response, Responses
 
 logger = logging.getLogger(__name__)
 
@@ -899,7 +899,9 @@ def set_user_role_with_user_id(
             message=str(e),
         )
 
-# TODO: This is turning out to be almost equivalent to get_workspace_list, so perhaps just merge the two
+
+# TODO: This is turning out to be almost equivalent to get_workspace_list, so perhaps
+# just merge the two
 @router.get("/get_user_workspace_details")
 def get_user_workspace_details(
     request: Request,
@@ -929,17 +931,15 @@ def get_user_workspace_details(
                 success=False,
                 data={"items": [], "total": 0},
                 status=HTTPStatus.NOT_FOUND,
-                message="User not found"
+                message="User not found",
             )
 
         workspaces: list[WorkspaceValue] = (
             db.query(Workspace)
             .join(UserWorkspace, Workspace.workspace_id == UserWorkspace.workspace_id)
-            .filter(
-                UserWorkspace.user_id == calling_user_id
-            )
+            .filter(UserWorkspace.user_id == calling_user_id)
             .all()
-        ) # pyright: ignore[reportAssignmentType]
+        )  # pyright: ignore[reportAssignmentType]
 
         # Extract workspace names from the result
         workspace_names = []
@@ -952,18 +952,18 @@ def get_user_workspace_details(
             status=HTTPStatus.OK,
             data={
                 "items": [workspace_return(workspace) for workspace in workspaces],
-                "total": len(workspaces)
+                "total": len(workspaces),
             },
         )
     except Exception as e:
         logger.error(f"Error setting user role: {e}")
         return Responses[APIListReturn[WorkspaceReturn]].response(
-                response,
-                success=False,
-                data={"items": [], "total": 0},
-                status=HTTPStatus.INTERNAL_SERVER_ERROR,
-                message=str(e),
-            )
+            response,
+            success=False,
+            data={"items": [], "total": 0},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
 
 
 @router.get("/get_workspace_list")
