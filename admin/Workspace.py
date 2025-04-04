@@ -175,9 +175,7 @@ def create_workspace(
         # Add an associated workplace role
 
         # Update the role of this user to a teacher for this workspace
-        user: UserValue | None = (
-            db.query(User).filter(User.user_id == user_id).first()
-        )  # pyright: ignore[reportAssignmentType]
+        user: UserValue | None = db.query(User).filter(User.user_id == user_id).first()  # pyright: ignore[reportAssignmentType]
         if not user:
             return Responses[None].response(
                 response,
