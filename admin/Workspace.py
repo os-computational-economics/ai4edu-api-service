@@ -44,7 +44,6 @@ class WorkspaceCreate(BaseModel):
 
     workspace_name: str
     school_id: int = 0
-    user_id: int
     workspace_prompt: str | None = None
     workspace_comment: str | None = None
 
@@ -134,6 +133,8 @@ def create_workspace(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
+    # Get the user ID from the JWT
+    user_id: int = user_jwt_content["user_id"]
     try:
         # NOTE: uuid1 is used since it reduces the chance of a uuid collision to 0
         #       due to it using timestamp data in the generated uuid
@@ -165,7 +166,7 @@ def create_workspace(
             workspace_name=workspace.workspace_name,
             workspace_prompt=workspace.workspace_prompt,
             workspace_comment=workspace.workspace_comment,
-            created_by=workspace.user_id,
+            created_by=user_id,
             workspace_join_code=new_workspace_join_code,
             school_id=workspace.school_id,
         )
@@ -175,7 +176,7 @@ def create_workspace(
 
         # Update the role of this user to a teacher for this workspace
         user: UserValue | None = (
-            db.query(User).filter(User.user_id == workspace.user_id).first()
+            db.query(User).filter(User.user_id == user_id).first()
         )  # pyright: ignore[reportAssignmentType]
         if not user:
             return Responses[None].response(
