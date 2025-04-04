@@ -991,7 +991,15 @@ def get_workspace_list(
         return Responses[WorkspaceReturn].forbidden_list_page(response)
     try:
         offset = (page - 1) * page_size
+
+        # First, get the total count with a separate query
         if user_jwt_content["system_admin"]:
+            total_workspaces = (
+                db.query(func.count(Workspace.workspace_id))
+                .filter(Workspace.status != WorkspaceStatus.DELETED)
+                .scalar()
+            )
+
             workspaces: list[WorkspaceValue] = (
                 db.query(Workspace)
                 .filter(Workspace.status != WorkspaceStatus.DELETED)
@@ -1001,6 +1009,15 @@ def get_workspace_list(
                 .all()
             )  # pyright: ignore[reportAssignmentType]
         else:
+            total_workspaces = (
+                db.query(func.count(Workspace.workspace_id))
+                .filter(
+                    Workspace.status != WorkspaceStatus.DELETED,
+                    Workspace.created_by == user_id,
+                )
+                .scalar()
+            )
+
             workspaces: list[WorkspaceValue] = (
                 db.query(Workspace)
                 .filter(
@@ -1012,7 +1029,7 @@ def get_workspace_list(
                 .limit(page_size)
                 .all()
             )  # pyright: ignore[reportAssignmentType]
-        total_workspaces = len(workspaces)
+
         return Responses[APIListReturnPage[WorkspaceReturn]].response(
             response,
             success=True,
