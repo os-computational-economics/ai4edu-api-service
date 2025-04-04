@@ -519,7 +519,6 @@ class WorkspaceValue:
     workspace_join_code: str = ""
     status: WorkspaceStatus = WorkspaceStatus.ACTIVE
     school_id: int = 0
-    workspace_password: str = ""
 
 
 class WorkspaceReturn(ModelReturn):

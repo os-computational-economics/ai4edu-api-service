@@ -940,10 +940,9 @@ def get_user_workspace_details(
             .all()
         )  # pyright: ignore[reportAssignmentType]
 
-        # Extract workspace names from the result
-        workspace_names = []
+        # Omit the workspace_prompt field from the response
         for workspace in workspaces:
-            workspace_names.append(workspace.workspace_name)
+            workspace.workspace_prompt = ""
 
         return Responses[APIListReturn[WorkspaceReturn]].response(
             response,
