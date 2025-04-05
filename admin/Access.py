@@ -79,7 +79,11 @@ def get_user_list(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "student_id": user.student_id,
-                "workspace_role": user.workspace_role if is_teacher_or_admin else {},
+                "workspace_role": {
+                    workspace_id: user.workspace_role.get(workspace_id, "")
+                }
+                if is_teacher_or_admin
+                else {},
             }
             for user in users
         ]
