@@ -82,7 +82,7 @@ def get_user_list(
                 "workspace_role": {
                     workspace_id: user.workspace_role.get(workspace_id, "")
                 }
-                if is_teacher_or_admin
+                if is_teacher_or_admin and workspace_id != "all"
                 else {},
             }
             for user in users
