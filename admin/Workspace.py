@@ -353,7 +353,10 @@ def remove_workspace_roles(
             db.query(User)
             .filter(
                 func.json_extract_path_text(
-                    User.workspace_role, workspace.workspace_id
+                    # Postgres json_extract_path_text function requires the json key
+                    # to be a string, so we convert the UUID to a string
+                    User.workspace_role,
+                    str(workspace.workspace_id),
                 ).isnot(None)
             )
             .all()
