@@ -973,7 +973,11 @@ def get_user_workspace_details(
         workspaces: list[WorkspaceValue] = (
             db.query(Workspace)
             .join(UserWorkspace, Workspace.workspace_id == UserWorkspace.workspace_id)
-            .filter(UserWorkspace.user_id == calling_user_id)
+            .filter(
+                UserWorkspace.user_id == calling_user_id,
+                Workspace.status != WorkspaceStatus.DELETED,
+                Workspace.status != WorkspaceStatus.INACTIVE,
+            )
             .all()
         )  # pyright: ignore[reportAssignmentType]
 
