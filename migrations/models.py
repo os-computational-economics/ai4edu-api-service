@@ -628,6 +628,29 @@ class UserFeedbackValue:
     comments: str = ""
 
 
+class PendingUserReturn(ModelReturn):
+    """Dictionary representation of a pending user in a workspace"""
+
+    student_id: str
+    status: str
+
+
+def pending_user_return(student_id: str) -> PendingUserReturn:
+    """Makes a PendingUserReturn object from a student_id
+
+    Args:
+        student_id: The student ID to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {
+        "student_id": student_id,
+        "status": "pending",
+    }
+
+
 class URLReturn(ModelReturn):
     """Response containing a Presigned URL."""
 

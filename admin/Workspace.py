@@ -23,6 +23,7 @@ from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
 from common.WorkspacePromptHandler import WorkspacePromptHandler
 from migrations.models import (
+    PendingUserReturn,
     User,
     UserValue,
     UserWorkspace,
@@ -31,6 +32,7 @@ from migrations.models import (
     WorkspaceReturn,
     WorkspaceStatus,
     WorkspaceValue,
+    pending_user_return,
     workspace_return,
 )
 from migrations.session import get_db
@@ -1151,6 +1153,72 @@ def set_workspace_admin_role(
             success=False,
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             message=str(e),
+        )
+
+
+@router.get("/get_pending_users/{workspace_id}")
+def get_pending_users(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_id: UUID_TYPE,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[APIListReturn[PendingUserReturn]]:
+    """Get a list of users that are pending to join a workspace.
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_id: UUID of the workspace to get pending users for
+        db: SQLAlchemy database session
+
+    Returns:
+        List of pending users with their student IDs and pending status
+
+    """
+    # Check authorization - only teachers in the workspace can access this
+    user_jwt_content = get_jwt(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        str(workspace_id), None
+    )
+    if user_workspace_role != "teacher":
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=False,
+            status=HTTPStatus.FORBIDDEN,
+            message="Only teachers can view pending users",
+            data={"items": [], "total": 0},
+        )
+
+    try:
+        # Query for all pending users in the workspace
+        pending_users = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.workspace_id == workspace_id,
+                UserWorkspace.role == "pending",
+            )
+            .all()
+        )
+
+        # Format the results
+        pending_user_list = [
+            pending_user_return(str(user.student_id)) for user in pending_users
+        ]
+
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"items": pending_user_list, "total": len(pending_user_list)},
+        )
+    except Exception as e:
+        logger.error(f"Error getting pending users: {e}")
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+            data={"items": [], "total": 0},
         )
 
 

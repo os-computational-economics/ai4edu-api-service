@@ -182,6 +182,12 @@ endpoint_access_map: AccessMap = {
         "system_admin": True,
         "workspace_admin": True,
     },
+    "/workspace/get_pending_users/{workspace_id}": {
+        "student": False,
+        "teacher": True,
+        "system_admin": True,
+        "workspace_admin": True,
+    },
     # file related endpoints
     "/upload_file": {
         "student": False,
