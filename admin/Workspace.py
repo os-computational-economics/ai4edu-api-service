@@ -19,7 +19,9 @@ from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
+from common.WorkspacePromptHandler import WorkspacePromptHandler
 from migrations.models import (
     User,
     UserValue,
@@ -34,6 +36,9 @@ from migrations.models import (
 from migrations.session import get_db
 from utils.response import APIListReturn, APIListReturnPage, Response, Responses
 
+CONFIG = getenv()
+workspace_prompt_handler = WorkspacePromptHandler(CONFIG)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -44,6 +49,15 @@ class WorkspaceCreate(BaseModel):
 
     workspace_name: str
     school_id: int = 0
+    workspace_prompt: str | None = None
+    workspace_comment: str | None = None
+
+
+class WorkspaceEdit(BaseModel):
+    """A Class describing the object sent to edit a workspace."""
+
+    workspace_id: UUID_TYPE
+    workspace_name: str | None = None
     workspace_prompt: str | None = None
     workspace_comment: str | None = None
 
@@ -172,6 +186,12 @@ def create_workspace(
         )
         db.add(new_workspace)
 
+        # Cache the workspace prompt if it exists
+        if workspace.workspace_prompt:
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                new_workspace_id, workspace.workspace_prompt
+            )
+
         # Add an associated workplace role
 
         # Update the role of this user to a teacher for this workspace
@@ -286,8 +306,17 @@ def set_workspace_status(
         # Sync user workspace cache
         if update_workspace.workspace_status == WorkspaceStatus.INACTIVE:
             background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+            # Clear the workspace prompt from Redis cache if workspace is deactivated
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                str(update_workspace.workspace_id), ""
+            )
         else:
             background_tasks.add_task(restore_workspace_roles, db, update_workspace)
+            # If workspace is being activated, ensure prompt is in cache
+            if workspace.workspace_prompt:
+                _ = workspace_prompt_handler.cache_workspace_prompt(
+                    str(update_workspace.workspace_id), workspace.workspace_prompt
+                )
 
         return Responses[None].response(
             response,
@@ -422,6 +451,11 @@ def delete_workspace(
         )  # pyright: ignore[reportAssignmentType]
         query.status = WorkspaceStatus.DELETED
         db.commit()
+
+        # Remove workspace prompt from cache if it exists
+        # We don't need to check if it exists in cache, the client will
+        # handle a miss gracefully
+        _ = workspace_prompt_handler.cache_workspace_prompt(workspace, "")
         return Responses[None].response(
             response,
             success=True,
@@ -940,7 +974,7 @@ def get_user_workspace_details(
             .all()
         )  # pyright: ignore[reportAssignmentType]
 
-        # Omit the workspace_prompt field from the response
+        # Omit the workspace_prompt field from the response for privacy
         for workspace in workspaces:
             workspace.workspace_prompt = ""
 
@@ -1105,6 +1139,85 @@ def set_workspace_admin_role(
 
     except Exception as e:
         logger.error(f"Error changing workspace admin status: {e}")
+        db.rollback()
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
+
+
+@router.post("/edit_workspace")
+def edit_workspace(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_edit: WorkspaceEdit,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[None]:
+    """Edit an existing workspace's name, prompt, or comment.
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_edit: WorkspaceEdit object containing workspace details to update
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or error if the workspace is not found or user is not authorized
+
+    """
+    user_jwt_content = get_jwt(request.state)
+
+    # Only system admins or workspace admins can edit workspaces
+    if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.FORBIDDEN,
+            message="You do not have permission to edit this workspace",
+        )
+
+    try:
+        # Find workspace
+        workspace: WorkspaceValue | None = (
+            db.query(Workspace)
+            .filter(Workspace.workspace_id == workspace_edit.workspace_id)
+            .first()
+        )  # pyright: ignore[reportAssignmentType]
+
+        if not workspace:
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="Workspace not found",
+            )
+
+        # Update fields that were provided
+        if workspace_edit.workspace_name is not None:
+            workspace.workspace_name = workspace_edit.workspace_name
+
+        if workspace_edit.workspace_comment is not None:
+            workspace.workspace_comment = workspace_edit.workspace_comment
+
+        if workspace_edit.workspace_prompt is not None:
+            workspace.workspace_prompt = workspace_edit.workspace_prompt
+            # Update the prompt in redis cache
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                str(workspace_edit.workspace_id), workspace_edit.workspace_prompt
+            )
+
+        db.commit()
+
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Workspace updated successfully",
+        )
+    except Exception as e:
+        logger.error(f"Error updating workspace: {e}")
         db.rollback()
         return Responses[None].response(
             response,
