@@ -17,97 +17,97 @@ endpoint_access_map: AccessMap = {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/agent/get/{agent_id}": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },  # student get agent by id
     "/agents/add_agent": {
         "student": False,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/agents/delete_agent": {
         "student": False,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/agents/update_agent": {
         "student": False,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/agents/agents": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/agents/agent/{agent_id}": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/feedback/rating": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/threads/get_thread/{thread_id}": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/threads/get_thread_list": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/sso": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/stream_chat": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/get_tts_file": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/get_temp_stt_auth_code": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/get_new_thread": {
         "student": True,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     "/access/get_user_list": {
         "student": False,
         "teacher": True,
         "system_admin": True,
-        "workspace_admin": False,
+        "workspace_admin": True,
     },
     # workspace endpoints
     "/workspace/create_workspace": {
@@ -161,8 +161,8 @@ endpoint_access_map: AccessMap = {
     "/workspace/set_workspace_admin_role": {
         "student": False,
         "teacher": False,
-        "system_admin": False,
-        "workspace_admin": True,
+        "system_admin": True,
+        "workspace_admin": False,
     },
     "/workspace/delete_workspace/{workspace}": {
         "student": False,
@@ -171,8 +171,8 @@ endpoint_access_map: AccessMap = {
         "workspace_admin": True,
     },
     "/workspace/get_user_workspace_details": {
-        "student": False,
-        "teacher": False,
+        "student": True,
+        "teacher": True,
         "system_admin": True,
         "workspace_admin": True,
     },
@@ -182,7 +182,27 @@ endpoint_access_map: AccessMap = {
         "system_admin": True,
         "workspace_admin": True,
     },
-    # testing endpoints
+    # file related endpoints
+    "/upload_file": {
+        "student": False,
+        "teacher": True,
+        "system_admin": True,
+        "workspace_admin": True,
+    },
+    "/get_presigned_url_for_file": {
+        "student": True,
+        "teacher": True,
+        "system_admin": True,
+        "workspace_admin": True,
+    },
+    # others
+    "/ping": {
+        "student": True,
+        "teacher": True,
+        "system_admin": True,
+        "workspace_admin": True,
+    },
+    # dev testing endpoints
     "/test_query": {
         "student": True,
         "teacher": True,
@@ -196,24 +216,6 @@ endpoint_access_map: AccessMap = {
         "workspace_admin": False,
     },
     "/test_query/clear_history": {
-        "student": True,
-        "teacher": True,
-        "system_admin": True,
-        "workspace_admin": False,
-    },
-    "/upload_file": {
-        "student": True,
-        "teacher": True,
-        "system_admin": True,
-        "workspace_admin": False,
-    },
-    "/get_presigned_url_for_file": {
-        "student": True,
-        "teacher": True,
-        "system_admin": True,
-        "workspace_admin": False,
-    },
-    "/ping": {
         "student": True,
         "teacher": True,
         "system_admin": True,
