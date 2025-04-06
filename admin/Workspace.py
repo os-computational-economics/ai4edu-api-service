@@ -987,6 +987,10 @@ def get_user_workspace_details(
         for workspace in workspaces:
             workspace.workspace_prompt = ""
 
+        # Omit the created_by field from the response for privacy
+        for workspace in workspaces:
+            workspace.created_by = ""
+
         return Responses[APIListReturn[WorkspaceReturn]].response(
             response,
             success=True,
@@ -1043,14 +1047,14 @@ def get_workspace_list(
                 .scalar()
             )
 
-            workspaces: list[WorkspaceValue] = (
-                db.query(Workspace)
+            workspace_query = (
+                db.query(Workspace, User)
+                .join(User, Workspace.created_by == User.user_id)
                 .filter(Workspace.status != WorkspaceStatus.DELETED)
                 .order_by(desc(Workspace.status))
                 .offset(offset)
                 .limit(page_size)
-                .all()
-            )  # pyright: ignore[reportAssignmentType]
+            )
         else:
             total_workspaces = (
                 db.query(func.count(Workspace.workspace_id))
@@ -1061,8 +1065,9 @@ def get_workspace_list(
                 .scalar()
             )
 
-            workspaces: list[WorkspaceValue] = (
-                db.query(Workspace)
+            workspace_query = (
+                db.query(Workspace, User)
+                .join(User, Workspace.created_by == User.user_id)
                 .filter(
                     Workspace.status != WorkspaceStatus.DELETED,
                     Workspace.created_by == user_id,
@@ -1070,15 +1075,28 @@ def get_workspace_list(
                 .order_by(desc(Workspace.status))
                 .offset(offset)
                 .limit(page_size)
-                .all()
-            )  # pyright: ignore[reportAssignmentType]
+            )
+
+        # Convert the query results to workspace returns with creator names
+        workspace_returns = []
+        for workspace, creator in workspace_query.all():
+            workspace_value = WorkspaceValue()
+            workspace_value.workspace_id = workspace.workspace_id
+            workspace_value.workspace_name = workspace.workspace_name
+            workspace_value.workspace_prompt = workspace.workspace_prompt
+            workspace_value.workspace_comment = workspace.workspace_comment
+            workspace_value.workspace_join_code = workspace.workspace_join_code
+            workspace_value.status = workspace.status
+            workspace_value.school_id = workspace.school_id
+            workspace_value.created_by = f"{creator.first_name} {creator.last_name}"
+            workspace_returns.append(workspace_return(workspace_value))
 
         return Responses[APIListReturnPage[WorkspaceReturn]].response(
             response,
             success=True,
             status=HTTPStatus.OK,
             data={
-                "items": [workspace_return(workspace) for workspace in workspaces],
+                "items": workspace_returns,
                 "total": total_workspaces,
                 "page": page,
                 "page_size": page_size,

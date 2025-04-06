@@ -531,6 +531,10 @@ class WorkspaceReturn(ModelReturn):
     workspace_join_code: str
     school_id: int
     status: WorkspaceStatus
+    created_by: str
+    # here, created_by is the name of the creator of the workspace
+    # not the user_id. This is to be consistent with the data model, for the convenience
+    # of the front end.
 
 
 def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
@@ -552,6 +556,7 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
             "workspace_join_code": wv.workspace_join_code,
             "school_id": wv.school_id,
             "status": wv.status,
+            "created_by": wv.created_by,
         }
         if wv
         else {
@@ -562,6 +567,7 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
             "workspace_join_code": "",
             "status": WorkspaceStatus.INACTIVE,
             "school_id": 0,
+            "created_by": "",
         }
     )
 
