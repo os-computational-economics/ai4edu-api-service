@@ -109,6 +109,12 @@ endpoint_access_map: AccessMap = {
         "system_admin": True,
         "workspace_admin": True,
     },
+    "/access/get_privileged_user_list": {
+        "student": False,
+        "teacher": False,
+        "system_admin": True,
+        "workspace_admin": False,
+    },
     # workspace endpoints
     "/workspace/create_workspace": {
         "student": False,

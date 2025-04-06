@@ -347,6 +347,36 @@ class UserReturn(ModelReturn):
     workspace_role: WorkspaceRoles
 
 
+class PrivilegedUserReturn(UserReturn):
+    """Dictionary representation of a privileged User row with additional admin information"""
+
+    system_admin: bool
+    workspace_admin: bool
+    created_workspaces: dict[UUID_TYPE, str]  # workspace_id: workspace_name
+
+
+def privileged_user_return(
+    uv: UserValue | None = None, created_workspaces: dict[UUID_TYPE, str] | None = None
+) -> PrivilegedUserReturn:
+    """Makes a PrivilegedUserReturn object from a python object
+
+    Args:
+        uv: The UserValue to return
+        created_workspaces: Dict of workspace IDs to workspace names created by the user
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    base_return = user_return(uv)
+    return {
+        **base_return,
+        "system_admin": uv.system_admin if uv else False,
+        "workspace_admin": uv.workspace_admin if uv else False,
+        "created_workspaces": created_workspaces or {},
+    }
+
+
 def user_return(uv: UserValue | None = None) -> UserReturn:
     """Makes an UserReturn object from a python object
 
