@@ -1,3 +1,5 @@
+"""A helper class for facilitating pinecone operations"""
+
 import logging
 import uuid
 
@@ -63,7 +65,7 @@ def sync_file_lists(
     for file_id, file_name in new_file_data.items():
         # If this file is in the new list but not the old one, add its embeddings to pinecone
         fsh = FileStorageHandler(config=CONFIG)
-        file_path = fsh.get_file(uuid.UUID(file_id))
+        file_path = fsh.get_file(uuid.UUID(hex=file_id))
 
         if file_id not in old_file_data:
             is_successful_embed = embed_file(

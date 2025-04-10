@@ -196,6 +196,9 @@ def create_agent(
             f"Inserted new agent: {new_agent.agent_id} - {new_agent.agent_name}",
         )
         # Start a background task after creation to sync pinecone database
+        # TODO: Should the index name and namespace be swapped? The original code used
+        #       'test-namespace' as the index name and the other value as the namespace...which is
+        #       odd from a naming perspective.
         background_tasks.add_task(
             sync_file_lists,
             default_namespace,
