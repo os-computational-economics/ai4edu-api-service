@@ -28,9 +28,7 @@ if __name__ == "__main__":
     fsh = FileStorageHandler(CONFIG)
 
     # Get all agents first
-    agents: list[AgentValue] | None = (
-        db.query(Agent).all()
-    )
+    agents: list[AgentValue] | None = db.query(Agent).all()
 
     if not agents:
         logger.info("No agents to modify!")
@@ -42,18 +40,20 @@ if __name__ == "__main__":
             for file_id, file_name in agent.agent_files.items:
                 file_path = fsh.get_file(uuid.UUID(hex=file_id))
                 namespace = f"agent-{agent.agent_id}"
-                
+
                 # (1)
                 delete_embeddings_result = delete_embeddings(
-                    index_name=default_index_name,
-                    namespace=namespace,
-                    file_id=file_id
+                    index_name=default_index_name, namespace=namespace, file_id=file_id
                 )
                 if delete_embeddings_result:
-                    logger.info(f"Successfully deleted embeedings for file with id: {file_id}")
+                    logger.info(
+                        f"Successfully deleted embeedings for file with id: {file_id}"
+                    )
                 else:
-                    logger.info(f"Failed to delete embeddings for file with id: {file_id}")
-                
+                    logger.info(
+                        f"Failed to delete embeddings for file with id: {file_id}"
+                    )
+
                 # (2)
                 embed_file_result = embed_file(
                     index_name=default_index_name,
@@ -62,9 +62,13 @@ if __name__ == "__main__":
                     file_id=file_id,
                     file_name=file_name,
                     file_type=default_file_type,
-                    agent_id=agent.agent_id
+                    agent_id=agent.agent_id,
                 )
                 if embed_file_result:
-                    logger.info(f"Successfully recreated embeddings for file with id: {file_id}")
+                    logger.info(
+                        f"Successfully recreated embeddings for file with id: {file_id}"
+                    )
                 else:
-                    logger.info(f"Failed to recreate embeddings for file with id: {file_id}")
+                    logger.info(
+                        f"Failed to recreate embeddings for file with id: {file_id}"
+                    )
