@@ -21,15 +21,16 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 embeddings = OpenAIEmbeddings(api_key=SecretStr(OPENAI_API_KEY))
 logger = logging.getLogger(__name__)
 
+
 # Note to self
-    # agent_files dictionary: {file_id: file_name}
+# agent_files dictionary: {file_id: file_name}
 def sync_file_lists(
     index_name: str,
     namespace: str,
     owner_id: str,
     old_file_data: dict[str, str] | None,
     new_file_data: list[str, str] | None,
-    ownership_type: str = "agent"
+    ownership_type: str = "agent",
 ) -> None:
     """Synchronizes agent or workspace file lists with Pinecone
 
@@ -57,7 +58,7 @@ def sync_file_lists(
                 logger.info(f"Successfully deleted embeddings for file: {file_id}")
             else:
                 logger.error(f"Failed to delete embeddings for file: {file_id}")
-    
+
     # Iterate over all new items to check for further discrepancies
     for file_id, file_name in new_file_data.items():
         # If this file is in the new list but not the old one, add its embeddings to pinecone
@@ -66,19 +67,16 @@ def sync_file_lists(
 
         if file_id not in old_file_data:
             is_successful_embed = embed_file(
-                index_name=index_name, 
+                index_name=index_name,
                 namespace=namespace,
                 file_path=file_path,
                 file_id=file_id,
                 file_name=file_name,
                 file_type="pdf",
                 agent_id="NA" if ownership_type == "workspace" else owner_id,
-                workspace_id="NA" if ownership_type == "agent" else owner_id)
+                workspace_id="NA" if ownership_type == "agent" else owner_id,
+            )
             if is_successful_embed:
                 logger.info(f"Successfully added embeddings for file: {file_id}")
             else:
                 logger.error(f"Failed to add embeddings for file: {file_id}")
-    
-        
-
-        

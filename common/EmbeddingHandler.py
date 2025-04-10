@@ -71,11 +71,7 @@ def embed_file(
     return False
 
 
-def delete_embeddings(
-    index_name: str,
-    namespace: str,
-    file_id: str
-) -> bool:
+def delete_embeddings(index_name: str, namespace: str, file_id: str) -> bool:
     """Delete a file and its embeddings from a pinecone index
 
     Args:
@@ -97,7 +93,8 @@ def delete_embeddings(
         top_k=1000,
         include_metadata=True,
         filter={"file_id": file_id},
-        vector=[0.0] * 1536  # Dummy vector, this should not be used within filter-only queries
+        vector=[0.0]
+        * 1536,  # Dummy vector, this should not be used within filter-only queries
     )
 
     # Get ids to delete
@@ -106,7 +103,7 @@ def delete_embeddings(
     if not ids_to_delete:
         print(f"No embeddings found for file_id: {file_id}")
         return False
-    
+
     # Delete the matched vector IDs
     index.delete(ids=ids_to_delete, namespace=namespace)
 

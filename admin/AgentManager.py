@@ -202,7 +202,8 @@ def create_agent(
             f"agent-{new_agent_id}",
             str(new_agent_id),
             existing_agent_files,
-            agent_data.agent_files)  # This is on creation, so files should be consistent
+            agent_data.agent_files,
+        )  # This is on creation, so files should be consistent
         return Responses[AddAgentResponse].response(
             response,
             success=True,
@@ -395,7 +396,8 @@ def edit_agent(  # noqa: C901, PLR0912
             f"agent-{update_data.agent_id}",
             str(update_data.agent_id),
             old_agent_files,
-            update_data.agent_files)
+            update_data.agent_files,
+        )
 
         return Responses[AddAgentResponse].response(
             response,
