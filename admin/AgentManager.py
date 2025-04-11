@@ -167,9 +167,6 @@ def create_agent(
         agent_data.system_prompt,
     )
 
-    # Store new agent files
-    existing_agent_files = new_agent.agent_files
-
     # if there is agent files, embed the files with pinecone
     if agent_data.agent_files:
         fsh = FileStorageHandler(config=CONFIG)
@@ -195,18 +192,6 @@ def create_agent(
         logger.info(
             f"Inserted new agent: {new_agent.agent_id} - {new_agent.agent_name}",
         )
-        # Start a background task after creation to sync pinecone database
-        # TODO: Should the index name and namespace be swapped? The original code used
-        #       'test-namespace' as the index name and the other value as the namespace...which is
-        #       odd from a naming perspective.
-        background_tasks.add_task(
-            sync_file_lists,
-            default_namespace,
-            f"agent-{new_agent_id}",
-            str(new_agent_id),
-            existing_agent_files,
-            agent_data.agent_files,
-        )  # This is on creation, so files should be consistent
         return Responses[AddAgentResponse].response(
             response,
             success=True,
@@ -360,25 +345,15 @@ def edit_agent(  # noqa: C901, PLR0912
         agent_to_update.model = update_data.model
     if update_data.agent_files is not None:
         agent_to_update.agent_files = update_data.agent_files
-        # embed the files with pinecone
-        fsh = FileStorageHandler(config=CONFIG)
-        for file_id, file_name in update_data.agent_files.items():
-            file_path = fsh.get_file(uuid.UUID(file_id))
-            if file_path:
-                _ = embed_file(
-                    default_namespace,
-                    f"agent-{update_data.agent_id}",
-                    str(file_path),
-                    file_id,
-                    file_name,
-                    "pdf",
-                    str(update_data.agent_id),
-                    #  casting to str because pinecone file metadata does not support
-                    #  UUID type
-                    str(update_data.workspace_id) or str(agent_to_update.workspace_id),
-                )
-            else:
-                logger.error(f"Failed to embed file: {file_id}")
+        # Do a workspace sync to ensure embeddings are correctly updated
+        background_tasks.add_task(
+            sync_file_lists,
+            default_namespace,
+            f"agent-{update_data.agent_id}",
+            str(update_data.agent_id),
+            old_agent_files,
+            update_data.agent_files,
+        )
     agent_to_update.updated_at = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
 
     if update_data.system_prompt is not None:
@@ -391,16 +366,6 @@ def edit_agent(  # noqa: C901, PLR0912
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
-
-        # Start a background task after creation to sync pinecone database
-        background_tasks.add_task(
-            sync_file_lists,
-            default_namespace,
-            f"agent-{update_data.agent_id}",
-            str(update_data.agent_id),
-            old_agent_files,
-            update_data.agent_files,
-        )
 
         return Responses[AddAgentResponse].response(
             response,

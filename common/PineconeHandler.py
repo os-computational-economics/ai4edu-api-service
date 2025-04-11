@@ -30,8 +30,8 @@ def sync_file_lists(
     index_name: str,
     namespace: str,
     owner_id: str,
-    old_file_data: dict[str, str] | None,
-    new_file_data: list[str, str] | None,
+    old_file_data: dict[str, str] | None = {},
+    new_file_data: dict[str, str] | None = {},
     ownership_type: str = "agent",
 ) -> None:
     """Synchronizes agent or workspace file lists with Pinecone
@@ -52,6 +52,12 @@ def sync_file_lists(
 
     """
 
+    # Set up dicts
+    if old_file_data is None:
+        old_file_data = {}
+    if new_file_data is None:
+        new_file_data = {}
+
     # Iterate over all old items to check for discrepancies
     for file_id, file_name in old_file_data.items():
         # If this file is contained within the old list but not the new one, delete its embeddings
@@ -71,7 +77,7 @@ def sync_file_lists(
             is_successful_embed = embed_file(
                 index_name=index_name,
                 namespace=namespace,
-                file_path=file_path,
+                file_path=str(file_path),
                 file_id=file_id,
                 file_name=file_name,
                 file_type="pdf",
