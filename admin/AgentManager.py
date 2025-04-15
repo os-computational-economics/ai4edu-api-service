@@ -42,7 +42,7 @@ CONFIG = getenv()
 router = APIRouter()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
-index_name = CONFIG["PINECONE_OLD"]
+index_name = CONFIG["PINECONE_DEV"]
 
 
 class AgentCreate(BaseModel):

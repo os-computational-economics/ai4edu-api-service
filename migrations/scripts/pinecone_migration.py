@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 CONFIG = getenv()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
-default_index_name = "namespace-test"
+index_name = CONFIG["PINECONE_DEV"]
 default_file_type = "pdf"
 
 # Start of the migration script component
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
                 # (1)
                 delete_embeddings_result = delete_embeddings(
-                    index_name=default_index_name, namespace=namespace, file_id=file_id
+                    index_name=index_name, namespace=namespace, file_id=file_id
                 )
                 if delete_embeddings_result:
                     logger.info(
@@ -56,13 +56,13 @@ if __name__ == "__main__":
 
                 # (2)
                 embed_file_result = embed_file(
-                    index_name=default_index_name,
+                    index_name=index_name,
                     namespace=namespace,
                     file_path=str(file_path),
                     file_id=file_id,
                     file_name=file_name,
                     file_type=default_file_type,
-                    agent_id=agent.agent_id,
+                    agent_id=str(agent.agent_id),
                 )
                 if embed_file_result:
                     logger.info(
