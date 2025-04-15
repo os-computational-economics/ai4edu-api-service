@@ -19,8 +19,11 @@ from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from common.EnvManager import getenv
 from common.JWTValidator import get_jwt
+from common.WorkspacePromptHandler import WorkspacePromptHandler
 from migrations.models import (
+    PendingUserReturn,
     User,
     UserValue,
     UserWorkspace,
@@ -29,10 +32,14 @@ from migrations.models import (
     WorkspaceReturn,
     WorkspaceStatus,
     WorkspaceValue,
+    pending_user_return,
     workspace_return,
 )
 from migrations.session import get_db
-from utils.response import APIListReturnPage, Response, Responses
+from utils.response import APIListReturn, APIListReturnPage, Response, Responses
+
+CONFIG = getenv()
+workspace_prompt_handler = WorkspacePromptHandler(CONFIG)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +51,15 @@ class WorkspaceCreate(BaseModel):
 
     workspace_name: str
     school_id: int = 0
-    user_id: int
+    workspace_prompt: str | None = None
+    workspace_comment: str | None = None
+
+
+class WorkspaceEdit(BaseModel):
+    """A Class describing the object sent to edit a workspace."""
+
+    workspace_id: UUID_TYPE
+    workspace_name: str | None = None
     workspace_prompt: str | None = None
     workspace_comment: str | None = None
 
@@ -134,6 +149,8 @@ def create_workspace(
     user_jwt_content = get_jwt(request.state)
     if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
         return Responses[None].forbidden(response)
+    # Get the user ID from the JWT
+    user_id: int = user_jwt_content["user_id"]
     try:
         # NOTE: uuid1 is used since it reduces the chance of a uuid collision to 0
         #       due to it using timestamp data in the generated uuid
@@ -165,18 +182,22 @@ def create_workspace(
             workspace_name=workspace.workspace_name,
             workspace_prompt=workspace.workspace_prompt,
             workspace_comment=workspace.workspace_comment,
-            created_by=workspace.user_id,
+            created_by=user_id,
             workspace_join_code=new_workspace_join_code,
             school_id=workspace.school_id,
         )
         db.add(new_workspace)
 
+        # Cache the workspace prompt if it exists
+        if workspace.workspace_prompt:
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                new_workspace_id, workspace.workspace_prompt
+            )
+
         # Add an associated workplace role
 
         # Update the role of this user to a teacher for this workspace
-        user: UserValue | None = (
-            db.query(User).filter(User.user_id == workspace.user_id).first()
-        )  # pyright: ignore[reportAssignmentType]
+        user: UserValue | None = db.query(User).filter(User.user_id == user_id).first()  # pyright: ignore[reportAssignmentType]
         if not user:
             return Responses[None].response(
                 response,
@@ -287,8 +308,17 @@ def set_workspace_status(
         # Sync user workspace cache
         if update_workspace.workspace_status == WorkspaceStatus.INACTIVE:
             background_tasks.add_task(remove_workspace_roles, db, update_workspace)
+            # Clear the workspace prompt from Redis cache if workspace is deactivated
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                str(update_workspace.workspace_id), ""
+            )
         else:
             background_tasks.add_task(restore_workspace_roles, db, update_workspace)
+            # If workspace is being activated, ensure prompt is in cache
+            if workspace.workspace_prompt:
+                _ = workspace_prompt_handler.cache_workspace_prompt(
+                    str(update_workspace.workspace_id), workspace.workspace_prompt
+                )
 
         return Responses[None].response(
             response,
@@ -325,7 +355,10 @@ def remove_workspace_roles(
             db.query(User)
             .filter(
                 func.json_extract_path_text(
-                    User.workspace_role, workspace.workspace_id
+                    # Postgres json_extract_path_text function requires the json key
+                    # to be a string, so we convert the UUID to a string
+                    User.workspace_role,
+                    str(workspace.workspace_id),
                 ).isnot(None)
             )
             .all()
@@ -423,6 +456,11 @@ def delete_workspace(
         )  # pyright: ignore[reportAssignmentType]
         query.status = WorkspaceStatus.DELETED
         db.commit()
+
+        # Remove workspace prompt from cache if it exists
+        # We don't need to check if it exists in cache, the client will
+        # handle a miss gracefully
+        _ = workspace_prompt_handler.cache_workspace_prompt(workspace, "")
         return Responses[None].response(
             response,
             success=True,
@@ -900,6 +938,79 @@ def set_user_role_with_user_id(
         )
 
 
+# TODO: This is turning out to be almost equivalent to get_workspace_list, so perhaps
+# just merge the two
+@router.get("/get_user_workspace_details")
+def get_user_workspace_details(
+    request: Request,
+    response: FastAPIResponse,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[APIListReturn[WorkspaceReturn]]:
+    """Get the workspace names of the workspaces a user is in
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or 404 error if user is not found
+
+    """
+    user_jwt_content = get_jwt(request.state)
+    calling_user_id = user_jwt_content["user_id"]
+    try:
+        user: UserValue | None = (
+            db.query(User).filter(User.user_id == calling_user_id).first()
+        )  # pyright: ignore[reportAssignmentType]
+        if not user:
+            return Responses[APIListReturn[WorkspaceReturn]].response(
+                response,
+                success=False,
+                data={"items": [], "total": 0},
+                status=HTTPStatus.NOT_FOUND,
+                message="User not found",
+            )
+
+        workspaces: list[WorkspaceValue] = (
+            db.query(Workspace)
+            .join(UserWorkspace, Workspace.workspace_id == UserWorkspace.workspace_id)
+            .filter(
+                UserWorkspace.user_id == calling_user_id,
+                Workspace.status != WorkspaceStatus.DELETED,
+                Workspace.status != WorkspaceStatus.INACTIVE,
+            )
+            .all()
+        )  # pyright: ignore[reportAssignmentType]
+
+        # Omit the workspace_prompt field from the response for privacy
+        for workspace in workspaces:
+            workspace.workspace_prompt = ""
+
+        # Omit the created_by field from the response for privacy
+        for workspace in workspaces:
+            workspace.created_by = ""
+
+        return Responses[APIListReturn[WorkspaceReturn]].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={
+                "items": [workspace_return(workspace) for workspace in workspaces],
+                "total": len(workspaces),
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error setting user role: {e}")
+        return Responses[APIListReturn[WorkspaceReturn]].response(
+            response,
+            success=False,
+            data={"items": [], "total": 0},
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
+
+
 @router.get("/get_workspace_list")
 def get_workspace_list(
     request: Request,
@@ -927,18 +1038,36 @@ def get_workspace_list(
         return Responses[WorkspaceReturn].forbidden_list_page(response)
     try:
         offset = (page - 1) * page_size
+
+        # First, get the total count with a separate query
         if user_jwt_content["system_admin"]:
-            workspaces: list[WorkspaceValue] = (
-                db.query(Workspace)
+            total_workspaces = (
+                db.query(func.count(Workspace.workspace_id))
+                .filter(Workspace.status != WorkspaceStatus.DELETED)
+                .scalar()
+            )
+
+            workspace_query = (
+                db.query(Workspace, User)
+                .join(User, Workspace.created_by == User.user_id)
                 .filter(Workspace.status != WorkspaceStatus.DELETED)
                 .order_by(desc(Workspace.status))
                 .offset(offset)
                 .limit(page_size)
-                .all()
-            )  # pyright: ignore[reportAssignmentType]
+            )
         else:
-            workspaces: list[WorkspaceValue] = (
-                db.query(Workspace)
+            total_workspaces = (
+                db.query(func.count(Workspace.workspace_id))
+                .filter(
+                    Workspace.status != WorkspaceStatus.DELETED,
+                    Workspace.created_by == user_id,
+                )
+                .scalar()
+            )
+
+            workspace_query = (
+                db.query(Workspace, User)
+                .join(User, Workspace.created_by == User.user_id)
                 .filter(
                     Workspace.status != WorkspaceStatus.DELETED,
                     Workspace.created_by == user_id,
@@ -946,15 +1075,28 @@ def get_workspace_list(
                 .order_by(desc(Workspace.status))
                 .offset(offset)
                 .limit(page_size)
-                .all()
-            )  # pyright: ignore[reportAssignmentType]
-        total_workspaces = len(workspaces)
+            )
+
+        # Convert the query results to workspace returns with creator names
+        workspace_returns = []
+        for workspace, creator in workspace_query.all():
+            workspace_value = WorkspaceValue()
+            workspace_value.workspace_id = workspace.workspace_id
+            workspace_value.workspace_name = workspace.workspace_name
+            workspace_value.workspace_prompt = workspace.workspace_prompt
+            workspace_value.workspace_comment = workspace.workspace_comment
+            workspace_value.workspace_join_code = workspace.workspace_join_code
+            workspace_value.status = workspace.status
+            workspace_value.school_id = workspace.school_id
+            workspace_value.created_by = f"{creator.first_name} {creator.last_name}"
+            workspace_returns.append(workspace_return(workspace_value))
+
         return Responses[APIListReturnPage[WorkspaceReturn]].response(
             response,
             success=True,
             status=HTTPStatus.OK,
             data={
-                "items": [workspace_return(workspace) for workspace in workspaces],
+                "items": workspace_returns,
                 "total": total_workspaces,
                 "page": page,
                 "page_size": page_size,
@@ -992,7 +1134,6 @@ def set_workspace_admin_role(
 
     """
     # Verify authority to perform this action
-    logger.info("Entered endpoint")
     user_jwt_content = get_jwt(request.state)
     logger.info(f"system_admin status -> {user_jwt_content['system_admin']}")
     if not user_jwt_content["system_admin"]:
@@ -1024,6 +1165,151 @@ def set_workspace_admin_role(
 
     except Exception as e:
         logger.error(f"Error changing workspace admin status: {e}")
+        db.rollback()
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
+
+
+@router.get("/get_pending_users/{workspace_id}")
+def get_pending_users(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_id: UUID_TYPE,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[APIListReturn[PendingUserReturn]]:
+    """Get a list of users that are pending to join a workspace.
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_id: UUID of the workspace to get pending users for
+        db: SQLAlchemy database session
+
+    Returns:
+        List of pending users with their student IDs and pending status
+
+    """
+    # Check authorization - only teachers in the workspace can access this
+    user_jwt_content = get_jwt(request.state)
+    user_workspace_role = user_jwt_content["workspace_role"].get(
+        str(workspace_id), None
+    )
+    if user_workspace_role != "teacher":
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=False,
+            status=HTTPStatus.FORBIDDEN,
+            message="Only teachers can view pending users",
+            data={"items": [], "total": 0},
+        )
+
+    try:
+        # Query for all pending users in the workspace
+        pending_users = (
+            db.query(UserWorkspace)
+            .filter(
+                UserWorkspace.workspace_id == workspace_id,
+                UserWorkspace.role == "pending",
+            )
+            .all()
+        )
+
+        # Format the results
+        pending_user_list = [
+            pending_user_return(str(user.student_id)) for user in pending_users
+        ]
+
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"items": pending_user_list, "total": len(pending_user_list)},
+        )
+    except Exception as e:
+        logger.error(f"Error getting pending users: {e}")
+        return Responses[APIListReturn[PendingUserReturn]].response(
+            response,
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+            data={"items": [], "total": 0},
+        )
+
+
+@router.post("/edit_workspace")
+def edit_workspace(
+    request: Request,
+    response: FastAPIResponse,
+    workspace_edit: WorkspaceEdit,
+    db: Annotated[Session, Depends(get_db)],
+) -> Response[None]:
+    """Edit an existing workspace's name, prompt, or comment.
+
+    Args:
+        request: FastAPI request object
+        response: FastAPI response object
+        workspace_edit: WorkspaceEdit object containing workspace details to update
+        db: SQLAlchemy database session
+
+    Returns:
+        Success message or error if the workspace is not found or user is not authorized
+
+    """
+    user_jwt_content = get_jwt(request.state)
+
+    # Only system admins or workspace admins can edit workspaces
+    if not user_jwt_content["system_admin"] and not user_jwt_content["workspace_admin"]:
+        return Responses[None].response(
+            response,
+            success=False,
+            status=HTTPStatus.FORBIDDEN,
+            message="You do not have permission to edit this workspace",
+        )
+
+    try:
+        # Find workspace
+        workspace: WorkspaceValue | None = (
+            db.query(Workspace)
+            .filter(Workspace.workspace_id == workspace_edit.workspace_id)
+            .first()
+        )  # pyright: ignore[reportAssignmentType]
+
+        if not workspace:
+            return Responses[None].response(
+                response,
+                success=False,
+                status=HTTPStatus.NOT_FOUND,
+                message="Workspace not found",
+            )
+
+        # Update fields that were provided
+        if workspace_edit.workspace_name is not None:
+            workspace.workspace_name = workspace_edit.workspace_name
+
+        if workspace_edit.workspace_comment is not None:
+            workspace.workspace_comment = workspace_edit.workspace_comment
+
+        if workspace_edit.workspace_prompt is not None:
+            workspace.workspace_prompt = workspace_edit.workspace_prompt
+            # Update the prompt in redis cache
+            _ = workspace_prompt_handler.cache_workspace_prompt(
+                str(workspace_edit.workspace_id), workspace_edit.workspace_prompt
+            )
+
+        db.commit()
+
+        return Responses[None].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            message="Workspace updated successfully",
+        )
+    except Exception as e:
+        logger.error(f"Error updating workspace: {e}")
         db.rollback()
         return Responses[None].response(
             response,

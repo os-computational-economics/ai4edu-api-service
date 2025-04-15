@@ -9,7 +9,7 @@ from typing import Annotated
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func
@@ -32,6 +32,7 @@ from migrations.models import (
     agent_chat_return,
     agent_dashboard_return,
 )
+from common.PineconeHandler import sync_file_lists
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses
 
@@ -40,6 +41,8 @@ CONFIG = getenv()
 
 router = APIRouter()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
+
+default_namespace = "namespace-test"
 
 
 class AgentCreate(BaseModel):
@@ -118,6 +121,7 @@ def create_agent(
     request: Request,
     response: FastAPIResponse,
     agent_data: AgentCreate,
+    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response[AddAgentResponse]:
     """Create a new agent record in the database.
@@ -126,6 +130,7 @@ def create_agent(
         request: FastAPI request object
         response: FastAPI response object
         agent_data: AgentCreate object containing new agent
+        background_tasks: Background tasks to run druing api call
         db: SQLAlchemy database session
 
     Returns:
@@ -169,8 +174,8 @@ def create_agent(
             file_path = fsh.get_file(uuid.UUID(hex=file_id))
             if file_path:
                 _ = embed_file(
-                    "namespace-test",
-                    f"{agent_data.workspace_id}-{new_agent_id}",
+                    default_namespace,
+                    f"agent-{new_agent_id}",
                     str(file_path),
                     file_id,
                     file_name,
@@ -280,6 +285,7 @@ def edit_agent(  # noqa: C901, PLR0912
     request: Request,
     response: FastAPIResponse,
     update_data: AgentUpdate,
+    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response[AddAgentResponse]:
     """Update an existing agent record in the database.
@@ -288,6 +294,7 @@ def edit_agent(  # noqa: C901, PLR0912
         request: FastAPI request object
         response: FastAPI response object
         update_data: AgentUpdate object with agent id, workspace id, updated fields
+        background_tasks: Background tasks to run during api call
         db: SQLAlchemy database session
 
     Returns:
@@ -316,6 +323,9 @@ def edit_agent(  # noqa: C901, PLR0912
             message="Agent not found",
         )
 
+    # Keep existing agent files
+    old_agent_files = agent_to_update.agent_files
+
     # Update the agent fields if provided
     # ! TODO: Fix this block of if statements
 
@@ -335,25 +345,15 @@ def edit_agent(  # noqa: C901, PLR0912
         agent_to_update.model = update_data.model
     if update_data.agent_files is not None:
         agent_to_update.agent_files = update_data.agent_files
-        # embed the files with pinecone
-        fsh = FileStorageHandler(config=CONFIG)
-        for file_id, file_name in update_data.agent_files.items():
-            file_path = fsh.get_file(uuid.UUID(file_id))
-            if file_path:
-                _ = embed_file(
-                    "namespace-test",
-                    f"{update_data.workspace_id}-{update_data.agent_id}",
-                    str(file_path),
-                    file_id,
-                    file_name,
-                    "pdf",
-                    str(update_data.agent_id),
-                    #  casting to str because pinecone file metadata does not support
-                    #  UUID type
-                    str(update_data.workspace_id) or str(agent_to_update.workspace_id),
-                )
-            else:
-                logger.error(f"Failed to embed file: {file_id}")
+        # Do a workspace sync to ensure embeddings are correctly updated
+        background_tasks.add_task(
+            sync_file_lists,
+            default_namespace,
+            f"agent-{update_data.agent_id}",
+            str(update_data.agent_id),
+            old_agent_files,
+            update_data.agent_files,
+        )
     agent_to_update.updated_at = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
 
     if update_data.system_prompt is not None:
@@ -366,6 +366,7 @@ def edit_agent(  # noqa: C901, PLR0912
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
+
         return Responses[AddAgentResponse].response(
             response,
             success=True,

@@ -347,6 +347,36 @@ class UserReturn(ModelReturn):
     workspace_role: WorkspaceRoles
 
 
+class PrivilegedUserReturn(UserReturn):
+    """Dictionary representation of a privileged User row with additional admin information"""
+
+    system_admin: bool
+    workspace_admin: bool
+    created_workspaces: dict[UUID_TYPE, str]  # workspace_id: workspace_name
+
+
+def privileged_user_return(
+    uv: UserValue | None = None, created_workspaces: dict[UUID_TYPE, str] | None = None
+) -> PrivilegedUserReturn:
+    """Makes a PrivilegedUserReturn object from a python object
+
+    Args:
+        uv: The UserValue to return
+        created_workspaces: Dict of workspace IDs to workspace names created by the user
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    base_return = user_return(uv)
+    return {
+        **base_return,
+        "system_admin": uv.system_admin if uv else False,
+        "workspace_admin": uv.workspace_admin if uv else False,
+        "created_workspaces": created_workspaces or {},
+    }
+
+
 def user_return(uv: UserValue | None = None) -> UserReturn:
     """Makes an UserReturn object from a python object
 
@@ -519,7 +549,6 @@ class WorkspaceValue:
     workspace_join_code: str = ""
     status: WorkspaceStatus = WorkspaceStatus.ACTIVE
     school_id: int = 0
-    workspace_password: str = ""
 
 
 class WorkspaceReturn(ModelReturn):
@@ -532,6 +561,10 @@ class WorkspaceReturn(ModelReturn):
     workspace_join_code: str
     school_id: int
     status: WorkspaceStatus
+    created_by: str
+    # here, created_by is the name of the creator of the workspace
+    # not the user_id. This is to be consistent with the data model, for the convenience
+    # of the front end.
 
 
 def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
@@ -553,6 +586,7 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
             "workspace_join_code": wv.workspace_join_code,
             "school_id": wv.school_id,
             "status": wv.status,
+            "created_by": wv.created_by,
         }
         if wv
         else {
@@ -563,6 +597,7 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
             "workspace_join_code": "",
             "status": WorkspaceStatus.INACTIVE,
             "school_id": 0,
+            "created_by": "",
         }
     )
 
@@ -627,6 +662,29 @@ class UserFeedbackValue:
     rating_format: Literal[2, 5, 10] = 2
     rating: int = 0
     comments: str = ""
+
+
+class PendingUserReturn(ModelReturn):
+    """Dictionary representation of a pending user in a workspace"""
+
+    student_id: str
+    status: str
+
+
+def pending_user_return(student_id: str) -> PendingUserReturn:
+    """Makes a PendingUserReturn object from a student_id
+
+    Args:
+        student_id: The student ID to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {
+        "student_id": student_id,
+        "status": "pending",
+    }
 
 
 class URLReturn(ModelReturn):

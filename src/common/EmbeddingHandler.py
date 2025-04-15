@@ -71,6 +71,45 @@ def embed_file(
     return False
 
 
+def delete_embeddings(index_name: str, namespace: str, file_id: str) -> bool:
+    """Delete a file and its embeddings from a pinecone index
+
+    Args:
+        index_name: The name of the Pinecone index.
+        namespace: The namespace of the Pinecone index.
+        file_id: The ID of the file to delete.
+
+    Returns:
+        True if the embedding removal is successful, False otherwise.
+
+    """
+    # Connect to index
+    index = pc.Index(index_name)
+
+    # Search for vectors with the given file_id
+    # docs_to_delete = index.fetch(ids=[file_id], namespace=namespace)
+    docs_to_delete = index.query(
+        namespace=namespace,
+        top_k=1000,
+        include_metadata=True,
+        filter={"file_id": file_id},
+        vector=[0.0]
+        * 1536,  # Dummy vector, this should not be used within filter-only queries
+    )
+
+    # Get ids to delete
+    ids_to_delete = [match["id"] for match in docs_to_delete["matches"]]
+
+    if not ids_to_delete:
+        print(f"No embeddings found for file_id: {file_id}")
+        return False
+
+    # Delete the matched vector IDs
+    index.delete(ids=ids_to_delete, namespace=namespace)
+
+    return True
+
+
 def pdf_loader(file_path: str) -> list[Document]:
     """Load the PDF file and embed the contents into the Pinecone index.
 

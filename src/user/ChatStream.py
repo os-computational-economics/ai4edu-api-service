@@ -17,6 +17,7 @@ from common.AgentPromptHandler import AgentPromptHandler
 from common.EnvManager import Config
 from common.Messages import Message, MessageHistory
 from common.MessageStorageHandler import MessageStorageHandler
+from common.WorkspacePromptHandler import WorkspacePromptHandler
 from user.LangChainHelper import Provider, chat_stream_with_retrieve
 from user.TtsStream import TtsStream
 
@@ -145,6 +146,14 @@ class ChatStream:
         agent_prompt = self.__add_current_date_time_to_system_prompt(
             agent_prompt_handler.get_agent_prompt(self.agent_id)
         )
+        # get workspace prompt
+        workspace_prompt_handler = WorkspacePromptHandler(config=self.CONFIG)
+        workspace_prompt = workspace_prompt_handler.get_cached_workspace_prompt(
+            chat_stream_model.workspace_id,
+        )
+        # add workspace prompt to the system prompt
+        if workspace_prompt:
+            agent_prompt = f"{workspace_prompt}\n{agent_prompt}"
         return EventSourceResponse(
             self.__chat_generator(chat_stream_model.messages, agent_prompt or ""),
         )
