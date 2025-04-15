@@ -3,12 +3,11 @@
 import logging
 import uuid
 
-from migrations.session import get_db
-
 from common.AgentPromptHandler import AgentPromptHandler
-from common.EmbeddingHandler import embed_file, delete_embeddings
+from common.EmbeddingHandler import embed_file
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
+from migrations.session import get_db
 from migrations.models import Agent, AgentValue
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ CONFIG = getenv()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
 index_name = CONFIG["PINECONE_DEV"]
-default_file_type = "pdf"
+DEFAULT_FILE_TYPE = "pdf"
 
 # Start of the migration script component
 # Note that only the pinecone database is changed through this script,
@@ -48,7 +47,7 @@ if __name__ == "__main__":
                     file_path=str(file_path),
                     file_id=file_id,
                     file_name=file_name,
-                    file_type=default_file_type,
+                    file_type=DEFAULT_FILE_TYPE,
                     agent_id=str(agent.agent_id),
                 )
                 if embed_file_result:
