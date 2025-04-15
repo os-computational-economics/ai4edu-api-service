@@ -28,33 +28,20 @@ if __name__ == "__main__":
     fsh = FileStorageHandler(CONFIG)
 
     # Get all agents first
-    agents: list[AgentValue] | None = db.query(Agent).all()
+    agents: list[AgentValue] | None = (
+        db.query(Agent).all()
+    )  # pyright: ignore[reportAssignmentType]
 
     if not agents:
         logger.info("No agents to modify!")
     else:
         for agent in agents:
-            # For each file...
-            # 1. Delete the old file embedding using the existing file id
-            # 2. Add a new file embedding under the same file id with the new structure of 'agent-{agent_id}'
-            for file_id, file_name in agent.agent_files.items:
+            # For each agent, get its files and embed them within the new pinecone index
+            # under the same file id and with the new structure 'agent-{agent_id}'
+            for file_id, file_name in agent.agent_files.items():
                 file_path = fsh.get_file(uuid.UUID(hex=file_id))
                 namespace = f"agent-{agent.agent_id}"
 
-                # (1)
-                delete_embeddings_result = delete_embeddings(
-                    index_name=index_name, namespace=namespace, file_id=file_id
-                )
-                if delete_embeddings_result:
-                    logger.info(
-                        f"Successfully deleted embeedings for file with id: {file_id}"
-                    )
-                else:
-                    logger.info(
-                        f"Failed to delete embeddings for file with id: {file_id}"
-                    )
-
-                # (2)
                 embed_file_result = embed_file(
                     index_name=index_name,
                     namespace=namespace,
