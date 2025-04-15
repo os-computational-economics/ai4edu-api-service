@@ -42,7 +42,7 @@ CONFIG = getenv()
 router = APIRouter()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
-default_namespace = "namespace-test"
+index_name = CONFIG["PINECONE_OLD"]
 
 
 class AgentCreate(BaseModel):
@@ -174,7 +174,7 @@ def create_agent(
             file_path = fsh.get_file(uuid.UUID(hex=file_id))
             if file_path:
                 _ = embed_file(
-                    default_namespace,
+                    index_name,
                     f"agent-{new_agent_id}",
                     str(file_path),
                     file_id,
@@ -348,7 +348,7 @@ def edit_agent(  # noqa: C901, PLR0912
         # Do a workspace sync to ensure embeddings are correctly updated
         background_tasks.add_task(
             sync_file_lists,
-            default_namespace,
+            index_name,
             f"agent-{update_data.agent_id}",
             str(update_data.agent_id),
             old_agent_files,
