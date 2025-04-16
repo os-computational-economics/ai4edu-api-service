@@ -27,9 +27,7 @@ if __name__ == "__main__":
     fsh = FileStorageHandler(CONFIG)
 
     # Get all agents first
-    agents: list[AgentValue] | None = (
-        db.query(Agent).all()
-    )  # pyright: ignore[reportAssignmentType]
+    agents: list[AgentValue] | None = db.query(Agent).all()  # pyright: ignore[reportAssignmentType]
 
     if not agents:
         logger.info("No agents to modify!")

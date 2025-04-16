@@ -26,7 +26,7 @@ ConfigKeys = Literal[
     "DYNAMODB_NAME",
     "PINECONE_OLD",
     "PINECONE_DEV",
-    "PINECONE_PROD"
+    "PINECONE_PROD",
 ]
 
 VARS: list[ConfigKeys] = list(get_args(ConfigKeys))
