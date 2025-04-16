@@ -20,6 +20,7 @@ from common.EmbeddingHandler import embed_file
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
 from common.JWTValidator import get_jwt
+from common.PineconeHandler import sync_file_lists
 from migrations.models import (
     Agent,
     AgentChatReturn,
@@ -32,7 +33,6 @@ from migrations.models import (
     agent_chat_return,
     agent_dashboard_return,
 )
-from common.PineconeHandler import sync_file_lists
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses
 
@@ -42,7 +42,7 @@ CONFIG = getenv()
 router = APIRouter()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
-index_name = CONFIG["PINECONE_DEV"]
+index_name = CONFIG["PINECONE_OLD"]
 
 
 class AgentCreate(BaseModel):
@@ -121,7 +121,6 @@ def create_agent(
     request: Request,
     response: FastAPIResponse,
     agent_data: AgentCreate,
-    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response[AddAgentResponse]:
     """Create a new agent record in the database.

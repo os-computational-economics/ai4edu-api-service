@@ -1,19 +1,16 @@
+# Copyright (c) 2024.
 """A helper class for facilitating pinecone operations"""
 
 import logging
 import uuid
 
-from langchain.document_loaders import PyPDFLoader
-from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
 from pinecone.control.pinecone import Pinecone
 from pydantic import SecretStr
 
-from common.EmbeddingHandler import embed_file, delete_embeddings
-from common.FileStorageHandler import FileStorageHandler
-
+from common.EmbeddingHandler import delete_embeddings, embed_file
 from common.EnvManager import getenv
+from common.FileStorageHandler import FileStorageHandler
 
 CONFIG = getenv()
 
@@ -51,7 +48,6 @@ def sync_file_lists(
         agent_id or workspace_id will be used based on the 'id' parameter
 
     """
-
     # Set up dicts
     if old_file_data is None:
         old_file_data = {}
