@@ -7,14 +7,16 @@ from common.AgentPromptHandler import AgentPromptHandler
 from common.EmbeddingHandler import embed_file
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
-from migrations.session import get_db
 from migrations.models import Agent, AgentValue
+from migrations.session import get_db
 
 logger = logging.getLogger(__name__)
 CONFIG = getenv()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
 
-index_name = CONFIG["PINECONE_DEV"]
+# this will re-embed all files based on the
+# current environment, either into ai4edu-dev or ai4edu-prod
+index_name = CONFIG["PINECONE_INDEX"]
 DEFAULT_FILE_TYPE = "pdf"
 
 # Start of the migration script component

@@ -49,7 +49,7 @@ XLAB_API_KEY = CONFIG["XLAB_API_KEY"]
 
 # Initialize Pinecone and create an index
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index_name = CONFIG["PINECONE_DEV"]
+index_name = CONFIG["PINECONE_OLD"]
 
 if index_name not in pc.list_indexes().names():
     pc.create_index(
