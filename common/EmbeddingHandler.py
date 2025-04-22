@@ -87,7 +87,6 @@ def delete_embeddings(index_name: str, namespace: str, file_id: str) -> bool:
     index = pc.Index(index_name)
 
     # Search for vectors with the given file_id
-    # docs_to_delete = index.fetch(ids=[file_id], namespace=namespace)
     docs_to_delete = index.query(
         namespace=namespace,
         top_k=1000,
