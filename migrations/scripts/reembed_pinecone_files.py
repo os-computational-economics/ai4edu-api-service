@@ -64,9 +64,6 @@ else:
 
             # Only add embeddings to given index if they don't already exist there!
             if not ids_found:
-                file_path = fsh.get_file(uuid.UUID(hex=file_id))
-                namespace = f"agent-{agent.agent_id}"
-
                 embed_file_result = embed_file(
                     index_name=index_name,
                     namespace=namespace,
