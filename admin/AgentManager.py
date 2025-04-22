@@ -9,7 +9,7 @@ from typing import Annotated
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func
@@ -20,6 +20,7 @@ from common.EmbeddingHandler import embed_file
 from common.EnvManager import getenv
 from common.FileStorageHandler import FileStorageHandler
 from common.JWTValidator import get_jwt
+from common.PineconeHandler import sync_file_lists
 from migrations.models import (
     Agent,
     AgentChatReturn,
@@ -40,6 +41,8 @@ CONFIG = getenv()
 
 router = APIRouter()
 agent_prompt_handler = AgentPromptHandler(config=CONFIG)
+
+index_name = CONFIG["PINECONE_OLD"]
 
 
 class AgentCreate(BaseModel):
@@ -126,6 +129,7 @@ def create_agent(
         request: FastAPI request object
         response: FastAPI response object
         agent_data: AgentCreate object containing new agent
+        background_tasks: Background tasks to run druing api call
         db: SQLAlchemy database session
 
     Returns:
@@ -169,8 +173,8 @@ def create_agent(
             file_path = fsh.get_file(uuid.UUID(hex=file_id))
             if file_path:
                 _ = embed_file(
-                    "namespace-test",
-                    f"{agent_data.workspace_id}-{new_agent_id}",
+                    index_name,
+                    f"agent-{new_agent_id}",
                     str(file_path),
                     file_id,
                     file_name,
@@ -234,7 +238,7 @@ def delete_agent(
 
     user_jwt_content = get_jwt(request.state)
     if (
-        user_jwt_content["workspace_role"].get(ws_id, None) != "teacher"
+        user_jwt_content["workspace_role"].get(str(ws_id), None) != "teacher"
         and not user_jwt_content["system_admin"]
     ):
         return Responses[AddAgentResponse].forbidden(
@@ -280,6 +284,7 @@ def edit_agent(  # noqa: C901, PLR0912
     request: Request,
     response: FastAPIResponse,
     update_data: AgentUpdate,
+    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
 ) -> Response[AddAgentResponse]:
     """Update an existing agent record in the database.
@@ -288,6 +293,7 @@ def edit_agent(  # noqa: C901, PLR0912
         request: FastAPI request object
         response: FastAPI response object
         update_data: AgentUpdate object with agent id, workspace id, updated fields
+        background_tasks: Background tasks to run during api call
         db: SQLAlchemy database session
 
     Returns:
@@ -316,13 +322,16 @@ def edit_agent(  # noqa: C901, PLR0912
             message="Agent not found",
         )
 
+    # Keep existing agent files
+    old_agent_files = agent_to_update.agent_files
+
     # Update the agent fields if provided
     # ! TODO: Fix this block of if statements
 
     if update_data.agent_name is not None:
         agent_to_update.agent_name = update_data.agent_name
     if update_data.workspace_id is not None:
-        agent_to_update.workspace_id = update_data.workspace_id
+        agent_to_update.workspace_id = UUID(update_data.workspace_id)
     if update_data.creator is not None:
         agent_to_update.creator = update_data.creator
     if update_data.voice is not None:
@@ -335,23 +344,15 @@ def edit_agent(  # noqa: C901, PLR0912
         agent_to_update.model = update_data.model
     if update_data.agent_files is not None:
         agent_to_update.agent_files = update_data.agent_files
-        # embed the files with pinecone
-        fsh = FileStorageHandler(config=CONFIG)
-        for file_id, file_name in update_data.agent_files.items():
-            file_path = fsh.get_file(uuid.UUID(file_id))
-            if file_path:
-                _ = embed_file(
-                    "namespace-test",
-                    f"{update_data.workspace_id}-{update_data.agent_id}",
-                    str(file_path),
-                    file_id,
-                    file_name,
-                    "pdf",
-                    str(update_data.agent_id),
-                    update_data.workspace_id or agent_to_update.workspace_id,
-                )
-            else:
-                logger.error(f"Failed to embed file: {file_id}")
+        # Do a workspace sync to ensure embeddings are correctly updated
+        background_tasks.add_task(
+            sync_file_lists,
+            index_name,
+            f"agent-{update_data.agent_id}",
+            str(update_data.agent_id),
+            old_agent_files,
+            update_data.agent_files,
+        )
     agent_to_update.updated_at = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
 
     if update_data.system_prompt is not None:
@@ -364,6 +365,7 @@ def edit_agent(  # noqa: C901, PLR0912
         db.commit()
         db.refresh(agent_to_update)
         logger.info(f"Updated agent: {agent_to_update.agent_id}")
+
         return Responses[AddAgentResponse].response(
             response,
             success=True,
@@ -513,7 +515,7 @@ def get_agent_by_id(
         )
     agent_workspace = agent.workspace_id
     user_jwt_content = get_jwt(request.state)
-    user_role = user_jwt_content["workspace_role"].get(agent_workspace, None)
+    user_role = user_jwt_content["workspace_role"].get(str(agent_workspace), None)
     if user_role is None:
         return Responses[AgentChatReturn].forbidden(response, data=agent_chat_return())
     # if user_role != "teacher":

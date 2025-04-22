@@ -4,13 +4,22 @@
 import logging
 from http import HTTPStatus
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 from fastapi import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 
 from common.JWTValidator import get_jwt
-from migrations.models import User, UserReturn, UserValue, UserWorkspace
+from migrations.models import (
+    PrivilegedUserReturn,
+    User,
+    UserReturn,
+    UserValue,
+    UserWorkspace,
+    Workspace,
+    privileged_user_return,
+)
 from migrations.session import get_db
 from utils.response import APIListReturn, Response, Responses
 
@@ -79,7 +88,11 @@ def get_user_list(
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "student_id": user.student_id,
-                "workspace_role": user.workspace_role if is_teacher_or_admin else {},
+                "workspace_role": {
+                    workspace_id: user.workspace_role.get(workspace_id, "")
+                }
+                if is_teacher_or_admin and workspace_id != "all"
+                else {},
             }
             for user in users
         ]
@@ -93,6 +106,83 @@ def get_user_list(
     except Exception as e:
         logger.error(f"Error fetching user list: {e}")
         return Responses[APIListReturn[UserReturn]].response(
+            response,
+            data={"items": [], "total": 0},
+            success=False,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=str(e),
+        )
+
+
+@router.get("/get_privileged_user_list")
+def get_privileged_user_list(
+    request: Request,
+    response: FastAPIResponse,
+    db: Annotated[Session, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 10,
+) -> Response[APIListReturn[PrivilegedUserReturn]]:
+    """Get a list of privileged users (system admins and workspace admins) with pagination.
+
+    Args:
+        request: Request object
+        response: Response object
+        db: Database session
+        page: Page number.
+        page_size: Number of users per page.
+
+    Returns:
+        Response: A list of privileged users with their admin status and created workspaces
+
+    """
+    user_jwt_content = get_jwt(request.state)
+
+    if not user_jwt_content["system_admin"]:
+        return Responses[PrivilegedUserReturn].forbidden_list(response)
+
+    try:
+        # Get privileged users
+        query = db.query(User).filter(
+            (User.system_admin == True) | (User.workspace_admin == True)
+        )
+        total = query.count()
+        query = query.order_by(User.user_id)
+        skip = (page - 1) * page_size
+        users: list[UserValue] = query.offset(skip).limit(page_size).all()  # pyright: ignore[reportAssignmentType]
+
+        # Get created workspaces for all users in one query
+        user_ids = [user.user_id for user in users]
+        workspaces = (
+            db.query(
+                Workspace.workspace_id, Workspace.workspace_name, Workspace.created_by
+            )
+            .filter(Workspace.created_by.in_(user_ids))
+            .all()
+        )
+
+        # Group workspaces by creator
+        user_workspaces: dict[int, dict[UUID, str]] = {}
+        for workspace_id, workspace_name, created_by in workspaces:
+            if created_by not in user_workspaces:
+                user_workspaces[created_by] = {}
+            user_workspaces[created_by][workspace_id] = workspace_name
+
+        user_list: list[PrivilegedUserReturn] = [
+            privileged_user_return(
+                user, created_workspaces=user_workspaces.get(user.user_id, {})
+            )
+            for user in users
+        ]
+
+        return Responses[APIListReturn[PrivilegedUserReturn]].response(
+            response,
+            success=True,
+            status=HTTPStatus.OK,
+            data={"items": user_list, "total": total},
+        )
+    except Exception as e:
+        logger.error(f"Error fetching privileged user list: {e}")
+        return Responses[APIListReturn[PrivilegedUserReturn]].response(
             response,
             data={"items": [], "total": 0},
             success=False,
