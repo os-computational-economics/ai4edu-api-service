@@ -82,7 +82,7 @@ llm3 = ChatOpenAI(
 )
 llm4 = ChatOpenAI(
     api_key=SecretStr(XLAB_API_KEY),
-    model="/workspace/models/QwQ-32B",
+    model="/workspace/models/Qwen3-32B",
     base_url="https://xlab-gpu0.weatherhead.case.edu/openai-compatible-api/v1",
     streaming=True,
 )
