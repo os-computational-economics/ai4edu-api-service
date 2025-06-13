@@ -37,6 +37,10 @@
 1. Tools to help you develop:
    - PGAdmin: http://localhost:5050 (no login required, you can manage the local database from here, you can give yourself a system_admin role in the `ai_users` table)
    - Redis Stack: http://localhost:8001 (no login required, you can manage the local Redis from here)
+  
+## System architecture
+
+![System architecture](./diagrams/architecture.svg)
 
 ## This is the repo for the AI4EDU experimental project.
 
