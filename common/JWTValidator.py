@@ -22,6 +22,7 @@ class UserJWTContent(TypedDict):
     # !TODO: Type check the workspace role type
     workspace_role: dict[str, str]
     system_admin: bool
+    workspace_admin: bool
     email: str
     iat: datetime
     exp: datetime
@@ -41,6 +42,7 @@ def default_jwt() -> UserJWTContent:
         student_id="",
         workspace_role={},
         system_admin=False,
+        workspace_admin=False,
         email="",
         iat=datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"])),
         exp=datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"])),
@@ -94,6 +96,7 @@ def parse_jwt(user_jwt_content: dict[str, Any] | Any) -> UserJWTContent | None: 
                 ]
             },
             system_admin=bool(user_jwt_content["system_admin"]),  # pyright: ignore[reportAny]
+            workspace_admin=bool(user_jwt_content["workspace_admin"]),  # pyright: ignore[reportAny]
             email=str(user_jwt_content["email"]),  # pyright: ignore[reportAny]
             iat=datetime.fromtimestamp(
                 user_jwt_content["iat"],  # pyright: ignore[reportAny]

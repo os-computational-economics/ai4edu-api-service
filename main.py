@@ -70,6 +70,7 @@ CONFIG = getenv()
 
 # initialize FastAPI app and OpenAI client
 app = FastAPI(
+    docs_url=f"{URL_PATHS['current_dev_admin']}/docs",
     openapi_url=f"{URL_PATHS['current_dev_admin']}/openapi.json",
 )
 openai_client = OpenAI(api_key=CONFIG["OPENAI_API_KEY"])

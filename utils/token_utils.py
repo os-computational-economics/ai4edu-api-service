@@ -76,6 +76,7 @@ def jwt_generator(
     student_id: str,
     workspace_role: dict[str, Any],  # pyright: ignore[reportExplicitAny]
     system_admin: bool,
+    workspace_admin: bool,
     email: str,
 ) -> str:
     """Generates a JWT token with the given user information
@@ -101,6 +102,7 @@ def jwt_generator(
         "student_id": student_id,
         "workspace_role": workspace_role,
         "system_admin": system_admin,
+        "workspace_admin": workspace_admin,
         "iat": datetime.now(tz=UTC),
         "exp": datetime.now(tz=UTC) + timedelta(minutes=30),
     }

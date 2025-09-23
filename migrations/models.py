@@ -29,7 +29,7 @@ from common.EnvManager import getenv
 CONFIG = getenv()
 DEFAULT_UUID = UUID_TYPE("00000000-0000-0000-0000-000000000000")
 
-WorkspaceRole = Literal["student", "teacher", "admin"]
+WorkspaceRole = Literal["student", "teacher"]
 WorkspaceRoles = dict[str, WorkspaceRole]
 
 
@@ -65,7 +65,7 @@ class Agent(Base):
     )
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     agent_name: Column[str] = Column(String(255), nullable=False)
-    workspace_id: Column[str] = Column(String(31))
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
     creator: Column[str] = Column(String(16))
     updated_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     voice: Column[bool] = Column(Boolean, default=False, nullable=False)
@@ -99,7 +99,7 @@ class AgentValue:
     agent_id: UUID_TYPE = DEFAULT_UUID
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_name: str = ""
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     creator: str = ""
     updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     voice: bool = False
@@ -114,7 +114,7 @@ class AgentChatReturn(ModelReturn):
 
     agent_id: str
     agent_name: str
-    workspace_id: str
+    workspace_id: UUID_TYPE
     voice: bool
     allow_model_choice: bool
     model: str  # allow_model_choice is True, model will be empty for user choice
@@ -150,7 +150,7 @@ def agent_chat_return(av: AgentValue | None = None) -> AgentChatReturn:
             "allow_model_choice": False,
             "model": "",
             "voice": False,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "agent_files": {},
             "status": AgentStatus.INACTIVE,
         }
@@ -202,7 +202,7 @@ def agent_dashboard_return(
             "allow_model_choice": False,
             "model": "",
             "voice": False,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "agent_files": {},
             "created_at": "",
             "creator": "",
@@ -231,7 +231,7 @@ class Thread(Base):
         nullable=False,
     )
     user_id: Column[int] = Column(Integer, nullable=False)
-    workspace_id: Column[str] = Column(String(16), nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
     agent_name: Column[str] = Column(String(255), nullable=False)
 
     @override
@@ -248,7 +248,7 @@ class ThreadValue:
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     agent_id: UUID_TYPE = DEFAULT_UUID
     user_id: int = 0
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     agent_name: str = ""
 
 
@@ -259,7 +259,7 @@ class ThreadReturn(ModelReturn):
     created_at: str
     agent_id: str
     user_id: int
-    workspace_id: str
+    workspace_id: UUID_TYPE
     agent_name: str
 
 
@@ -289,7 +289,7 @@ def thread_return(tv: ThreadValue | None = None) -> ThreadReturn:
             "created_at": "",
             "thread_id": "",
             "user_id": 0,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
         }
     )
 
@@ -305,10 +305,11 @@ class User(Base):
     email: Column[str] = Column(String(150), nullable=False, unique=True)
     student_id: Column[str] = Column(String(20), nullable=False, unique=True)
     workspace_role: Column[JSON] = Column(JSON, nullable=False)
-    system_admin: Column[bool] = Column(Boolean, default=False, nullable=False)
     school_id: Column[int] = Column(Integer, nullable=False)
     last_login: Column[datetime] = Column(DateTime)
     create_at: Column[datetime] = Column(DateTime)
+    system_admin: Column[bool] = Column(Boolean, default=False, nullable=False)
+    workspace_admin: Column[bool] = Column(Boolean, default=False, nullable=False)
 
     @override
     def __repr__(self) -> str:
@@ -325,6 +326,7 @@ class UserValue:
     student_id: str = ""
     workspace_role: dict[str, Any]  # pyright: ignore[reportExplicitAny]
     system_admin: bool = False
+    workspace_admin: bool = False
     school_id: int = 0
     last_login: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     create_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
@@ -343,6 +345,36 @@ class UserReturn(ModelReturn):
     last_name: str
     student_id: str
     workspace_role: WorkspaceRoles
+
+
+class PrivilegedUserReturn(UserReturn):
+    """Dictionary representation of a privileged User row with additional admin information"""
+
+    system_admin: bool
+    workspace_admin: bool
+    created_workspaces: dict[UUID_TYPE, str]  # workspace_id: workspace_name
+
+
+def privileged_user_return(
+    uv: UserValue | None = None, created_workspaces: dict[UUID_TYPE, str] | None = None
+) -> PrivilegedUserReturn:
+    """Makes a PrivilegedUserReturn object from a python object
+
+    Args:
+        uv: The UserValue to return
+        created_workspaces: Dict of workspace IDs to workspace names created by the user
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    base_return = user_return(uv)
+    return {
+        **base_return,
+        "system_admin": uv.system_admin if uv else False,
+        "workspace_admin": uv.workspace_admin if uv else False,
+        "created_workspaces": created_workspaces or {},
+    }
 
 
 def user_return(uv: UserValue | None = None) -> UserReturn:
@@ -478,15 +510,18 @@ class Workspace(Base):
 
     __tablename__: Literal["ai_workspaces"] = "ai_workspaces"
 
-    workspace_id: Column[str] = Column(String(16), primary_key=True, nullable=False)
-    workspace_name: Column[str] = Column(String(64), unique=True, nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(
+        UUID(as_uuid=True), primary_key=True, nullable=False
+    )
+    workspace_name: Column[str] = Column(String(64), unique=False, nullable=False)
+    workspace_prompt: Column[str] = Column(Text(), nullable=True)
+    workspace_comment: Column[str] = Column(Text(), nullable=True)
+    created_by: Column[int] = Column(Integer, nullable=False)
+    workspace_join_code: Column[str] = Column(String(8), nullable=False, unique=True)
     status: Column[int] = Column(
-        Integer,
-        default=1,
-        nullable=False,
+        Integer, default=1, nullable=False
     )  # 1-active, 0-inactive, 2-deleted
     school_id: Column[int] = Column(Integer, default=0, nullable=False)
-    workspace_password: Column[str] = Column(String(128), nullable=False)
 
     @override
     def __repr__(self) -> str:
@@ -506,20 +541,30 @@ class WorkspaceStatus(IntEnum):
 class WorkspaceValue:
     """Python representation of a Workspace row"""
 
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     workspace_name: str = ""
+    workspace_prompt: str = ""
+    workspace_comment: str = ""
+    created_by: str = ""
+    workspace_join_code: str = ""
     status: WorkspaceStatus = WorkspaceStatus.ACTIVE
     school_id: int = 0
-    workspace_password: str = ""
 
 
 class WorkspaceReturn(ModelReturn):
     """Dictionary representation of a Workspace row"""
 
-    workspace_id: str
+    workspace_id: UUID_TYPE
     workspace_name: str
-    status: WorkspaceStatus
+    workspace_prompt: str | None
+    workspace_comment: str | None
+    workspace_join_code: str
     school_id: int
+    status: WorkspaceStatus
+    created_by: str
+    # here, created_by is the name of the creator of the workspace
+    # not the user_id. This is to be consistent with the data model, for the convenience
+    # of the front end.
 
 
 def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
@@ -534,17 +579,25 @@ def workspace_return(wv: WorkspaceValue | None = None) -> WorkspaceReturn:
     """
     return (
         {
-            "school_id": wv.school_id,
-            "status": wv.status,
             "workspace_id": wv.workspace_id,
             "workspace_name": wv.workspace_name,
+            "workspace_prompt": wv.workspace_prompt,
+            "workspace_comment": wv.workspace_comment,
+            "workspace_join_code": wv.workspace_join_code,
+            "school_id": wv.school_id,
+            "status": wv.status,
+            "created_by": wv.created_by,
         }
         if wv
         else {
-            "school_id": 0,
-            "status": WorkspaceStatus.INACTIVE,
-            "workspace_id": "",
+            "workspace_id": DEFAULT_UUID,
             "workspace_name": "",
+            "workspace_prompt": "",
+            "workspace_comment": "",
+            "workspace_join_code": "",
+            "status": WorkspaceStatus.INACTIVE,
+            "school_id": 0,
+            "created_by": "",
         }
     )
 
@@ -555,14 +608,14 @@ class UserWorkspace(Base):
     __tablename__: Literal["ai_user_workspace"] = "ai_user_workspace"
 
     user_id: Column[int] = Column(Integer)
-    workspace_id: Column[str] = Column(String(16), nullable=False)
+    workspace_id: Column[UUID_TYPE] = Column(UUID(as_uuid=True), nullable=False)
     role: Column[str] = Column(String(16), default="pending", nullable=False)
     created_at: Column[datetime] = Column(DateTime, default=func.now(), nullable=False)
     updated_at: Column[datetime] = Column(DateTime)
     student_id: Column[str] = Column(String(16), nullable=False)
 
     __table_args__: tuple[PrimaryKeyConstraint] = (
-        PrimaryKeyConstraint("workspace_id", "student_id", name="ai_user_workspace_pk"),
+        PrimaryKeyConstraint("workspace_id", "user_id", name="ai_user_workspace_pk"),
     )
 
     @override
@@ -576,7 +629,7 @@ class UserWorkspaceValue:
     """Python representation of a UserWorkspace row"""
 
     user_id: int = 0
-    workspace_id: str = ""
+    workspace_id: UUID_TYPE = DEFAULT_UUID
     role: str = ""
     created_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
     updated_at: datetime = datetime.now(tz=ZoneInfo(CONFIG["TIMEZONE"]))
@@ -609,6 +662,29 @@ class UserFeedbackValue:
     rating_format: Literal[2, 5, 10] = 2
     rating: int = 0
     comments: str = ""
+
+
+class PendingUserReturn(ModelReturn):
+    """Dictionary representation of a pending user in a workspace"""
+
+    student_id: str
+    status: str
+
+
+def pending_user_return(student_id: str) -> PendingUserReturn:
+    """Makes a PendingUserReturn object from a student_id
+
+    Args:
+        student_id: The student ID to return
+
+    Returns:
+        A TypedDict of the return object
+
+    """
+    return {
+        "student_id": student_id,
+        "status": "pending",
+    }
 
 
 class URLReturn(ModelReturn):

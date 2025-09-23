@@ -51,6 +51,7 @@ class UserAuth:
                     student_id=student_id,
                     workspace_role={},
                     system_admin=False,
+                    workspace_admin=False,
                     # default role is student
                     school_id=0,
                     last_login=datetime.now(tz=ZoneInfo(self.config["TIMEZONE"])),
@@ -131,6 +132,7 @@ class UserAuth:
                 last_name = user.last_name
                 student_id = user.student_id
                 system_admin = user.system_admin
+                workspace_admin = user.workspace_admin
                 # ! MAY RETURN DELETED WORKSPACES!!
                 # TODO: Do sync with json format workspace_role in ai_users table
                 workspace_role = user.workspace_role
@@ -143,6 +145,7 @@ class UserAuth:
                         student_id,
                         workspace_role,
                         system_admin,
+                        workspace_admin,
                         email,
                     )
                     refresh_token_obj.issued_token_count += 1

@@ -102,7 +102,7 @@ class AgentPromptHandler:
 
         """
         try:
-            _ = self.redis_client.set(agent_id, prompt)
+            _ = self.redis_client.set(f"ap:{agent_id}", prompt)
             return True
         except Exception as e:
             logging.error(f"Error caching the agent prompt into redis: {e}")
@@ -119,7 +119,7 @@ class AgentPromptHandler:
 
         """
         try:
-            prompt = self.redis_client.get(agent_id)
+            prompt = self.redis_client.get(f"ap:{agent_id}")
             if prompt:
                 return str(prompt)
             return None
