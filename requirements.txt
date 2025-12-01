@@ -37,7 +37,7 @@ executing==2.0.1
 fastapi==0.115.4
 fastapi-cli==0.0.5
 filelock==3.15.1
-fonttools==4.53.1
+fonttools==4.61.0
 frozenlist==1.4.1
 fsspec==2024.3.0
 greenlet==3.0.3
